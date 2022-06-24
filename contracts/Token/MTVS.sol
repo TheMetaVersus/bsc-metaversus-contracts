@@ -78,7 +78,6 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      *  @dev    Only controllers can call this function.
      */
     function burn(address from, uint256 amount) public onlyControllers {
-        require(_controllers[_msgSender()], "Only controllers can burn");
         _burn(from, amount);
     }
 }
