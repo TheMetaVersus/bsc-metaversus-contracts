@@ -4,11 +4,11 @@ const { upgrades } = require("hardhat");
 const { solidity } = require("ethereum-waffle");
 const { constants } = require("@openzeppelin/test-helpers");
 const Big = require("big.js");
-const { skipTime } = require("./utils");
+const { skipTime } = require("../utils");
 
 chai.use(solidity);
 const { add, subtract, multiply, divide } = require("js-big-decimal");
-describe("token:", () => {
+describe("MTVS Token:", () => {
   beforeEach(async () => {
     MAX_LIMIT =
       "115792089237316195423570985008687907853269984665640564039457584007913129639935";
