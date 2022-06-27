@@ -3,8 +3,6 @@ const { expect } = require("chai");
 const { upgrades } = require("hardhat");
 const { solidity } = require("ethereum-waffle");
 const { constants } = require("@openzeppelin/test-helpers");
-const Big = require("big.js");
-const { skipTime } = require("./utils");
 
 chai.use(solidity);
 const { add, subtract, multiply, divide } = require("js-big-decimal");
@@ -50,11 +48,39 @@ describe("token:", () => {
     });
   });
 
+  describe("isAdmin function:", async () => {
+    it("should return whether caller is admin or not: ", async () => {
+      await treasury.setAdmin(user2.address, true);
+      expect(await treasury.isAdmin(user2.address)).to.equal(true);
+
+      await treasury.setAdmin(user2.address, false);
+      expect(await treasury.isAdmin(user2.address)).to.equal(false);
+    });
+  });
+
+  describe("setAdmin function:", async () => {
+    it("should revert when caller is not owner: ", async () => {
+      await expect(
+        treasury.connect(user1).setAdmin(user2.address, true)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+    it("should set admin success: ", async () => {
+      await treasury.setAdmin(user2.address, true);
+      expect(await treasury.isAdmin(user2.address)).to.equal(true);
+
+      await treasury.setAdmin(user1.address, false);
+      expect(await treasury.isAdmin(user1.address)).to.equal(false);
+
+      await treasury.setAdmin(user2.address, false);
+      expect(await treasury.isAdmin(user2.address)).to.equal(false);
+    });
+  });
+
   describe("setPaymentToken function:", async () => {
-    it("should revert when caller not be an admin: ", async () => {
+    it("should revert when caller not be an owner or admin: ", async () => {
       await expect(
         treasury.connect(user1).setPaymentToken(token.address, true)
-      ).to.be.revertedWith("Ownable: caller is not an admin");
+      ).to.be.revertedWith("Ownable: caller is not an owner or admin");
     });
     it("should revert when payment token is invalid address: ", async () => {
       await expect(
@@ -68,10 +94,10 @@ describe("token:", () => {
   });
 
   describe("distribute function:", async () => {
-    it("should revert when caller not be an admin: ", async () => {
+    it("should revert when caller not be an owner or admin: ", async () => {
       await expect(
         treasury.connect(user1).distribute(token.address, user1.address, 10)
-      ).to.be.revertedWith("Ownable: caller is not an admin");
+      ).to.be.revertedWith("Ownable: caller is not an owner or admin");
     });
     it("should revert when payment token is not permit: ", async () => {
       await expect(

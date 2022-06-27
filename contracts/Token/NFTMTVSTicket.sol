@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 
 /**
@@ -14,19 +14,19 @@ import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol"
  *
  *  @author Metaversus Team
  *
- *  @notice This smart contract create the token ERC1155 for Operation. These tokens initially are minted
+ *  @notice This smart contract create the token ERC721 for Operation. These tokens initially are minted
  *          by the all user and using for purchase in marketplace operation. 
  *          The contract here by is implemented to initial some NFT with royalties.
  */
-contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC1155Upgradeable, ERC2981Upgradeable {
+contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable, ERC721EnumerableUpgradeable, ERC2981Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     RoyaltyInfo public defaultRoyaltyInfo;
-
+      
     /** 
      *  @notice FIXED_PRICE is price of each NFT sold
      */
-    uint256 public constant FIXED_PRICE = 100000;
+    uint256 public constant FIXED_PRICE = 1000;
 
     /** 
      *  @notice _tokenCounter uint256 (counter). This is the counter for store 
@@ -44,7 +44,7 @@ contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardU
      */
     address public treasury;
 
-     /**
+    /**
      *  @notice _admins mapping from token ID to isAdmin status
      */
     mapping(address => bool) public _admins;
@@ -54,53 +54,55 @@ contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardU
      */
     mapping(uint256 => string) public uris;
 
+    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
+    event Bought(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
+    event Minted(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
+    event SetAdmin(address indexed user, bool indexed allow);
+
     modifier onlyOwnerOrAdmin() {
         require((owner() == _msgSender() || _admins[_msgSender()]), "Ownable: caller is not an owner or admin");
         _;
     }
 
-    event SetAdmin(address indexed user, bool indexed allow);
-    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event Bought(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
-    event Minted(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
+    /** 
+     *  @notice Return token URI.
+     */
+    function _tokenUri(uint256 tokenId) public view returns (string memory) {
+        return uris[tokenId];
+    }
 
-     /**
+    /** 
+     *  @notice Set new uri for each token ID
+     */
+    function setTokenURI(string memory newURI, uint256 tokenId) public onlyOwnerOrAdmin {
+        uris[tokenId] = newURI;
+    }
+
+    /** 
+     *  @notice Mapping token ID to base URI in ipfs storage
+     *
+     *  @dev    All caller can call this function.
+     */
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
+        
+        string memory currentURI = _tokenUri(tokenId);
+        
+        return bytes(currentURI).length > 0
+            ? string(abi.encodePacked(currentURI, ".json")) : ".json";
+    }
+
+    /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(address _owner, string memory __uri, address _paymentToken, address _treasury, uint96 _feeNumerator) public initializer {   
-        ERC1155Upgradeable.__ERC1155_init(__uri);
+    function initialize(address _owner, string memory _name, string memory _symbol, address _paymentToken, address _treasury, uint96 _feeNumerator) public initializer {   
+        ERC721Upgradeable.__ERC721_init(_name, _symbol);
         OwnableUpgradeable.__Ownable_init();  
         paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;
         _setDefaultRoyalty(_treasury, _feeNumerator);
         defaultRoyaltyInfo = RoyaltyInfo(_treasury, _feeNumerator);
-    }
-
-    /** 
-     *  @notice Return token URI.
-     */
-    function uri(uint256 tokenId) public view override returns (string memory) {
-        return uris[tokenId];
-    }
-    
-    /** 
-     *  @notice Set new uri for each token ID
-     */
-    function setURI(string memory newuri,uint256 tokenId) public onlyOwnerOrAdmin {
-         uris[tokenId] = newuri;
-    }
-
-    /**
-     * @dev See {IERC165-supportsInterface} override for ERC2981Upgradeable, ERC1155Upgradeable
-     */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC1155Upgradeable, ERC2981Upgradeable)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
     }
 
     /**
@@ -125,7 +127,7 @@ contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardU
     /** 
      *  @notice set treasury to change TreasuryManager address.
      *
-     *  @dev    Only owner or admin can call this function.
+     *  @dev    Only admin can call this function.
      */
     function setTreasury(address account) public onlyOwnerOrAdmin {
         address oldTreasury = treasury;
@@ -138,13 +140,12 @@ contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardU
      *
      *  @dev    All users can call this function.
      */
-    function buy(uint256 amount, string memory newuri) public nonReentrant {
+    function buy(string memory uri) public nonReentrant {
         uint256 tokenId = _tokenCounter;
-        uris[tokenId] = newuri;
-
+        uris[tokenId] = uri;
         paymentToken.safeTransferFrom(_msgSender(), treasury, FIXED_PRICE);
 
-        _mint(_msgSender(), tokenId, amount, "");
+        _mint(_msgSender(), tokenId);
         _tokenCounter++;
 
         emit Bought(tokenId, _msgSender(), block.timestamp);
@@ -155,12 +156,24 @@ contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardU
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver, uint256 amount) public onlyOwnerOrAdmin {
+    function mint(address receiver) public onlyOwnerOrAdmin {
         uint256 tokenId = _tokenCounter;
 
-        _mint(receiver, tokenId, amount, "");
+        _mint(receiver, tokenId);
         _tokenCounter++;
 
         emit Minted(tokenId, receiver, block.timestamp);
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface} override for ERC2981Upgradeable, ERC721EnumerableUpgradeable
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721EnumerableUpgradeable, ERC2981Upgradeable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 }

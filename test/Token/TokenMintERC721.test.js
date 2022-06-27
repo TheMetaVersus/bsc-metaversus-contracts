@@ -4,7 +4,7 @@ const { upgrades } = require("hardhat");
 const { solidity } = require("ethereum-waffle");
 const { constants } = require("@openzeppelin/test-helpers");
 const Big = require("big.js");
-const { skipTime } = require("./utils");
+const { skipTime } = require("../utils");
 
 chai.use(solidity);
 const { add, subtract, multiply, divide } = require("js-big-decimal");
@@ -103,9 +103,9 @@ describe("TokenMintERC721:", () => {
     it("should revert when caller is not owner: ", async () => {
       await expect(
         tokenMintERC721.connect(user1).setTreasury(user2.address)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("Ownable: caller is not an owner or admin");
     });
-    it("Check name, symbol and default state: ", async () => {
+    it("should set treasury success: ", async () => {
       await tokenMintERC721.setTreasury(treasury.address);
       expect(await tokenMintERC721.treasury()).to.equal(treasury.address);
 
@@ -123,8 +123,9 @@ describe("TokenMintERC721:", () => {
       await token.approve(user1.address, 70000000);
       await token.connect(user1).approve(tokenMintERC721.address, 70000000);
 
-      await tokenMintERC721.connect(user1).buy();
+      await tokenMintERC721.connect(user1).buy("this_uri");
       expect(await tokenMintERC721.balanceOf(user1.address)).to.equal(1);
+      expect(await tokenMintERC721.tokenURI(0)).to.equal("this_uri" + ".json");
     });
   });
 
