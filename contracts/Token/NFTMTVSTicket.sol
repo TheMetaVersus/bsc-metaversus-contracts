@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
-
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 /**
  *  @title  Dev Non-fungible token
  *
@@ -20,7 +20,7 @@ import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol"
  */
 contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable, ERC721EnumerableUpgradeable, ERC2981Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
+    using CountersUpgradeable for CountersUpgradeable.Counter;
     RoyaltyInfo public defaultRoyaltyInfo;
       
     /** 
@@ -29,10 +29,10 @@ contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgr
     uint256 public constant FIXED_PRICE = 1000;
 
     /** 
-     *  @notice _tokenCounter uint256 (counter). This is the counter for store 
+     *  @notice tokenCounter uint256 (counter). This is the counter for store 
      *          current token ID value in storage.
      */
-    uint256 public _tokenCounter;
+    CountersUpgradeable.Counter public tokenCounter;
 
     /** 
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
@@ -45,9 +45,9 @@ contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgr
     address public treasury;
 
     /**
-     *  @notice _admins mapping from token ID to isAdmin status
+     *  @notice admins mapping from token ID to isAdmin status
      */
-    mapping(address => bool) public _admins;
+    mapping(address => bool) public admins;
 
     /**
      *  @notice uris mapping from token ID to token uri
@@ -55,20 +55,13 @@ contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgr
     mapping(uint256 => string) public uris;
 
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event Bought(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
-    event Minted(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
-    event SetAdmin(address indexed user, bool indexed allow);
+    event Bought(uint256 indexed tokenId, address indexed to, uint256 timestamp);
+    event Minted(uint256 indexed tokenId, address indexed to, uint256 timestamp);
+    event SetAdmin(address indexed user, bool allow);
 
     modifier onlyOwnerOrAdmin() {
-        require((owner() == _msgSender() || _admins[_msgSender()]), "Ownable: caller is not an owner or admin");
+        require((owner() == _msgSender() || admins[_msgSender()]), "Ownable: caller is not an owner or admin");
         _;
-    }
-
-    /** 
-     *  @notice Return token URI.
-     */
-    function _tokenUri(uint256 tokenId) public view returns (string memory) {
-        return uris[tokenId];
     }
 
     /** 
@@ -86,7 +79,7 @@ contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgr
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
         
-        string memory currentURI = _tokenUri(tokenId);
+        string memory currentURI = uris[tokenId];
         
         return bytes(currentURI).length > 0
             ? string(abi.encodePacked(currentURI, ".json")) : ".json";
@@ -111,7 +104,7 @@ contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgr
      *  @dev    All caller can call this function.
      */
     function isAdmin(address account) public view returns(bool) {
-        return  _admins[account];
+        return  admins[account];
     }
 
     /**
@@ -120,7 +113,7 @@ contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgr
      *  @dev    Only owner can call this function.
      */
     function setAdmin(address user, bool allow) public onlyOwner {
-        _admins[user] = allow;
+        admins[user] = allow;
         emit SetAdmin(user, allow);
     }
 
@@ -141,12 +134,12 @@ contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgr
      *  @dev    All users can call this function.
      */
     function buy(string memory uri) public nonReentrant {
-        uint256 tokenId = _tokenCounter;
+        uint256 tokenId = tokenCounter.current();
         uris[tokenId] = uri;
         paymentToken.safeTransferFrom(_msgSender(), treasury, FIXED_PRICE);
 
         _mint(_msgSender(), tokenId);
-        _tokenCounter++;
+        tokenCounter.increment();
 
         emit Bought(tokenId, _msgSender(), block.timestamp);
     }
@@ -157,10 +150,10 @@ contract NFTMTVSTicket is Initializable, ReentrancyGuardUpgradeable, OwnableUpgr
      *  @dev    Only owner or admin can call this function.
      */
     function mint(address receiver) public onlyOwnerOrAdmin {
-        uint256 tokenId = _tokenCounter;
+        uint256 tokenId = tokenCounter.current();
 
         _mint(receiver, tokenId);
-        _tokenCounter++;
+        tokenCounter.increment();
 
         emit Minted(tokenId, receiver, block.timestamp);
     }

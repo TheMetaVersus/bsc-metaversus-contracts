@@ -53,17 +53,13 @@ describe("TokenMintERC721:", () => {
       expect(symbol).to.equal("nMTVS");
     });
     it("Check tokenURI: ", async () => {
-      const tokenURI = await tokenMintERC721._tokenUri(0);
-
-      expect(tokenURI).to.equal("");
-
       await tokenMintERC721.mint(user1.address);
       const URI = "this_is_uri_1";
       const tx = await tokenMintERC721.setTokenURI(URI, 0);
       await tx.wait();
-      const newURI = await tokenMintERC721._tokenUri(0);
+      const newURI = await tokenMintERC721.tokenURI(0);
 
-      expect(newURI).to.equal(URI);
+      expect(newURI).to.equal(URI + ".json");
     });
     it("Check Owner: ", async () => {
       const ownerAddress = await tokenMintERC721.owner();

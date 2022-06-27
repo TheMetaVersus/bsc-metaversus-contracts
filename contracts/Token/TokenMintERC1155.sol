@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
-
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 /**
  *  @title  Dev Non-fungible token
  *
@@ -20,7 +20,7 @@ import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol"
  */
 contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable, ERC1155Upgradeable, ERC2981Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
+    using CountersUpgradeable for CountersUpgradeable.Counter;
     RoyaltyInfo public defaultRoyaltyInfo;
 
     /** 
@@ -29,10 +29,10 @@ contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardU
     uint256 public constant FIXED_PRICE = 100000;
 
     /** 
-     *  @notice _tokenCounter uint256 (counter). This is the counter for store 
+     *  @notice tokenCounter uint256 (counter). This is the counter for store 
      *          current token ID value in storage.
      */
-    uint256 public _tokenCounter;
+    CountersUpgradeable.Counter public tokenCounter;
 
     /** 
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
@@ -139,13 +139,13 @@ contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardU
      *  @dev    All users can call this function.
      */
     function buy(uint256 amount, string memory newuri) public nonReentrant {
-        uint256 tokenId = _tokenCounter;
+        uint256 tokenId = tokenCounter.current();
         uris[tokenId] = newuri;
 
         paymentToken.safeTransferFrom(_msgSender(), treasury, FIXED_PRICE);
 
         _mint(_msgSender(), tokenId, amount, "");
-        _tokenCounter++;
+        tokenCounter.increment();
 
         emit Bought(tokenId, _msgSender(), block.timestamp);
     }
@@ -156,10 +156,10 @@ contract TokenMintERC1155 is Initializable, OwnableUpgradeable, ReentrancyGuardU
      *  @dev    Only owner or admin can call this function.
      */
     function mint(address receiver, uint256 amount) public onlyOwnerOrAdmin {
-        uint256 tokenId = _tokenCounter;
+        uint256 tokenId = tokenCounter.current();
 
         _mint(receiver, tokenId, amount, "");
-        _tokenCounter++;
+        tokenCounter.increment();
 
         emit Minted(tokenId, receiver, block.timestamp);
     }

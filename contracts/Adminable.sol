@@ -15,12 +15,12 @@ contract Adminable is Initializable, OwnableUpgradeable {
     /**
      *  @notice _admins mapping from token ID to isAdmin status
      */
-    mapping(address => bool) public _admins;
+    mapping(address => bool) public admins;
 
-    event SetAdmin(address indexed user, bool indexed allow);
+    event SetAdmin(address indexed user, bool allow);
 
     modifier onlyOwnerOrAdmin() {
-        require((owner() == _msgSender() || _admins[_msgSender()]), "Ownable: caller is not an owner or admin");
+        require((owner() == _msgSender() || admins[_msgSender()]), "Ownable: caller is not an owner or admin");
         _;
     }
 
@@ -38,7 +38,7 @@ contract Adminable is Initializable, OwnableUpgradeable {
      *  @dev    All caller can call this function.
      */
     function isAdmin(address account) public view returns(bool) {
-        return  _admins[account];
+        return admins[account];
     }
 
     /**
@@ -47,7 +47,7 @@ contract Adminable is Initializable, OwnableUpgradeable {
      *  @dev    Only owner can call this function.
      */
     function setAdmin(address user, bool allow) public onlyOwner {
-        _admins[user] = allow;
+        admins[user] = allow;
         emit SetAdmin(user, allow);
     }
 }

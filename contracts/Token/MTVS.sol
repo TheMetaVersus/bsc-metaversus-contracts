@@ -17,17 +17,17 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     
     /**
-     *  @notice _controllers mapping from token ID to isComtroller status
+     *  @notice controllers mapping from token ID to isComtroller status
      */
-    mapping(address => bool) public _controllers;
+    mapping(address => bool) public controllers;
 
     modifier onlyControllers() {
-        require((owner() == _msgSender() || _controllers[_msgSender()]), "Ownable: caller is not a controller");
+        require((owner() == _msgSender() || controllers[_msgSender()]), "Ownable: caller is not a controller");
         _;
     }
 
-    event SetController(address indexed user, bool indexed allow);
-    event Minted(address indexed receiver, uint256 indexed amount, uint256 indexed timestamp);
+    event SetController(address indexed user, bool allow);
+    event Minted(address indexed receiver, uint256 indexed amount, uint256 timestamp);
 
     /**
      *  @notice Initialize new logic contract.
@@ -36,7 +36,7 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         ERC20Upgradeable.__ERC20_init(_name, _symbol);
         OwnableUpgradeable.__Ownable_init();
         transferOwnership(_curator);
-        _controllers[_curator] = true;
+        controllers[_curator] = true;
         _mint(_treasury, _totalSupply);
     }
 
@@ -46,7 +46,7 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      *  @dev    All caller can call this function.
      */
     function isController(address account) public view returns(bool) {
-        return  _controllers[account];
+        return  controllers[account];
     }
 
     /**
@@ -55,7 +55,7 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      *  @dev    Only owner can call this function.
      */
     function setController(address user, bool allow) public onlyOwner {
-        _controllers[user] = allow;
+        controllers[user] = allow;
         emit SetController(user, allow);
     }
 

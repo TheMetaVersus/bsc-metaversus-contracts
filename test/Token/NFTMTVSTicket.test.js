@@ -53,17 +53,13 @@ describe("NFTMTVSTicket:", () => {
       expect(symbol).to.equal("nftMTVS");
     });
     it("Check tokenURI: ", async () => {
-      const tokenURI = await nftMTVSTicket._tokenUri(0);
-
-      expect(tokenURI).to.equal("");
-
       await nftMTVSTicket.mint(user1.address);
       const URI = "this_is_uri_1";
       const tx = await nftMTVSTicket.setTokenURI(URI, 0);
       await tx.wait();
-      const newURI = await nftMTVSTicket._tokenUri(0);
+      const newURI = await nftMTVSTicket.tokenURI(0);
 
-      expect(newURI).to.equal(URI);
+      expect(newURI).to.equal(URI + ".json");
     });
     it("Check Owner: ", async () => {
       const ownerAddress = await nftMTVSTicket.owner();
