@@ -4,12 +4,11 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-
+import "../Adminable.sol";
 /**
  *  @title  Dev Non-fungible token
  *
@@ -19,16 +18,15 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
  *          by the all user and using for purchase in marketplace operation. 
  *          The contract here by is implemented to initial some NFT with royalties.
  */
-contract TokenMintERC721 is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable, ERC721EnumerableUpgradeable, ERC2981Upgradeable {
+contract TokenMintERC721 is Initializable, ReentrancyGuardUpgradeable, Adminable, ERC721EnumerableUpgradeable, ERC2981Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
-    RoyaltyInfo public defaultRoyaltyInfo;
-      
+
     /** 
      *  @notice FIXED_PRICE is price of each NFT sold
      */
     uint256 public constant FIXED_PRICE = 1000;
-
+    
     /** 
      *  @notice tokenCounter uint256 (counter). This is the counter for store 
      *          current token ID value in storage.
@@ -46,24 +44,18 @@ contract TokenMintERC721 is Initializable, ReentrancyGuardUpgradeable, OwnableUp
     address public treasury;
 
     /**
-     *  @notice admins mapping from token ID to isAdmin status
-     */
-    mapping(address => bool) public admins;
-
-    /**
      *  @notice uris mapping from token ID to token uri
      */
     mapping(uint256 => string) public uris;
 
+    /**
+     *  @notice defaultRoyaltyInfo is array royalties info 
+     */
+    RoyaltyInfo public defaultRoyaltyInfo;
+
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to, uint256 timestamp);
     event Minted(uint256 indexed tokenId, address indexed to, uint256 timestamp);
-    event SetAdmin(address indexed user, bool allow);
-
-    modifier onlyOwnerOrAdmin() {
-        require((owner() == _msgSender() || admins[_msgSender()]), "Ownable: caller is not an owner or admin");
-        _;
-    }
 
     /** 
      *  @notice Set new uri for each token ID
@@ -97,25 +89,6 @@ contract TokenMintERC721 is Initializable, ReentrancyGuardUpgradeable, OwnableUp
         treasury = _treasury;
         _setDefaultRoyalty(_treasury, _feeNumerator);
         defaultRoyaltyInfo = RoyaltyInfo(_treasury, _feeNumerator);
-    }
-
-    /**
-     *  @notice Check account whether it is the admin role.
-     *
-     *  @dev    All caller can call this function.
-     */
-    function isAdmin(address account) public view returns(bool) {
-        return  admins[account];
-    }
-
-    /**
-     *  @notice Replace the admin role by another address.
-     *
-     *  @dev    Only owner can call this function.
-     */
-    function setAdmin(address user, bool allow) public onlyOwner {
-        admins[user] = allow;
-        emit SetAdmin(user, allow);
     }
 
     /** 

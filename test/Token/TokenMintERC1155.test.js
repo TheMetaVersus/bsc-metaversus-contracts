@@ -44,14 +44,11 @@ describe("TokenMintERC1155:", () => {
   });
 
   describe("Deployment:", async () => {
-    it("Check tokenURI: ", async () => {
-      const tokenURI = await tokenMintERC1155.uri(0);
-      expect(tokenURI).to.equal("");
-      const URI = "this_is_uri_1";
+    it("Check uri: ", async () => {
+      await tokenMintERC1155.mint(user1.address, 100);
+      const URI = "this_is_uri_1.json";
       const tx = await tokenMintERC1155.setURI(URI, 0);
       await tx.wait();
-      await tokenMintERC1155.mint(user1.address, 100);
-
       const newURI = await tokenMintERC1155.uri(0);
 
       expect(newURI).to.equal(URI);
