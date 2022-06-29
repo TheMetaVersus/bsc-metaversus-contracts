@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "../Adminable.sol";
 
 /**
@@ -28,7 +29,7 @@ contract NFTMTVSTicket is
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
-
+    using StringsUpgradeable for uint256;
     /**
      *  @notice tokenCounter uint256 (counter). This is the counter for store
      *          current token ID value in storage.
@@ -51,24 +52,32 @@ contract NFTMTVSTicket is
     address public treasury;
 
     /**
-     *  @notice uris mapping from token ID to token uri
+     *  @notice baseURI is base uri of collection
      */
-    mapping(uint256 => string) public uris;
+    string public baseURI;
 
     /**
      *  @notice defaultRoyaltyInfo is array royalties info
      */
     RoyaltyInfo public defaultRoyaltyInfo;
+
     event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to, uint256 timestamp);
     event Minted(uint256 indexed tokenId, address indexed to, uint256 timestamp);
 
     /**
-     *  @notice Set new uri for each token ID
+     *  @notice Override _baseURI ERC721Upgradeable
      */
-    function setTokenURI(string memory newURI, uint256 tokenId) external onlyOwnerOrAdmin {
-        uris[tokenId] = newURI;
+    function _baseURI() internal view override returns (string memory) {
+        return baseURI;
+    }
+
+    /**
+     *  @notice Set base URI
+     */
+    function setBaseURI(string memory newURI) external onlyOwnerOrAdmin {
+        baseURI = newURI;
     }
 
     /**
@@ -79,10 +88,11 @@ contract NFTMTVSTicket is
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
 
-        string memory currentURI = uris[tokenId];
-
+        string memory currentBaseURI = _baseURI();
         return
-            bytes(currentURI).length > 0 ? string(abi.encodePacked(currentURI, ".json")) : ".json";
+            bytes(currentBaseURI).length > 0
+                ? string(abi.encodePacked(currentBaseURI, "/", tokenId.toString(), ".json"))
+                : ".json";
     }
 
     /**
@@ -134,9 +144,9 @@ contract NFTMTVSTicket is
      *
      *  @dev    All users can call this function.
      */
-    function buy(string memory uri) external nonReentrant {
+    function buy() external nonReentrant {
         uint256 tokenId = tokenCounter.current();
-        uris[tokenId] = uri;
+
         paymentToken.safeTransferFrom(_msgSender(), treasury, price);
 
         _mint(_msgSender(), tokenId);

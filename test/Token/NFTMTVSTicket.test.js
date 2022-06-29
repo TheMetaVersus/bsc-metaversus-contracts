@@ -1,14 +1,6 @@
-const chai = require("chai");
 const { expect } = require("chai");
 const { upgrades } = require("hardhat");
-const { solidity } = require("ethereum-waffle");
-const { constants } = require("@openzeppelin/test-helpers");
-const Big = require("big.js");
-const { skipTime } = require("../utils");
 
-chai.use(solidity);
-const { add, subtract, multiply, divide } = require("js-big-decimal");
-const bigDecimal = require("js-big-decimal");
 describe("NFTMTVSTicket:", () => {
     beforeEach(async () => {
         MAX_LIMIT =
@@ -55,13 +47,14 @@ describe("NFTMTVSTicket:", () => {
             expect(symbol).to.equal("nftMTVS");
         });
         it("Check tokenURI: ", async () => {
+            const tokenId = 0;
             await nftMTVSTicket.mint(user1.address);
             const URI = "this_is_uri_1";
-            const tx = await nftMTVSTicket.setTokenURI(URI, 0);
+            const tx = await nftMTVSTicket.setBaseURI(URI);
             await tx.wait();
-            const newURI = await nftMTVSTicket.tokenURI(0);
+            const newURI = await nftMTVSTicket.tokenURI(tokenId);
 
-            expect(newURI).to.equal(URI + ".json");
+            expect(newURI).to.equal(URI + "/" + tokenId + ".json");
         });
         it("Check Owner: ", async () => {
             const ownerAddress = await nftMTVSTicket.owner();
@@ -121,9 +114,9 @@ describe("NFTMTVSTicket:", () => {
             await token.approve(user1.address, MAX_LIMIT);
             await token.connect(user1).approve(nftMTVSTicket.address, MAX_LIMIT);
 
-            await nftMTVSTicket.connect(user1).buy("this_uri");
+            await nftMTVSTicket.connect(user1).buy();
             expect(await nftMTVSTicket.balanceOf(user1.address)).to.equal(1);
-            expect(await nftMTVSTicket.tokenURI(0)).to.equal("this_uri" + ".json");
+            expect(await nftMTVSTicket.tokenURI(0)).to.equal(".json");
         });
     });
 
