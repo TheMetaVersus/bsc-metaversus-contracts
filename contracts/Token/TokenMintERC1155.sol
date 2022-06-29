@@ -30,11 +30,6 @@ contract TokenMintERC1155 is
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     /**
-     *  @notice FIXED_PRICE is price of each NFT sold
-     */
-    uint256 public constant FIXED_PRICE = 100000;
-
-    /**
      *  @notice tokenCounter uint256 (counter). This is the counter for store
      *          current token ID value in storage.
      */
@@ -44,6 +39,11 @@ contract TokenMintERC1155 is
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
      */
     IERC20Upgradeable public paymentToken;
+
+    /**
+     *  @notice price is price of each NFT sold
+     */
+    uint256 public price;
 
     /**
      *  @notice treasury store the address of the TreasuryManager contract
@@ -60,6 +60,7 @@ contract TokenMintERC1155 is
      */
     RoyaltyInfo public defaultRoyaltyInfo;
 
+    event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
     event Minted(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
@@ -72,13 +73,15 @@ contract TokenMintERC1155 is
         string memory __uri,
         address _paymentToken,
         address _treasury,
-        uint96 _feeNumerator
+        uint96 _feeNumerator,
+        uint256 _price
     ) public initializer {
         ERC1155Upgradeable.__ERC1155_init(__uri);
         OwnableUpgradeable.__Ownable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;
+        price = _price;
         _setDefaultRoyalty(_treasury, _feeNumerator);
         defaultRoyaltyInfo = RoyaltyInfo(_treasury, _feeNumerator);
     }
@@ -93,7 +96,7 @@ contract TokenMintERC1155 is
     /**
      *  @notice Set new uri for each token ID
      */
-    function setURI(string memory newuri, uint256 tokenId) public onlyOwnerOrAdmin {
+    function setURI(string memory newuri, uint256 tokenId) external onlyOwnerOrAdmin {
         uris[tokenId] = newuri;
     }
 
@@ -114,10 +117,21 @@ contract TokenMintERC1155 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) public onlyOwnerOrAdmin {
+    function setTreasury(address account) external onlyOwnerOrAdmin {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
+    }
+
+    /**
+     *  @notice Set price of NFT
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function setPrice(uint256 newPrice) external onlyOwnerOrAdmin {
+        uint256 oldPrice = price;
+        price = newPrice;
+        emit SetPrice(oldPrice, price);
     }
 
     /**
@@ -125,11 +139,11 @@ contract TokenMintERC1155 is
      *
      *  @dev    All users can call this function.
      */
-    function buy(uint256 amount, string memory newuri) public nonReentrant {
+    function buy(uint256 amount, string memory newuri) external nonReentrant {
         uint256 tokenId = tokenCounter.current();
         uris[tokenId] = newuri;
 
-        paymentToken.safeTransferFrom(_msgSender(), treasury, FIXED_PRICE);
+        paymentToken.safeTransferFrom(_msgSender(), treasury, price);
 
         _mint(_msgSender(), tokenId, amount, "");
         tokenCounter.increment();
@@ -142,7 +156,7 @@ contract TokenMintERC1155 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver, uint256 amount) public onlyOwnerOrAdmin {
+    function mint(address receiver, uint256 amount) external onlyOwnerOrAdmin {
         uint256 tokenId = tokenCounter.current();
 
         _mint(receiver, tokenId, amount, "");

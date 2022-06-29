@@ -19,7 +19,15 @@ contract Adminable is Initializable, OwnableUpgradeable {
     event SetAdmin(address indexed user, bool allow);
 
     modifier onlyOwnerOrAdmin() {
-        require((owner() == _msgSender() || admins[_msgSender()]), "Ownable: caller is not an owner or admin");
+        require(
+            (owner() == _msgSender() || admins[_msgSender()]),
+            "Ownable: caller is not an owner or admin"
+        );
+        _;
+    }
+
+    modifier notZeroAddress(address addr) {
+        require(addr != address(0), "Error: Invalid address !");
         _;
     }
 
@@ -28,7 +36,7 @@ contract Adminable is Initializable, OwnableUpgradeable {
      *
      *  @dev    All caller can call this function.
      */
-    function isAdmin(address account) external view returns(bool) {
+    function isAdmin(address account) external view returns (bool) {
         return admins[account];
     }
 
