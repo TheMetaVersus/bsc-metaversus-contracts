@@ -1,0 +1,16 @@
+{
+  "overrides": [
+    {
+      "files": ["*.test.js", "*.sol"],
+      "options": {
+        "printWidth": 100,
+        "tabWidth": 4,
+        "useTabs": false,
+        "singleQuote": false,
+        "bracketSpacing": true,
+        "trailingComma": "es5",
+        "explicitTypes": "preserve"
+      }
+    }
+  ]
+}

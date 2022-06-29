@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
@@ -25,19 +24,11 @@ contract Adminable is Initializable, OwnableUpgradeable {
     }
 
     /**
-     *  @notice Initialize new logic contract.
-     */
-    function initialize(address _owner) public initializer {   
-        OwnableUpgradeable.__Ownable_init();  
-        transferOwnership(_owner);
-    }
-
-    /**
      *  @notice Check account whether it is the admin role.
      *
      *  @dev    All caller can call this function.
      */
-    function isAdmin(address account) public view returns(bool) {
+    function isAdmin(address account) external view returns(bool) {
         return admins[account];
     }
 
@@ -46,7 +37,7 @@ contract Adminable is Initializable, OwnableUpgradeable {
      *
      *  @dev    Only owner can call this function.
      */
-    function setAdmin(address user, bool allow) public onlyOwner {
+    function setAdmin(address user, bool allow) external onlyOwner {
         admins[user] = allow;
         emit SetAdmin(user, allow);
     }
