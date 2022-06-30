@@ -6,7 +6,7 @@ const { constants } = require("@openzeppelin/test-helpers");
 
 chai.use(solidity);
 const { add, subtract, multiply, divide } = require("js-big-decimal");
-describe("token:", () => {
+describe("Treasury:", () => {
     beforeEach(async () => {
         MAX_LIMIT =
             "115792089237316195423570985008687907853269984665640564039457584007913129639935";
@@ -90,6 +90,9 @@ describe("token:", () => {
         it("should set payment token success: ", async () => {
             await treasury.setPaymentToken(token.address, true);
             expect(await treasury.isPermitedToken(token.address)).to.equal(true);
+
+            await treasury.setPaymentToken(token.address, false);
+            expect(await treasury.isPermitedToken(token.address)).to.equal(false);
         });
     });
 

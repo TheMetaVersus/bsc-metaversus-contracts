@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
  *
  *  @notice This smart contract is contract to control access and role to call function
  */
-contract Adminable is Initializable, OwnableUpgradeable {
+contract Adminable is OwnableUpgradeable {
     /**
      *  @notice _admins mapping from token ID to isAdmin status
      */
@@ -27,8 +27,17 @@ contract Adminable is Initializable, OwnableUpgradeable {
     }
 
     modifier notZeroAddress(address addr) {
-        require(addr != address(0), "Error: Invalid address !");
+        require(addr != address(0), "ERROR: Invalid address !");
         _;
+    }
+
+    modifier notZeroAmount(uint256 amount) {
+        require(amount > 0, "ERROR: amount must be greater than zero !");
+        _;
+    }
+
+    function __Adminable_init() internal initializer {
+        OwnableUpgradeable.__Ownable_init();
     }
 
     /**

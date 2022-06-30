@@ -117,7 +117,7 @@ contract TokenMintERC1155 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin {
+    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
@@ -128,7 +128,7 @@ contract TokenMintERC1155 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setPrice(uint256 newPrice) external onlyOwnerOrAdmin {
+    function setPrice(uint256 newPrice) external onlyOwnerOrAdmin notZeroAmount(newPrice) {
         uint256 oldPrice = price;
         price = newPrice;
         emit SetPrice(oldPrice, price);
@@ -139,7 +139,7 @@ contract TokenMintERC1155 is
      *
      *  @dev    All users can call this function.
      */
-    function buy(uint256 amount, string memory newuri) external nonReentrant {
+    function buy(uint256 amount, string memory newuri) external notZeroAmount(amount) nonReentrant {
         uint256 tokenId = tokenCounter.current();
         uris[tokenId] = newuri;
 
@@ -156,7 +156,12 @@ contract TokenMintERC1155 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver, uint256 amount) external onlyOwnerOrAdmin {
+    function mint(address receiver, uint256 amount)
+        external
+        onlyOwnerOrAdmin
+        notZeroAddress(receiver)
+        notZeroAmount(amount)
+    {
         uint256 tokenId = tokenCounter.current();
 
         _mint(receiver, tokenId, amount, "");

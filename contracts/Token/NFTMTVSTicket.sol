@@ -114,7 +114,7 @@ contract NFTMTVSTicket is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin {
+    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
@@ -125,7 +125,7 @@ contract NFTMTVSTicket is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setPrice(uint256 newPrice) external onlyOwnerOrAdmin {
+    function setPrice(uint256 newPrice) external onlyOwnerOrAdmin notZeroAmount(newPrice) {
         uint256 oldPrice = price;
         price = newPrice;
         emit SetPrice(oldPrice, price);
@@ -152,7 +152,7 @@ contract NFTMTVSTicket is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver) external onlyOwnerOrAdmin {
+    function mint(address receiver) external onlyOwnerOrAdmin notZeroAddress(receiver) {
         uint256 tokenId = tokenCounter.current();
 
         _mint(receiver, tokenId);

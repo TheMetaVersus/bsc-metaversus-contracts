@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 
-describe("Metaversus Manager:", () => {
+describe("Marketplace Manager:", () => {
     beforeEach(async () => {
         MAX_LIMIT =
             "115792089237316195423570985008687907853269984665640564039457584007913129639935";
@@ -64,92 +64,61 @@ describe("Metaversus Manager:", () => {
             token.address,
             treasury.address,
         ]);
-
-        MTVSManager = await ethers.getContractFactory("MetaversusManager");
-        mtvsManager = await upgrades.deployProxy(MTVSManager, [
-            owner.address,
-            tokenMintERC721.address,
-            tokenMintERC1155.address,
-            nftMTVSTicket.address,
-            token.address,
-            treasury.address,
-            mkpManager.address,
-            250,
-            350,
-            450,
-        ]);
     });
 
     describe("Deployment:", async () => {
         it("Check all address token were set: ", async () => {
-            expect(await mtvsManager.paymentToken()).to.equal(token.address);
-            expect(await mtvsManager.tokenMintERC721()).to.equal(tokenMintERC721.address);
-            expect(await mtvsManager.tokenMintERC1155()).to.equal(tokenMintERC1155.address);
-            expect(await mtvsManager.nftTicket()).to.equal(nftMTVSTicket.address);
+            expect(await mkpManager.paymentToken()).to.equal(token.address);
         });
-
         it("Check Owner: ", async () => {
-            const ownerAddress = await mtvsManager.owner();
+            const ownerAddress = await mkpManager.owner();
             expect(ownerAddress).to.equal(owner.address);
         });
     });
 
     describe("isAdmin function:", async () => {
         it("should return whether caller is admin or not: ", async () => {
-            await mtvsManager.setAdmin(user2.address, true);
-            expect(await mtvsManager.isAdmin(user2.address)).to.equal(true);
+            await mkpManager.setAdmin(user2.address, true);
+            expect(await mkpManager.isAdmin(user2.address)).to.equal(true);
 
-            await mtvsManager.setAdmin(user2.address, false);
-            expect(await mtvsManager.isAdmin(user2.address)).to.equal(false);
+            await mkpManager.setAdmin(user2.address, false);
+            expect(await mkpManager.isAdmin(user2.address)).to.equal(false);
         });
     });
 
     describe("setAdmin function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
-                mtvsManager.connect(user1).setAdmin(user2.address, true)
+                mkpManager.connect(user1).setAdmin(user2.address, true)
             ).to.be.revertedWith("Ownable: caller is not the owner");
         });
         it("should set admin success: ", async () => {
-            await mtvsManager.setAdmin(user2.address, true);
-            expect(await mtvsManager.isAdmin(user2.address)).to.equal(true);
+            await mkpManager.setAdmin(user2.address, true);
+            expect(await mkpManager.isAdmin(user2.address)).to.equal(true);
 
-            await mtvsManager.setAdmin(user1.address, false);
-            expect(await mtvsManager.isAdmin(user1.address)).to.equal(false);
+            await mkpManager.setAdmin(user1.address, false);
+            expect(await mkpManager.isAdmin(user1.address)).to.equal(false);
 
-            await mtvsManager.setAdmin(user2.address, false);
-            expect(await mtvsManager.isAdmin(user2.address)).to.equal(false);
+            await mkpManager.setAdmin(user2.address, false);
+            expect(await mkpManager.isAdmin(user2.address)).to.equal(false);
         });
     });
 
     describe("setTreasury function:", async () => {
         it("should revert when caller is not owner or admin: ", async () => {
-            await expect(mtvsManager.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
+            await expect(mkpManager.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
                 "Ownable: caller is not an owner or admin"
             );
         });
         it("should set treasury success: ", async () => {
-            await mtvsManager.setTreasury(treasury.address);
-            expect(await mtvsManager.treasury()).to.equal(treasury.address);
+            await mkpManager.setTreasury(treasury.address);
+            expect(await mkpManager.treasury()).to.equal(treasury.address);
 
-            await mtvsManager.setTreasury(user1.address);
-            expect(await mtvsManager.treasury()).to.equal(user1.address);
+            await mkpManager.setTreasury(user1.address);
+            expect(await mkpManager.treasury()).to.equal(user1.address);
 
-            await mtvsManager.setTreasury(treasury.address);
-            expect(await mtvsManager.treasury()).to.equal(treasury.address);
-        });
-    });
-
-    describe("buyTicket function:", async () => {
-        it("should buy ticket success: ", async () => {
-            await token.mint(user2.address, "9000000000000000000");
-            await token.approve(user2.address, MAX_LIMIT);
-            await token.connect(user2).approve(mtvsManager.address, MAX_LIMIT);
-
-            await nftMTVSTicket.setAdmin(mtvsManager.address, true);
-
-            await mtvsManager.connect(user2).buyTicket();
-            expect(await nftMTVSTicket.balanceOf(user2.address)).to.equal(1);
+            await mkpManager.setTreasury(treasury.address);
+            expect(await mkpManager.treasury()).to.equal(treasury.address);
         });
     });
 });

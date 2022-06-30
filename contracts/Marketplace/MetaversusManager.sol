@@ -10,6 +10,7 @@ import "../Adminable.sol";
 import "../interfaces/ITokenMintERC721.sol";
 import "../interfaces/ITokenMintERC1155.sol";
 import "../interfaces/INFTMTVSTicket.sol";
+import "../interfaces/IMarketplaceManager.sol";
 
 /**
  *  @title  Dev Metaversus Contract
@@ -30,7 +31,11 @@ contract MetaversusManager is
         ERC721,
         ERC1155
     }
-
+    enum FeeType {
+        FEE_CREATE,
+        FEE_STAKING_NFT,
+        FEE_EVENT_NFT
+    }
     /**
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
      */
@@ -52,18 +57,25 @@ contract MetaversusManager is
     INFTMTVSTicket public nftTicket;
 
     /**
-     *  @notice fee is price of each NFT sold
+     *  @notice fees is fee of each FeeType function mapping uint256(FeeType) to value
      */
-    uint256 public fee;
+    mapping(uint256 => uint256) public fees;
 
     /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
     address public treasury;
 
+    /**
+     *  @notice marketplace store the address of the marketplaceManager contract
+     */
+    IMarketplaceManager public marketplace;
+
     event BoughtTicket(address indexed to);
-    event SetFee(uint256 indexed oldFee, uint256 indexed newFee);
+    event BoughtTicketEvent(address indexed to, uint256 indexed eventid);
+    event SetFee(uint256 indexed newFee, uint256 indexed feeType);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
+    event SetMarketplace(address indexed oldTreasury, address indexed newTreasury);
     event Created(SelectTypeMint indexed typeMint, address indexed to, uint256 indexed amount);
 
     /**
@@ -76,17 +88,23 @@ contract MetaversusManager is
         address _nftTicket,
         address _paymentToken,
         address _treasury,
-        uint256 _fee
+        address _marketplaceAddr,
+        uint256 _feeCreate,
+        uint256 _feeStakingNFT,
+        uint256 _feeEventNFT
     ) public initializer {
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
         transferOwnership(_owner);
         treasury = _treasury;
+        marketplace = IMarketplaceManager(_marketplaceAddr);
         paymentToken = IERC20Upgradeable(_paymentToken);
         tokenMintERC721 = ITokenMintERC721(nft721Addr);
         tokenMintERC1155 = ITokenMintERC1155(nft1155Addr);
         nftTicket = INFTMTVSTicket(_nftTicket);
-        fee = _fee;
+        fees[uint256(FeeType.FEE_CREATE)] = _feeCreate;
+        fees[uint256(FeeType.FEE_STAKING_NFT)] = _feeStakingNFT;
+        fees[uint256(FeeType.FEE_EVENT_NFT)] = _feeEventNFT;
     }
 
     /**
@@ -94,10 +112,25 @@ contract MetaversusManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin {
+    function setTreasury(address account) external notZeroAddress(account) onlyOwnerOrAdmin {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
+    }
+
+    /**
+     *  @notice Set Marketplace to change MarketplaceManager address.
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function setMarketplace(address newMarketplace)
+        external
+        notZeroAddress(newMarketplace)
+        onlyOwnerOrAdmin
+    {
+        address oldMarketplace = address(marketplace);
+        marketplace = IMarketplaceManager(newMarketplace);
+        emit SetMarketplace(oldMarketplace, address(marketplace));
     }
 
     /**
@@ -105,10 +138,13 @@ contract MetaversusManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setFee(uint256 newFee) external onlyOwnerOrAdmin {
-        uint256 oldFee = fee;
-        fee = newFee;
-        emit SetFee(oldFee, newFee);
+    function setFee(uint256 newFee, FeeType feetype)
+        external
+        notZeroAmount(newFee)
+        onlyOwnerOrAdmin
+    {
+        fees[uint256(feetype)] = newFee;
+        emit SetFee(newFee, uint256(feetype));
     }
 
     /**
@@ -116,26 +152,59 @@ contract MetaversusManager is
      *
      *  @dev    All caller can call this function.
      */
-    function createNFT(SelectTypeMint typeNft, uint256 amount) external nonReentrant whenNotPaused {
-        paymentToken.safeTransferFrom(_msgSender(), treasury, fee);
+    function createNFT(SelectTypeMint typeNft, uint256 amount)
+        external
+        nonReentrant
+        notZeroAmount(amount)
+        whenNotPaused
+    {
+        paymentToken.safeTransferFrom(_msgSender(), treasury, fees[uint256(FeeType.FEE_CREATE)]);
+
         if (typeNft == SelectTypeMint.ERC721) {
-            tokenMintERC721.mint(_msgSender());
+            tokenMintERC721.mint(address(marketplace));
+            marketplace.updateCreateNFT(
+                address(tokenMintERC721),
+                uint256(typeNft),
+                1,
+                _msgSender()
+            );
         } else if (typeNft == SelectTypeMint.ERC1155) {
-            tokenMintERC1155.mint(_msgSender(), amount);
+            tokenMintERC1155.mint(address(marketplace), amount);
+            marketplace.updateCreateNFT(
+                address(tokenMintERC1155),
+                uint256(typeNft),
+                amount,
+                _msgSender()
+            );
         }
 
         emit Created(typeNft, _msgSender(), amount);
     }
 
     /**
-     *  @notice Buy NFT Ticket
+     *  @notice Buy NFT Ticket for staking pool
      *
      *  @dev    All caller can call this function.
      */
     function buyTicket() external nonReentrant whenNotPaused {
-        paymentToken.safeTransferFrom(_msgSender(), treasury, fee);
+        paymentToken.safeTransferFrom(
+            _msgSender(),
+            treasury,
+            fees[uint256(FeeType.FEE_STAKING_NFT)]
+        );
         nftTicket.mint(_msgSender());
 
         emit BoughtTicket(_msgSender());
+    }
+
+    /**
+     *  @notice Buy NFT Ticket for join events
+     *
+     *  @dev    All caller can call this function.
+     */
+    function buyTicketEvent(uint256 eventId) external nonReentrant whenNotPaused {
+        paymentToken.safeTransferFrom(_msgSender(), treasury, fees[uint256(FeeType.FEE_EVENT_NFT)]);
+
+        emit BoughtTicketEvent(_msgSender(), eventId);
     }
 }

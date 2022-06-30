@@ -35,7 +35,7 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
      *  @notice Initialize new logic contract.
      */
     function initialize(address _owner) public initializer {
-        OwnableUpgradeable.__Ownable_init();
+        Adminable.__Adminable_init();
         transferOwnership(_owner);
     }
 
@@ -69,13 +69,19 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
      */
     function distribute(
         address _paymentToken,
-        address destination,
-        uint256 amount
-    ) external onlyOwnerOrAdmin nonReentrant notZeroAddress(destination) {
-        require(isPermitedToken(_paymentToken), "Error: Token not permit !");
-        require(amount > 0, "Error: Amount equal to zero !");
-        IERC20Upgradeable(_paymentToken).safeTransfer(destination, amount);
+        address _destination,
+        uint256 _amount
+    )
+        external
+        onlyOwnerOrAdmin
+        nonReentrant
+        notZeroAddress(_paymentToken)
+        notZeroAddress(_destination)
+        notZeroAmount(_amount)
+    {
+        require(isPermitedToken(_paymentToken), "ERROR: Token is not permit !");
+        IERC20Upgradeable(_paymentToken).safeTransfer(_destination, _amount);
 
-        emit Distributed(_paymentToken, destination, amount);
+        emit Distributed(_paymentToken, _destination, _amount);
     }
 }

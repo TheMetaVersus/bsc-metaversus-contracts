@@ -13,7 +13,7 @@ describe("TokenMintERC1155:", () => {
         MAX_LIMIT =
             "115792089237316195423570985008687907853269984665640564039457584007913129639935";
         TOTAL_SUPPLY = "1000000000000000000000000000000";
-        PRICE = "1000000000000000000";
+        PRICE = 10000;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -59,6 +59,11 @@ describe("TokenMintERC1155:", () => {
             const ownerAddress = await tokenMintERC1155.owner();
             expect(ownerAddress).to.equal(owner.address);
         });
+        it("Check royalties: ", async () => {
+            let royaltiesInfo = await tokenMintERC1155.defaultRoyaltyInfo();
+            expect(royaltiesInfo.receiver).to.equal(treasury.address);
+            expect(royaltiesInfo.royaltyFraction).to.equal(250);
+        });
     });
 
     describe("isAdmin function:", async () => {
@@ -95,6 +100,11 @@ describe("TokenMintERC1155:", () => {
                 tokenMintERC1155.connect(user1).setTreasury(user2.address)
             ).to.be.revertedWith("Ownable: caller is not an owner or admin");
         });
+        it("should revert when address equal to zero address: ", async () => {
+            await expect(tokenMintERC1155.setTreasury(constants.ZERO_ADDRESS)).to.be.revertedWith(
+                "ERROR: Invalid address !"
+            );
+        });
         it("should set treasury success: ", async () => {
             await tokenMintERC1155.setTreasury(treasury.address);
             expect(await tokenMintERC1155.treasury()).to.equal(treasury.address);
@@ -113,7 +123,11 @@ describe("TokenMintERC1155:", () => {
             await token.approve(user1.address, MAX_LIMIT);
             await token.connect(user1).approve(tokenMintERC1155.address, MAX_LIMIT);
 
-            await tokenMintERC1155.connect(user1).buy(100, "this_uri");
+            await expect(() =>
+                tokenMintERC1155.connect(user1).buy(100, "this_uri")
+            ).to.changeTokenBalance(token, user1, -PRICE);
+            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
+
             expect(await tokenMintERC1155.balanceOf(user1.address, 0)).to.equal(100);
         });
     });

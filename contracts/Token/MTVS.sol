@@ -28,6 +28,11 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _;
     }
 
+    modifier notZeroAddress(address addr) {
+        require(addr != address(0), "ERROR: Invalid address !");
+        _;
+    }
+
     event SetController(address indexed user, bool allow);
     event Minted(address indexed receiver, uint256 indexed amount, uint256 timestamp);
 
@@ -62,26 +67,29 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      *
      *  @dev    Only owner can call this function.
      */
-    function setController(address user, bool allow) external onlyOwner {
+    function setController(address user, bool allow) external onlyOwner notZeroAddress(user) {
         controllers[user] = allow;
         emit SetController(user, allow);
     }
 
     /**
-     *  @notice mint token
+     *  @notice Mint token
      *
      *  @dev    Only controllers can call this function.
      */
-    function mint(address receiver, uint256 amount) external onlyControllers {
-        require(receiver != address(0), "Error: Invalid address !");
-        require(amount > 0, "Error: Amount equal to zero !");
+    function mint(address receiver, uint256 amount)
+        external
+        notZeroAddress(receiver)
+        onlyControllers
+    {
+        require(amount > 0, "ERROR: Amount equal to zero !");
         _mint(receiver, amount);
 
         emit Minted(receiver, amount, block.timestamp);
     }
 
     /**
-     *  @notice burn token
+     *  @notice Burn token
      *
      *  @dev    Only controllers can call this function.
      */
