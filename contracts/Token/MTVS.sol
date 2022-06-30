@@ -11,18 +11,25 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
  *  @author Metaversus Team
  *
  *  @notice This smart contract create the token ERC20 for Operation. These tokens initially are minted
- *          by the only controllers and using for purchase in marketplace operation. 
+ *          by the only controllers and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial.
  */
 contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
-    
     /**
      *  @notice controllers mapping from token ID to isComtroller status
      */
     mapping(address => bool) public controllers;
 
     modifier onlyControllers() {
-        require((owner() == _msgSender() || controllers[_msgSender()]), "Ownable: caller is not a controller");
+        require(
+            (owner() == _msgSender() || controllers[_msgSender()]),
+            "Ownable: caller is not a controller"
+        );
+        _;
+    }
+
+    modifier notZeroAddress(address addr) {
+        require(addr != address(0), "ERROR: Invalid address !");
         _;
     }
 
@@ -32,7 +39,13 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(address _curator, string memory _name, string memory _symbol, uint256 _totalSupply, address _treasury) public initializer {
+    function initialize(
+        address _curator,
+        string memory _name,
+        string memory _symbol,
+        uint256 _totalSupply,
+        address _treasury
+    ) public initializer {
         ERC20Upgradeable.__ERC20_init(_name, _symbol);
         OwnableUpgradeable.__Ownable_init();
         transferOwnership(_curator);
@@ -45,39 +58,42 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      *
      *  @dev    All caller can call this function.
      */
-    function isController(address account) public view returns(bool) {
-        return  controllers[account];
+    function isController(address account) external view returns (bool) {
+        return controllers[account];
     }
 
     /**
-     *  @notice Set or remove role controllers 
+     *  @notice Set or remove role controllers
      *
      *  @dev    Only owner can call this function.
      */
-    function setController(address user, bool allow) public onlyOwner {
+    function setController(address user, bool allow) external onlyOwner notZeroAddress(user) {
         controllers[user] = allow;
         emit SetController(user, allow);
     }
 
     /**
-     *  @notice mint token 
+     *  @notice Mint token
      *
      *  @dev    Only controllers can call this function.
      */
-    function mint(address receiver, uint256 amount) public onlyControllers {
-        require(receiver != address(0), "Error: Invalid address !");
-        require(amount > 0, "Error: Amount equal to zero !");
+    function mint(address receiver, uint256 amount)
+        external
+        notZeroAddress(receiver)
+        onlyControllers
+    {
+        require(amount > 0, "ERROR: Amount equal to zero !");
         _mint(receiver, amount);
 
         emit Minted(receiver, amount, block.timestamp);
     }
 
     /**
-     *  @notice burn token 
+     *  @notice Burn token
      *
      *  @dev    Only controllers can call this function.
      */
-    function burn(address from, uint256 amount) public onlyControllers {
+    function burn(address from, uint256 amount) external onlyControllers {
         _burn(from, amount);
     }
 }

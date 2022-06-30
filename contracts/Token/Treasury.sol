@@ -5,47 +5,61 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "../Adminable.sol";
+
 /**
  *  @title  Dev Treasury Contract
  *
  *  @author Metaversus Team
  *
  *  @notice This smart contract create thetreasury for Operation. Theis contract initially are store
- *          all assets and using for purchase in marketplace operation. 
+ *          all assets and using for purchase in marketplace operation.
  */
 contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     /**
-     *  @notice permitedTokens mapping from token address to isPermited status
+     *  @notice _permitedTokens mapping from token address to isPermited status
      */
-    mapping(address => bool) public permitedTokens;
+    EnumerableSetUpgradeable.AddressSet private _permitedTokens;
 
-    event Distributed(address indexed paymentToken, address indexed destination, uint256 indexed amount);
+    event Distributed(
+        address indexed paymentToken,
+        address indexed destination,
+        uint256 indexed amount
+    );
     event SetPaymentToken(address indexed paymentToken, bool indexed allow);
 
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(address _owner) public initializer {   
-        OwnableUpgradeable.__Ownable_init();  
+    function initialize(address _owner) public initializer {
+        Adminable.__Adminable_init();
         transferOwnership(_owner);
     }
 
     /**
      *  @notice Return permit token status
      */
-    function isPermitedToken(address _paymentToken) public view returns(bool) {
-        return permitedTokens[_paymentToken];
+    function isPermitedToken(address _paymentToken) public view returns (bool) {
+        return _permitedTokens.contains(_paymentToken);
     }
 
     /**
      *  @notice Distribute reward depend on tokenomic.
      */
-    function setPaymentToken(address _paymentToken, bool allow) public onlyOwnerOrAdmin nonReentrant {
-        require(_paymentToken != address(0), "Error: Invalid address !");
-        permitedTokens[_paymentToken] = allow;
+    function setPaymentToken(address _paymentToken, bool allow)
+        external
+        onlyOwnerOrAdmin
+        nonReentrant
+        notZeroAddress(_paymentToken)
+    {
+        if (allow) {
+            _permitedTokens.add(_paymentToken);
+        } else if (isPermitedToken(_paymentToken)) {
+            _permitedTokens.remove(_paymentToken);
+        }
 
         emit SetPaymentToken(_paymentToken, allow);
     }
@@ -53,12 +67,21 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
     /**
      *  @notice Distribute reward depend on tokenomic.
      */
-    function distribute(address _paymentToken, address destination, uint256 amount) public onlyOwnerOrAdmin nonReentrant {
-        require(permitedTokens[_paymentToken], "Error: Token not permit !");
-        require(destination != address(0), "Error: Invalid address !");
-        require(amount > 0, "Error: Amount equal to zero !");
-        IERC20Upgradeable(_paymentToken).safeTransfer(destination, amount);
-        
-        emit Distributed(_paymentToken, destination, amount);
+    function distribute(
+        address _paymentToken,
+        address _destination,
+        uint256 _amount
+    )
+        external
+        onlyOwnerOrAdmin
+        nonReentrant
+        notZeroAddress(_paymentToken)
+        notZeroAddress(_destination)
+        notZeroAmount(_amount)
+    {
+        require(isPermitedToken(_paymentToken), "ERROR: Token is not permit !");
+        IERC20Upgradeable(_paymentToken).safeTransfer(_destination, _amount);
+
+        emit Distributed(_paymentToken, _destination, _amount);
     }
 }
