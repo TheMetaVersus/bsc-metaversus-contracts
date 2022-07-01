@@ -27,10 +27,7 @@ contract MetaversusManager is
     PausableUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    enum SelectTypeMint {
-        ERC721,
-        ERC1155
-    }
+
     enum FeeType {
         FEE_CREATE,
         FEE_STAKING_NFT,
@@ -157,7 +154,7 @@ contract MetaversusManager is
     /**
      *  @notice Create NFT
      *
-     *  @dev    All caller can call this function. SelectTypeMint typeNft, uint256 amount
+     *  @dev    All caller can call this function.
      */
     function createNFT(bytes memory params)
         external
