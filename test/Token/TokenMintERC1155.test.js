@@ -118,6 +118,11 @@ describe("TokenMintERC1155:", () => {
     });
 
     describe("buy function:", async () => {
+        it("should revert when amount equal to zero address: ", async () => {
+            await expect(tokenMintERC1155.buy(0, "this_uri")).to.be.revertedWith(
+                "ERROR: amount must be greater than zero !"
+            );
+        });
         it("should buy success: ", async () => {
             await token.mint(user1.address, "1000000000000000000");
             await token.approve(user1.address, MAX_LIMIT);
@@ -133,6 +138,21 @@ describe("TokenMintERC1155:", () => {
     });
 
     describe("mint function:", async () => {
+        it("should revert when caller is not owner: ", async () => {
+            await expect(
+                tokenMintERC1155.connect(user1).mint(user2.address, 100)
+            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+        });
+        it("should revert when address equal to zero address: ", async () => {
+            await expect(tokenMintERC1155.mint(constants.ZERO_ADDRESS, 100)).to.be.revertedWith(
+                "ERROR: Invalid address !"
+            );
+        });
+        it("should revert when amount equal to zero address: ", async () => {
+            await expect(tokenMintERC1155.mint(user2.address, 0)).to.be.revertedWith(
+                "ERROR: amount must be greater than zero !"
+            );
+        });
         it("should mint success: ", async () => {
             await token.mint(owner.address, "1000000000000000000");
             await token.approve(owner.address, MAX_LIMIT);

@@ -76,7 +76,7 @@ contract MetaversusManager is
     event SetFee(uint256 indexed newFee, uint256 indexed feeType);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event SetMarketplace(address indexed oldTreasury, address indexed newTreasury);
-    event Created(SelectTypeMint indexed typeMint, address indexed to, uint256 indexed amount);
+    event Created(string indexed typeMint, address indexed to, uint256 indexed amount);
 
     /**
      *  @notice Initialize new logic contract.
@@ -112,7 +112,7 @@ contract MetaversusManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external notZeroAddress(account) onlyOwnerOrAdmin {
+    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
@@ -125,8 +125,8 @@ contract MetaversusManager is
      */
     function setMarketplace(address newMarketplace)
         external
-        notZeroAddress(newMarketplace)
         onlyOwnerOrAdmin
+        notZeroAddress(newMarketplace)
     {
         address oldMarketplace = address(marketplace);
         marketplace = IMarketplaceManager(newMarketplace);
@@ -140,42 +140,41 @@ contract MetaversusManager is
      */
     function setFee(uint256 newFee, FeeType feetype)
         external
-        notZeroAmount(newFee)
         onlyOwnerOrAdmin
+        notZeroAmount(newFee)
     {
         fees[uint256(feetype)] = newFee;
         emit SetFee(newFee, uint256(feetype));
     }
 
     /**
+     * @dev This seems to be the best way to compare strings in Solidity
+     */
+    function compareStrings(string memory a, string memory b) private pure returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+    }
+
+    /**
      *  @notice Create NFT
      *
-     *  @dev    All caller can call this function.
+     *  @dev    All caller can call this function. SelectTypeMint typeNft, uint256 amount
      */
-    function createNFT(SelectTypeMint typeNft, uint256 amount)
+    function createNFT(bytes memory params)
         external
         nonReentrant
-        notZeroAmount(amount)
+        // notZeroAmount(amount)
         whenNotPaused
     {
+        (string memory typeNft, uint256 amount) = abi.decode(params, (string, uint256));
+        require(amount > 0, "ERROR: Amount must greater than 0");
         paymentToken.safeTransferFrom(_msgSender(), treasury, fees[uint256(FeeType.FEE_CREATE)]);
 
-        if (typeNft == SelectTypeMint.ERC721) {
+        if (compareStrings(typeNft, "ERC721")) {
             tokenMintERC721.mint(address(marketplace));
-            marketplace.updateCreateNFT(
-                address(tokenMintERC721),
-                uint256(typeNft),
-                1,
-                _msgSender()
-            );
-        } else if (typeNft == SelectTypeMint.ERC1155) {
+            marketplace.updateCreateNFT(address(tokenMintERC721), 0, 1, _msgSender());
+        } else if (compareStrings(typeNft, "ERC1155")) {
             tokenMintERC1155.mint(address(marketplace), amount);
-            marketplace.updateCreateNFT(
-                address(tokenMintERC1155),
-                uint256(typeNft),
-                amount,
-                _msgSender()
-            );
+            marketplace.updateCreateNFT(address(tokenMintERC1155), 1, amount, _msgSender());
         }
 
         emit Created(typeNft, _msgSender(), amount);

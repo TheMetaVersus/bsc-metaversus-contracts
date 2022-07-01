@@ -69,6 +69,7 @@ describe("Marketplace Manager:", () => {
     describe("Deployment:", async () => {
         it("Check all address token were set: ", async () => {
             expect(await mkpManager.paymentToken()).to.equal(token.address);
+            expect(await mkpManager.treasury()).to.equal(treasury.address);
         });
         it("Check Owner: ", async () => {
             const ownerAddress = await mkpManager.owner();
@@ -120,5 +121,91 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setTreasury(treasury.address);
             expect(await mkpManager.treasury()).to.equal(treasury.address);
         });
+    });
+
+    describe("getListingFee function:", async () => {
+        it("should return tuple listingFee: ", async () => {
+            const feeInfo = await mkpManager.getListingFee();
+            expect(feeInfo.listingFee).to.equal(250);
+            expect(feeInfo.denominator).to.equal(100000);
+        });
+    });
+
+    describe("getRoyaltyInfo function:", async () => {
+        it("should return correct royalInfo: ", async () => {
+            await tokenMintERC721.mint(user1.address);
+            const royalInfos = await mkpManager.getRoyaltyInfo(
+                tokenMintERC721.address,
+                1,
+                1000000000
+            );
+
+            expect(royalInfos[0].toString()).to.equal(treasury.address);
+            expect(royalInfos[1]).to.equal((1000000000 * 250) / 10000);
+        });
+    });
+
+    describe("sellAvaiableInMarketplace function:", async () => {
+        it("should revert when price equal to zero: ", async () => {
+            await expect(mkpManager.sellAvaiableInMarketplace(1, 0)).to.be.revertedWith(
+                "ERROR: amount must be greater than zero !"
+            );
+        });
+        it("should revert when caller is not owner: ", async () => {
+            await expect(mkpManager.sellAvaiableInMarketplace(1, 1000)).to.be.revertedWith(
+                "ERROR: sender is not owner this NFT"
+            );
+        });
+        it("should sell success and return marketItemId: ", async () => {
+            await token.mint(user1.address, "10000000000000000");
+            await token.mint(owner.address, "1000000000000000000");
+            await token.approve(user1.address, MAX_LIMIT);
+            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
+
+            await tokenMintERC721.connect(user1).buy("this_uri");
+        });
+    });
+
+    describe("sell function:", async () => {
+        it("should revert when nft contract equal to zero address: ", async () => {});
+        it("should revert when amount equal to zero: ", async () => {});
+        it("should revert when gross sale value equal to zero: ", async () => {});
+        it("should sell success and return marketItemId: ", async () => {});
+    });
+
+    describe("cancelSell function:", async () => {
+        it("should revert when nft contract equal to zero address: ", async () => {});
+        it("should revert when market ID not exist: ", async () => {});
+        it("should revert when caller is not seller: ", async () => {});
+    });
+
+    describe("buy function:", async () => {
+        it("should revert when nft contract equal to zero address: ", async () => {});
+        it("should buy success: ", async () => {});
+    });
+
+    describe("updateCreateNFT function:", async () => {
+        it("should revert when nft contract equal to zero address: ", async () => {});
+        it("should revert when owner address equal to zero address: ", async () => {});
+        it("should revert when amount equal to zero: ", async () => {});
+        it("should revert when price equal to zero: ", async () => {});
+        it("should revert when NFT address is compatible: ", async () => {});
+        it("should update success: ", async () => {});
+    });
+
+    describe("getLatestMarketItemByTokenId function:", async () => {
+        it("should return latest market item: ", async () => {});
+    });
+
+    describe("fetchAvailableMarketItems function:", async () => {
+        it("should return all market items in marketplace: ", async () => {});
+    });
+
+    describe("fetchMarketItemsByMarketID function:", async () => {
+        it("should return market item corresponding market ID : ", async () => {});
+    });
+
+    describe("fetchMarketItemsByAddress function:", async () => {
+        it("should return market item corresponding address: ", async () => {});
     });
 });

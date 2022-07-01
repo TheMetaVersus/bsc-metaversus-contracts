@@ -14,6 +14,8 @@ import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "../Adminable.sol";
 
 /**
@@ -30,7 +32,9 @@ contract MarketPlaceManager is
     ReentrancyGuardUpgradeable,
     OwnableUpgradeable,
     Adminable,
-    PausableUpgradeable
+    PausableUpgradeable,
+    ERC721HolderUpgradeable,
+    ERC1155HolderUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
@@ -41,7 +45,7 @@ contract MarketPlaceManager is
     bytes4 private constant _INTERFACE_ID_ERC2981 = type(IERC2981Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
-    uint256 public constant DENOMINATOR = 1e5;
+    uint256 public constant DENOMINATOR = 10000;
     enum NftStandard {
         NONE,
         ERC721,
@@ -138,7 +142,7 @@ contract MarketPlaceManager is
      *
      *  @dev    All caller can call this function.
      */
-    function checkRoyalties(address _contract) public view returns (bool) {
+    function checkRoyalties(address _contract) internal view returns (bool) {
         bool success = IERC2981Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
         return success;
     }
@@ -148,7 +152,7 @@ contract MarketPlaceManager is
      *
      *  @dev    All caller can call this function.
      */
-    function checkNftStandard(address _contract) public view returns (NftStandard) {
+    function checkNftStandard(address _contract) internal view returns (NftStandard) {
         if (IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721)) {
             return NftStandard.ERC721;
         }
@@ -162,12 +166,6 @@ contract MarketPlaceManager is
 
     /**
      *  @notice Transfers royalties to the rightsowner if applicable
-     *
-     *  @dev    Only owner or admin can call this function.
-     *
-     *  @param tokenId - the NFT assed queried for royalties
-     *  @param grossSaleValue - the price at which the asset will be sold
-     *  @return netSaleAmount - the value that will go to the seller after
      */
     function _deduceRoyalties(
         address nftContractAddress,
@@ -372,10 +370,10 @@ contract MarketPlaceManager is
         address _owner
     )
         external
+        onlyOwnerOrAdmin
         notZeroAddress(_nftAddress)
         notZeroAddress(_owner)
         notZeroAmount(_amount)
-        onlyOwnerOrAdmin
     {
         _marketItemIds.increment();
         uint256 marketItemId = _marketItemIds.current();

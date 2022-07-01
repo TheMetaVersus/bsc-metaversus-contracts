@@ -172,6 +172,11 @@ describe("TokenMintERC721:", () => {
                 "Ownable: caller is not an owner or admin"
             );
         });
+        it("should revert when address equal to zero address: ", async () => {
+            await expect(tokenMintERC721.mint(constants.ZERO_ADDRESS)).to.be.revertedWith(
+                "ERROR: Invalid address !"
+            );
+        });
         it("should mint success: ", async () => {
             await token.mint(owner.address, "1000000000000000000");
             await token.approve(owner.address, MAX_LIMIT);
