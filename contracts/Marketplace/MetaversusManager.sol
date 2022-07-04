@@ -27,7 +27,8 @@ contract MetaversusManager is
     PausableUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    enum SelectTypeMint {
+
+    enum TypeNft {
         ERC721,
         ERC1155
     }
@@ -36,6 +37,7 @@ contract MetaversusManager is
         FEE_STAKING_NFT,
         FEE_EVENT_NFT
     }
+
     /**
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
      */
@@ -57,9 +59,9 @@ contract MetaversusManager is
     INFTMTVSTicket public nftTicket;
 
     /**
-     *  @notice fees is fee of each FeeType function mapping uint256(FeeType) to value
+     *  @notice marketplace store the address of the marketplaceManager contract
      */
-    mapping(uint256 => uint256) public fees;
+    IMarketplaceManager public marketplace;
 
     /**
      *  @notice treasury store the address of the TreasuryManager contract
@@ -67,16 +69,16 @@ contract MetaversusManager is
     address public treasury;
 
     /**
-     *  @notice marketplace store the address of the marketplaceManager contract
+     *  @notice fees is fee of each FeeType function mapping uint256(FeeType) to value
      */
-    IMarketplaceManager public marketplace;
+    mapping(uint256 => uint256) public fees;
 
     event BoughtTicket(address indexed to);
     event BoughtTicketEvent(address indexed to, uint256 indexed eventid);
     event SetFee(uint256 indexed newFee, uint256 indexed feeType);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event SetMarketplace(address indexed oldTreasury, address indexed newTreasury);
-    event Created(SelectTypeMint indexed typeMint, address indexed to, uint256 indexed amount);
+    event Created(uint256 indexed typeMint, address indexed to, uint256 indexed amount);
 
     /**
      *  @notice Initialize new logic contract.
@@ -112,7 +114,7 @@ contract MetaversusManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external notZeroAddress(account) onlyOwnerOrAdmin {
+    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
@@ -125,8 +127,8 @@ contract MetaversusManager is
      */
     function setMarketplace(address newMarketplace)
         external
-        notZeroAddress(newMarketplace)
         onlyOwnerOrAdmin
+        notZeroAddress(newMarketplace)
     {
         address oldMarketplace = address(marketplace);
         marketplace = IMarketplaceManager(newMarketplace);
@@ -140,8 +142,8 @@ contract MetaversusManager is
      */
     function setFee(uint256 newFee, FeeType feetype)
         external
-        notZeroAmount(newFee)
         onlyOwnerOrAdmin
+        notZeroAmount(newFee)
     {
         fees[uint256(feetype)] = newFee;
         emit SetFee(newFee, uint256(feetype));
@@ -152,33 +154,20 @@ contract MetaversusManager is
      *
      *  @dev    All caller can call this function.
      */
-    function createNFT(SelectTypeMint typeNft, uint256 amount)
-        external
-        nonReentrant
-        notZeroAmount(amount)
-        whenNotPaused
-    {
+    function createNFT(
+        TypeNft typeNft,
+        uint256 amount,
+        string memory uri
+    ) external nonReentrant notZeroAmount(amount) whenNotPaused {
         paymentToken.safeTransferFrom(_msgSender(), treasury, fees[uint256(FeeType.FEE_CREATE)]);
 
-        if (typeNft == SelectTypeMint.ERC721) {
-            tokenMintERC721.mint(address(marketplace));
-            marketplace.updateCreateNFT(
-                address(tokenMintERC721),
-                uint256(typeNft),
-                1,
-                _msgSender()
-            );
-        } else if (typeNft == SelectTypeMint.ERC1155) {
-            tokenMintERC1155.mint(address(marketplace), amount);
-            marketplace.updateCreateNFT(
-                address(tokenMintERC1155),
-                uint256(typeNft),
-                amount,
-                _msgSender()
-            );
+        if (typeNft == TypeNft.ERC721) {
+            tokenMintERC721.mint(_msgSender(), address(marketplace), uri);
+        } else if (typeNft == TypeNft.ERC1155) {
+            tokenMintERC1155.mint(_msgSender(), address(marketplace), amount, uri);
         }
 
-        emit Created(typeNft, _msgSender(), amount);
+        emit Created(uint256(typeNft), _msgSender(), amount);
     }
 
     /**

@@ -23,6 +23,10 @@ require("@openzeppelin/hardhat-upgrades");
 // Coverage testing
 require("solidity-coverage");
 
+// check size
+require("hardhat-contract-sizer");
+
+// tasl
 require("./tasks/exportProjectStaking");
 require("./tasks/exportProjectUsers");
 require("./tasks/exportPendingReward");
@@ -33,12 +37,12 @@ const config = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      accounts: { count: 100 },
+      accounts: { count: 100 }
     },
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
-      accounts: [process.env.DEPLOY_ACCOUNT],
-    },
+      accounts: [process.env.DEPLOY_ACCOUNT]
+    }
     // mainnet: {
     //   url: 'https://bsc-dataseed1.ninicoin.io',
     //   accounts: [process.env.DEPLOY_ACCOUNT],
@@ -46,7 +50,7 @@ const config = {
     // },
   },
   etherscan: {
-    apiKey: process.env.BINANCE_API_KEY,
+    apiKey: process.env.BINANCE_API_KEY
   },
   solidity: {
     compilers: [
@@ -55,11 +59,11 @@ const config = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200,
-          },
-        },
-      },
-    ],
+            runs: 200
+          }
+        }
+      }
+    ]
   },
   paths: {
     sources: "./contracts",
@@ -67,16 +71,16 @@ const config = {
     cache: "./cache",
     artifacts: "./artifacts",
     deploy: "deploy",
-    deployments: "deployments",
+    deployments: "deployments"
   },
   mocha: {
     timeout: 200000,
     useColors: true,
     reporter: "mocha-multi-reporters",
     reporterOptions: {
-      configFile: "./mocha-report.json",
-    },
-  },
+      configFile: "./mocha-report.json"
+    }
+  }
 };
 
 module.exports = config;

@@ -84,7 +84,7 @@ describe("Treasury:", () => {
         });
         it("should revert when payment token is invalid address: ", async () => {
             await expect(treasury.setPaymentToken(constants.ZERO_ADDRESS, true)).to.be.revertedWith(
-                "Error: Invalid address !"
+                "ERROR: Invalid address !"
             );
         });
         it("should set payment token success: ", async () => {
@@ -104,21 +104,28 @@ describe("Treasury:", () => {
         });
         it("should revert when payment token is not permit: ", async () => {
             await expect(treasury.distribute(token.address, user1.address, 10)).to.be.revertedWith(
-                "Error: Token not permit !"
+                "ERROR: Token is not permit !"
             );
         });
         it("should revert when payment token is invalid address: ", async () => {
             await token.mint(treasury.address, 100);
             await treasury.setPaymentToken(token.address, true);
             await expect(
+                treasury.distribute(constants.ZERO_ADDRESS, user1.address, 10)
+            ).to.be.revertedWith("ERROR: Invalid address !");
+        });
+        it("should revert when destination address is invalid address: ", async () => {
+            await token.mint(treasury.address, 100);
+            await treasury.setPaymentToken(token.address, true);
+            await expect(
                 treasury.distribute(token.address, constants.ZERO_ADDRESS, 10)
-            ).to.be.revertedWith("Error: Invalid address !");
+            ).to.be.revertedWith("ERROR: Invalid address !");
         });
         it("should revert when token amount equal to zero: ", async () => {
             await token.mint(treasury.address, 100);
             await treasury.setPaymentToken(token.address, true);
             await expect(treasury.distribute(token.address, user1.address, 0)).to.be.revertedWith(
-                "Error: Amount equal to zero !"
+                "ERROR: amount must be greater than zero !"
             );
         });
         it("should distribute token success: ", async () => {

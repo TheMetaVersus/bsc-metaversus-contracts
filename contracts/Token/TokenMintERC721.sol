@@ -136,12 +136,12 @@ contract TokenMintERC721 is
      *  @dev    All users can call this function.
      */
     function buy(string memory uri) external nonReentrant {
-        uint256 tokenId = tokenCounter.current();
-        uris[tokenId] = uri;
-        paymentToken.safeTransferFrom(_msgSender(), treasury, price);
-
-        _mint(_msgSender(), tokenId);
         tokenCounter.increment();
+        uint256 tokenId = tokenCounter.current();
+
+        uris[tokenId] = uri;
+        _mint(_msgSender(), tokenId);
+        paymentToken.safeTransferFrom(_msgSender(), treasury, price);
 
         emit Bought(tokenId, _msgSender(), block.timestamp);
     }
@@ -151,11 +151,17 @@ contract TokenMintERC721 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver) external onlyOwnerOrAdmin notZeroAddress(receiver) {
+    function mint(
+        address seller,
+        address receiver,
+        string memory uri
+    ) external onlyOwnerOrAdmin notZeroAddress(seller) notZeroAddress(receiver) {
+        tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
 
-        _mint(receiver, tokenId);
-        tokenCounter.increment();
+        uris[tokenId] = uri;
+        bytes memory data = abi.encode("update", seller, address(this), 1);
+        _safeMint(receiver, tokenId, data);
 
         emit Minted(tokenId, receiver, block.timestamp);
     }

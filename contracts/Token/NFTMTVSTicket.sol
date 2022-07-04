@@ -16,8 +16,8 @@ import "../Adminable.sol";
  *
  *  @author Metaversus Team
  *
- *  @notice This smart contract create the token ERC721 for Operation. These tokens initially are minted
- *          by the all user and using for purchase in marketplace operation.
+ *  @notice This smart contract create the token ERC721 for staking Operation. These tokens initially are minted
+ *          by the all user and using for staking in staking pool operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
 contract NFTMTVSTicket is

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -14,6 +13,8 @@ import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "../Adminable.sol";
 
 /**
@@ -23,14 +24,15 @@ import "../Adminable.sol";
  *
  *  @notice This smart contract is the marketplace for exhange multiple non-fungiable token with standard ERC721 and ERC1155
  *          all action which user could sell, unsell, buy them.
- *          After that, they could
  */
 contract MarketPlaceManager is
     Initializable,
     ReentrancyGuardUpgradeable,
     OwnableUpgradeable,
     Adminable,
-    PausableUpgradeable
+    PausableUpgradeable,
+    ERC721HolderUpgradeable,
+    ERC1155HolderUpgradeable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
@@ -70,6 +72,16 @@ contract MarketPlaceManager is
     address public treasury;
 
     /**
+     *  @notice erc721Addr store the address of erc721Addr contract
+     */
+    address public erc721Addr;
+
+    /**
+     *  @notice erc1155Addr store the address of erc1155Addr contract
+     */
+    address public erc1155Addr;
+
+    /**
      *  @notice listingFee is fee user must pay for contract when create
      */
     uint256 public listingFee;
@@ -96,6 +108,8 @@ contract MarketPlaceManager is
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
+    event SetTokenMintERC721(address indexed oldAddr, address indexed newAddr);
+    event SetTokenMintERC1155(address indexed oldAddr, address indexed newAddr);
 
     /**
      *  @notice Initialize new logic contract.
@@ -110,7 +124,7 @@ contract MarketPlaceManager is
         paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;
-        listingFee = 250; // 2.5%
+        listingFee = 25e2; // 2.5%
     }
 
     /**
@@ -124,6 +138,26 @@ contract MarketPlaceManager is
         emit SetTreasury(oldTreasury, treasury);
     }
 
+    function setTokenMintERC721(address _erc721Addr)
+        external
+        onlyOwnerOrAdmin
+    // notZeroAddress(_erc721Addr)
+    {
+        address old = erc721Addr;
+        erc721Addr = _toLower(_erc721Addr);
+        emit SetTokenMintERC721(old, erc721Addr);
+    }
+
+    function setTokenMintERC1155(address _erc1155Addr)
+        external
+        onlyOwnerOrAdmin
+        notZeroAddress(_erc1155Addr)
+    {
+        address old = erc1155Addr;
+        erc1155Addr = _toLower(_erc1155Addr);
+        emit SetTokenMintERC1155(old, erc1155Addr);
+    }
+
     /**
      *  @notice get Listing fee and demonator
      *
@@ -134,21 +168,11 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Check loyalties in nft coontract address
-     *
-     *  @dev    All caller can call this function.
-     */
-    function checkRoyalties(address _contract) public view returns (bool) {
-        bool success = IERC2981Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
-        return success;
-    }
-
-    /**
      *  @notice Check standard of nft contract address
      *
      *  @dev    All caller can call this function.
      */
-    function checkNftStandard(address _contract) public view returns (NftStandard) {
+    function _checkNftStandard(address _contract) internal view returns (NftStandard) {
         if (IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721)) {
             return NftStandard.ERC721;
         }
@@ -162,12 +186,6 @@ contract MarketPlaceManager is
 
     /**
      *  @notice Transfers royalties to the rightsowner if applicable
-     *
-     *  @dev    Only owner or admin can call this function.
-     *
-     *  @param tokenId - the NFT assed queried for royalties
-     *  @param grossSaleValue - the price at which the asset will be sold
-     *  @return netSaleAmount - the value that will go to the seller after
      */
     function _deduceRoyalties(
         address nftContractAddress,
@@ -175,14 +193,17 @@ contract MarketPlaceManager is
         uint256 grossSaleValue
     ) private returns (uint256 netSaleAmount) {
         // Get amount of royalties to pays and recipient
-        (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981Upgradeable(
-            nftContractAddress
-        ).royaltyInfo(tokenId, grossSaleValue);
+        (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
+            nftContractAddress,
+            tokenId,
+            grossSaleValue
+        );
+
         // Deduce royalties from sale value
         uint256 netSaleValue = grossSaleValue - royaltiesAmount;
         // Transfer royalties to rightholder if not zero
         if (royaltiesAmount > 0) {
-            paymentToken.safeTransferFrom(address(this), royaltiesReceiver, royaltiesAmount);
+            paymentToken.safeTransfer(royaltiesReceiver, royaltiesAmount);
         }
         // Broadcast royalties payment
         emit RoyaltiesPaid(tokenId, royaltiesAmount);
@@ -202,7 +223,7 @@ contract MarketPlaceManager is
         returns (uint256)
     {
         require(
-            marketItemIdToMarketItem[marketItemId].owner == _msgSender(),
+            marketItemIdToMarketItem[marketItemId].seller == _msgSender(),
             "ERROR: sender is not owner this NFT"
         );
 
@@ -234,7 +255,7 @@ contract MarketPlaceManager is
 
         (address royaltiesReceiver, ) = getRoyaltyInfo(nftContractAddress, tokenId, grossSaleValue);
 
-        NftStandard nftType = checkNftStandard(nftContractAddress);
+        NftStandard nftType = _checkNftStandard(nftContractAddress);
         require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
 
         marketItemIdToMarketItem[marketItemId] = MarketItem(
@@ -250,7 +271,7 @@ contract MarketPlaceManager is
         );
         marketItemOfOwner[_msgSender()].add(marketItemId);
 
-        transferNFTCall(
+        _transferNFTCall(
             nftContractAddress,
             tokenId,
             amount,
@@ -295,7 +316,7 @@ contract MarketPlaceManager is
 
         paymentToken.safeTransferFrom(_msgSender(), address(this), listingFee);
 
-        transferNFTCall(
+        _transferNFTCall(
             nftContractAddress,
             data.tokenId,
             data.amount,
@@ -314,20 +335,23 @@ contract MarketPlaceManager is
         external
         nonReentrant
         notZeroAddress(nftContractAddress)
+        notZeroAmount(marketItemId)
         whenNotPaused
     {
+        require(marketItemId <= _marketItemIds.current(), "ERROR: market ID is not exist !");
         MarketItem memory data = marketItemIdToMarketItem[marketItemId];
 
         marketItemIdToMarketItem[marketItemId].owner = (_msgSender());
         marketItemOfOwner[_msgSender()].remove(marketItemId);
 
+        paymentToken.safeTransferFrom(_msgSender(), address(this), data.price);
+
         uint256 netSaleValue = _deduceRoyalties(nftContractAddress, data.tokenId, data.price) -
             data.price.mul(listingFee).div(DENOMINATOR);
 
-        paymentToken.safeTransferFrom(_msgSender(), address(this), data.price);
-        paymentToken.safeTransferFrom(address(this), data.seller, netSaleValue);
+        paymentToken.safeTransfer(data.seller, netSaleValue);
 
-        transferNFTCall(
+        _transferNFTCall(
             nftContractAddress,
             data.tokenId,
             data.amount,
@@ -337,7 +361,7 @@ contract MarketPlaceManager is
         );
     }
 
-    function transferNFTCall(
+    function _transferNFTCall(
         address nftContractAddress,
         uint256 tokenId,
         uint256 amount,
@@ -357,7 +381,7 @@ contract MarketPlaceManager is
         uint256 _tokenId,
         uint256 _salePrice
     ) public view returns (address, uint256) {
-        if (checkRoyalties(_nftAddr)) {
+        if (IERC2981Upgradeable(_nftAddr).supportsInterface(_INTERFACE_ID_ERC2981)) {
             (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981Upgradeable(_nftAddr)
                 .royaltyInfo(_tokenId, _salePrice);
             return (royaltiesReceiver, royaltiesAmount);
@@ -365,33 +389,26 @@ contract MarketPlaceManager is
         return (address(0), 0);
     }
 
-    function updateCreateNFT(
+    function _updateCreateNFT(
         address _nftAddress,
         uint256 _tokenId,
         uint256 _amount,
-        address _owner
-    )
-        external
-        notZeroAddress(_nftAddress)
-        notZeroAddress(_owner)
-        notZeroAmount(_amount)
-        onlyOwnerOrAdmin
-    {
+        address _seller,
+        uint256 _type
+    ) internal notZeroAddress(_nftAddress) notZeroAddress(_seller) notZeroAmount(_amount) {
         _marketItemIds.increment();
         uint256 marketItemId = _marketItemIds.current();
 
-        (address royaltiesReceiver, ) = getRoyaltyInfo(_nftAddress, _tokenId, 0);
-        NftStandard nftType = checkNftStandard(_nftAddress);
-        require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
+        (address _royaltiesReceiver, ) = getRoyaltyInfo(_nftAddress, _tokenId, 0);
 
         marketItemIdToMarketItem[marketItemId] = MarketItem(
             marketItemId,
             _nftAddress,
             _tokenId,
             _amount,
-            uint256(nftType),
-            royaltiesReceiver,
-            _owner,
+            _type,
+            _royaltiesReceiver,
+            _seller,
             (address(0)),
             0
         );
@@ -480,5 +497,61 @@ contract MarketPlaceManager is
             data[i] = marketItemIdToMarketItem[marketItemOfOwner[account].at(i)];
         }
         return data;
+    }
+
+    /**
+     * @dev See {IERC721Receiver-onERC721Received}.
+     *
+     * Always returns `IERC721Receiver.onERC721Received.selector`.
+     */
+    function onERC721Received(
+        address,
+        address,
+        uint256 tokenId,
+        bytes memory data
+    ) public override returns (bytes4) {
+        if (keccak256(abi.encodePacked((""))) != keccak256(data)) {
+            (string memory action, address seller, address nftAddr, uint256 amount) = abi.decode(
+                data,
+                (string, address, address, uint256)
+            );
+
+            if (_compareStrings(action, "update") && _msgSender() == erc721Addr) {
+                _updateCreateNFT(nftAddr, tokenId, amount, seller, 0);
+            }
+        }
+
+        return this.onERC721Received.selector;
+    }
+
+    function onERC1155Received(
+        address,
+        address,
+        uint256 id,
+        uint256 value,
+        bytes memory data
+    ) public override returns (bytes4) {
+        if (keccak256(abi.encodePacked((""))) != keccak256(data)) {
+            (string memory action, address seller, address nftAddr) = abi.decode(
+                data,
+                (string, address, address)
+            );
+
+            if (_compareStrings(action, "update") && _msgSender() == erc1155Addr) {
+                _updateCreateNFT(nftAddr, id, value, seller, 1);
+            }
+        }
+        return this.onERC1155Received.selector;
+    }
+
+    function _toLower(address str) internal pure returns (address) {
+        return abi.decode(abi.encode(str), (address));
+    }
+
+    /**
+     * @dev This seems to be the best way to compare strings in Solidity
+     */
+    function _compareStrings(string memory a, string memory b) private pure returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 }
