@@ -13,7 +13,7 @@ import "../Adminable.sol";
  *
  *  @author Metaversus Team
  *
- *  @notice This smart contract create thetreasury for Operation. Theis contract initially are store
+ *  @notice This smart contract create thetreasury for Operation. This contract initially store
  *          all assets and using for purchase in marketplace operation.
  */
 contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {

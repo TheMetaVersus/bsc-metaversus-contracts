@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -17,7 +16,6 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "../Adminable.sol";
-import "hardhat/console.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -26,7 +24,6 @@ import "hardhat/console.sol";
  *
  *  @notice This smart contract is the marketplace for exhange multiple non-fungiable token with standard ERC721 and ERC1155
  *          all action which user could sell, unsell, buy them.
- *          After that, they could
  */
 contract MarketPlaceManager is
     Initializable,
@@ -75,9 +72,14 @@ contract MarketPlaceManager is
     address public treasury;
 
     /**
-     *  @notice mtvsManagerAddr store the address of mtvsManager contract
+     *  @notice erc721Addr store the address of erc721Addr contract
      */
-    address public mtvsManagerAddr;
+    address public erc721Addr;
+
+    /**
+     *  @notice erc1155Addr store the address of erc1155Addr contract
+     */
+    address public erc1155Addr;
 
     /**
      *  @notice listingFee is fee user must pay for contract when create
@@ -106,7 +108,8 @@ contract MarketPlaceManager is
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
-    event SetMtvsManager(address indexed oldTreasury, address indexed newTreasury);
+    event SetTokenMintERC721(address indexed oldAddr, address indexed newAddr);
+    event SetTokenMintERC1155(address indexed oldAddr, address indexed newAddr);
 
     /**
      *  @notice Initialize new logic contract.
@@ -135,14 +138,24 @@ contract MarketPlaceManager is
         emit SetTreasury(oldTreasury, treasury);
     }
 
-    function setMtvsManager(address _mtvsManagerAddr)
+    function setTokenMintERC721(address _erc721Addr)
         external
         onlyOwnerOrAdmin
-        notZeroAddress(_mtvsManagerAddr)
+    // notZeroAddress(_erc721Addr)
     {
-        address old = mtvsManagerAddr;
-        mtvsManagerAddr = _mtvsManagerAddr;
-        emit SetMtvsManager(old, mtvsManagerAddr);
+        address old = erc721Addr;
+        erc721Addr = _toLower(_erc721Addr);
+        emit SetTokenMintERC721(old, erc721Addr);
+    }
+
+    function setTokenMintERC1155(address _erc1155Addr)
+        external
+        onlyOwnerOrAdmin
+        notZeroAddress(_erc1155Addr)
+    {
+        address old = erc1155Addr;
+        erc1155Addr = _toLower(_erc1155Addr);
+        emit SetTokenMintERC1155(old, erc1155Addr);
     }
 
     /**
@@ -180,14 +193,17 @@ contract MarketPlaceManager is
         uint256 grossSaleValue
     ) private returns (uint256 netSaleAmount) {
         // Get amount of royalties to pays and recipient
-        (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981Upgradeable(
-            nftContractAddress
-        ).royaltyInfo(tokenId, grossSaleValue);
+        (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
+            nftContractAddress,
+            tokenId,
+            grossSaleValue
+        );
+
         // Deduce royalties from sale value
         uint256 netSaleValue = grossSaleValue - royaltiesAmount;
         // Transfer royalties to rightholder if not zero
         if (royaltiesAmount > 0) {
-            paymentToken.safeTransferFrom(address(this), royaltiesReceiver, royaltiesAmount);
+            paymentToken.safeTransfer(royaltiesReceiver, royaltiesAmount);
         }
         // Broadcast royalties payment
         emit RoyaltiesPaid(tokenId, royaltiesAmount);
@@ -319,18 +335,21 @@ contract MarketPlaceManager is
         external
         nonReentrant
         notZeroAddress(nftContractAddress)
+        notZeroAmount(marketItemId)
         whenNotPaused
     {
+        require(marketItemId <= _marketItemIds.current(), "ERROR: market ID is not exist !");
         MarketItem memory data = marketItemIdToMarketItem[marketItemId];
 
         marketItemIdToMarketItem[marketItemId].owner = (_msgSender());
         marketItemOfOwner[_msgSender()].remove(marketItemId);
 
+        paymentToken.safeTransferFrom(_msgSender(), address(this), data.price);
+
         uint256 netSaleValue = _deduceRoyalties(nftContractAddress, data.tokenId, data.price) -
             data.price.mul(listingFee).div(DENOMINATOR);
 
-        paymentToken.safeTransferFrom(_msgSender(), address(this), data.price);
-        paymentToken.safeTransferFrom(address(this), data.seller, netSaleValue);
+        paymentToken.safeTransfer(data.seller, netSaleValue);
 
         _transferNFTCall(
             nftContractAddress,
@@ -486,40 +505,47 @@ contract MarketPlaceManager is
      * Always returns `IERC721Receiver.onERC721Received.selector`.
      */
     function onERC721Received(
-        address operator,
+        address,
         address,
         uint256 tokenId,
         bytes memory data
     ) public override returns (bytes4) {
-        (string memory action, address seller, address nftAddr, uint256 amount) = abi.decode(
-            data,
-            (string, address, address, uint256)
-        );
+        if (keccak256(abi.encodePacked((""))) != keccak256(data)) {
+            (string memory action, address seller, address nftAddr, uint256 amount) = abi.decode(
+                data,
+                (string, address, address, uint256)
+            );
 
-        if (_compareStrings(action, "update") && operator == mtvsManagerAddr) {
-            _updateCreateNFT(nftAddr, tokenId, amount, seller, 0);
+            if (_compareStrings(action, "update") && _msgSender() == erc721Addr) {
+                _updateCreateNFT(nftAddr, tokenId, amount, seller, 0);
+            }
         }
 
         return this.onERC721Received.selector;
     }
 
     function onERC1155Received(
-        address operator,
+        address,
         address,
         uint256 id,
         uint256 value,
         bytes memory data
     ) public override returns (bytes4) {
-        (string memory action, address seller, address nftAddr) = abi.decode(
-            data,
-            (string, address, address)
-        );
+        if (keccak256(abi.encodePacked((""))) != keccak256(data)) {
+            (string memory action, address seller, address nftAddr) = abi.decode(
+                data,
+                (string, address, address)
+            );
 
-        if (_compareStrings(action, "update") && operator == mtvsManagerAddr) {
-            _updateCreateNFT(nftAddr, id, value, seller, 1);
+            if (_compareStrings(action, "update") && _msgSender() == erc1155Addr) {
+                _updateCreateNFT(nftAddr, id, value, seller, 1);
+            }
         }
-
         return this.onERC1155Received.selector;
+    }
+
+    function _toLower(address str) internal pure returns (address) {
+        return abi.decode(abi.encode(str), (address));
     }
 
     /**

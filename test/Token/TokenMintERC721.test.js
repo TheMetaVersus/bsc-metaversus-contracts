@@ -44,6 +44,13 @@ describe("TokenMintERC721:", () => {
             PRICE,
         ]);
 
+        MkpManager = await ethers.getContractFactory("MarketPlaceManager");
+        mkpManager = await upgrades.deployProxy(MkpManager, [
+            owner.address,
+            token.address,
+            treasury.address,
+        ]);
+
         await tokenMintERC721.deployed();
     });
 
@@ -61,11 +68,10 @@ describe("TokenMintERC721:", () => {
             expect(royaltiesInfo.royaltyFraction).to.equal(250);
         });
         it("Check tokenURI: ", async () => {
-            await tokenMintERC721.mint(user1.address);
             const URI = "this_is_uri_1";
-            const tx = await tokenMintERC721.setTokenURI(URI, 0);
-            await tx.wait();
-            const newURI = await tokenMintERC721.tokenURI(0);
+            await tokenMintERC721.mint(user1.address, mkpManager.address, URI);
+
+            const newURI = await tokenMintERC721.tokenURI(1);
 
             expect(newURI).to.equal(URI + ".json");
         });
@@ -139,7 +145,7 @@ describe("TokenMintERC721:", () => {
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
 
             expect(await tokenMintERC721.balanceOf(user1.address)).to.equal(1);
-            expect(await tokenMintERC721.tokenURI(0)).to.equal("this_uri" + ".json");
+            expect(await tokenMintERC721.tokenURI(1)).to.equal("this_uri" + ".json");
         });
     });
     describe("setPrice function:", async () => {
@@ -168,22 +174,27 @@ describe("TokenMintERC721:", () => {
 
     describe("mint function:", async () => {
         it("should revert when newPrice equal to zero: ", async () => {
-            await expect(tokenMintERC721.connect(user1).mint(owner.address)).to.be.revertedWith(
-                "Ownable: caller is not an owner or admin"
-            );
+            await expect(
+                tokenMintERC721.connect(user1).mint(owner.address, mkpManager.address, "this_uri")
+            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
         });
-        it("should revert when address equal to zero address: ", async () => {
-            await expect(tokenMintERC721.mint(constants.ZERO_ADDRESS)).to.be.revertedWith(
-                "ERROR: Invalid address !"
-            );
+        it("should revert when seller address equal to zero address: ", async () => {
+            await expect(
+                tokenMintERC721.mint(constants.ZERO_ADDRESS, mkpManager.address, "this_uri")
+            ).to.be.revertedWith("ERROR: Invalid address !");
+        });
+        it("should revert when receiver address equal to zero address: ", async () => {
+            await expect(
+                tokenMintERC721.mint(owner.address, constants.ZERO_ADDRESS, "this_uri")
+            ).to.be.revertedWith("ERROR: Invalid address !");
         });
         it("should mint success: ", async () => {
             await token.mint(owner.address, "1000000000000000000");
             await token.approve(owner.address, MAX_LIMIT);
             await token.connect(owner).approve(tokenMintERC721.address, MAX_LIMIT);
 
-            await tokenMintERC721.mint(user2.address);
-            expect(await tokenMintERC721.balanceOf(user2.address)).to.equal(1);
+            await tokenMintERC721.mint(user2.address, mkpManager.address, "this_uri");
+            expect(await tokenMintERC721.balanceOf(mkpManager.address)).to.equal(1);
         });
     });
 });

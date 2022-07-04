@@ -42,16 +42,22 @@ describe("TokenMintERC1155:", () => {
             PRICE,
         ]);
 
+        MkpManager = await ethers.getContractFactory("MarketPlaceManager");
+        mkpManager = await upgrades.deployProxy(MkpManager, [
+            owner.address,
+            token.address,
+            treasury.address,
+        ]);
+
         await tokenMintERC1155.deployed();
     });
 
     describe("Deployment:", async () => {
         it("Check uri: ", async () => {
-            await tokenMintERC1155.mint(user1.address, 100);
             const URI = "this_is_uri_1.json";
-            const tx = await tokenMintERC1155.setURI(URI, 0);
-            await tx.wait();
-            const newURI = await tokenMintERC1155.uri(0);
+            await tokenMintERC1155.mint(user1.address, mkpManager.address, 100, URI);
+
+            const newURI = await tokenMintERC1155.uri(1);
 
             expect(newURI).to.equal(URI);
         });
@@ -133,33 +139,40 @@ describe("TokenMintERC1155:", () => {
             ).to.changeTokenBalance(token, user1, -PRICE);
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
 
-            expect(await tokenMintERC1155.balanceOf(user1.address, 0)).to.equal(100);
+            expect(await tokenMintERC1155.balanceOf(user1.address, 1)).to.equal(100);
         });
     });
 
     describe("mint function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
-                tokenMintERC1155.connect(user1).mint(user2.address, 100)
+                tokenMintERC1155
+                    .connect(user1)
+                    .mint(user2.address, mkpManager.address, 100, "this_uri")
             ).to.be.revertedWith("Ownable: caller is not an owner or admin");
         });
-        it("should revert when address equal to zero address: ", async () => {
-            await expect(tokenMintERC1155.mint(constants.ZERO_ADDRESS, 100)).to.be.revertedWith(
-                "ERROR: Invalid address !"
-            );
+        it("should revert when seller address equal to zero address: ", async () => {
+            await expect(
+                tokenMintERC1155.mint(constants.ZERO_ADDRESS, mkpManager.address, 100, "this_uri")
+            ).to.be.revertedWith("ERROR: Invalid address !");
+        });
+        it("should revert when receiver address equal to zero address: ", async () => {
+            await expect(
+                tokenMintERC1155.mint(user1.address, constants.ZERO_ADDRESS, 100, "this_uri")
+            ).to.be.revertedWith("ERROR: Invalid address !");
         });
         it("should revert when amount equal to zero address: ", async () => {
-            await expect(tokenMintERC1155.mint(user2.address, 0)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
+            await expect(
+                tokenMintERC1155.mint(user2.address, mkpManager.address, 0, "this_uri")
+            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should mint success: ", async () => {
             await token.mint(owner.address, "1000000000000000000");
             await token.approve(owner.address, MAX_LIMIT);
             await token.connect(owner).approve(tokenMintERC1155.address, MAX_LIMIT);
 
-            await tokenMintERC1155.mint(user2.address, 100);
-            expect(await tokenMintERC1155.balanceOf(user2.address, 0)).to.equal(100);
+            await tokenMintERC1155.mint(user2.address, mkpManager.address, 100, "this_uri");
+            expect(await tokenMintERC1155.balanceOf(mkpManager.address, 1)).to.equal(100);
         });
     });
 });

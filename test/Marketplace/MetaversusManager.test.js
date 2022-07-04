@@ -192,13 +192,13 @@ describe("Metaversus Manager:", () => {
 
     describe("createNFT function:", async () => {
         it("should revert when amount equal to zero amount: ", async () => {
-            let data = abiCoder.encode(["string", "uint256"], ["ERC721", "0"]);
-            await expect(mtvsManager.connect(user1).createNFT(data)).to.be.revertedWith(
-                "ERROR: Amount must greater than 0"
+            // let data = abiCoder.encode(["string", "uint256"], ["ERC721", "0"]);
+            await expect(mtvsManager.connect(user1).createNFT(0, 0, "this_uri")).to.be.revertedWith(
+                "ERROR: amount must be greater than zero !"
             );
         });
         it("should create NFT success: ", async () => {
-            let data = abiCoder.encode(["string", "uint256"], ["ERC721", "1000"]);
+            // let data = abiCoder.encode(["string", "uint256"], ["ERC721", "1000"]);
             await token.mint(user2.address, "9000000000000000000");
             await token.approve(user2.address, MAX_LIMIT);
             await token.connect(user2).approve(mtvsManager.address, MAX_LIMIT);
@@ -207,20 +207,16 @@ describe("Metaversus Manager:", () => {
 
             await tokenMintERC721.setAdmin(mtvsManager.address, true);
 
-            await expect(() => mtvsManager.connect(user2).createNFT(data)).to.changeTokenBalance(
-                token,
-                user2,
-                -250
-            );
+            await expect(() =>
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri")
+            ).to.changeTokenBalance(token, user2, -250);
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 250));
 
             await tokenMintERC1155.setAdmin(mtvsManager.address, true);
             data = abiCoder.encode(["string", "uint256"], ["ERC1155", "100"]);
-            await expect(() => mtvsManager.connect(user2).createNFT(data)).to.changeTokenBalance(
-                token,
-                user2,
-                -250
-            );
+            await expect(() =>
+                mtvsManager.connect(user2).createNFT(1, 100, "this_uri")
+            ).to.changeTokenBalance(token, user2, -250);
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 500));
         });
     });

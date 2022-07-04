@@ -2,5 +2,5 @@
 pragma solidity ^0.8.4;
 
 interface INFTMTVSTicket {
-     function mint(address receiver) external;
+    function mint(address receiver) external;
 }

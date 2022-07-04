@@ -37,6 +37,7 @@ contract MetaversusManager is
         FEE_STAKING_NFT,
         FEE_EVENT_NFT
     }
+
     /**
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
      */
@@ -58,9 +59,9 @@ contract MetaversusManager is
     INFTMTVSTicket public nftTicket;
 
     /**
-     *  @notice fees is fee of each FeeType function mapping uint256(FeeType) to value
+     *  @notice marketplace store the address of the marketplaceManager contract
      */
-    mapping(uint256 => uint256) public fees;
+    IMarketplaceManager public marketplace;
 
     /**
      *  @notice treasury store the address of the TreasuryManager contract
@@ -68,9 +69,9 @@ contract MetaversusManager is
     address public treasury;
 
     /**
-     *  @notice marketplace store the address of the marketplaceManager contract
+     *  @notice fees is fee of each FeeType function mapping uint256(FeeType) to value
      */
-    IMarketplaceManager public marketplace;
+    mapping(uint256 => uint256) public fees;
 
     event BoughtTicket(address indexed to);
     event BoughtTicketEvent(address indexed to, uint256 indexed eventid);
