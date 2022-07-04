@@ -140,13 +140,14 @@ contract TokenMintERC1155 is
      *  @dev    All users can call this function.
      */
     function buy(uint256 amount, string memory newuri) external notZeroAmount(amount) nonReentrant {
+        tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
+
         uris[tokenId] = newuri;
 
         paymentToken.safeTransferFrom(_msgSender(), treasury, price);
 
         _mint(_msgSender(), tokenId, amount, "");
-        tokenCounter.increment();
 
         emit Bought(tokenId, _msgSender(), block.timestamp);
     }
@@ -156,16 +157,18 @@ contract TokenMintERC1155 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver, uint256 amount)
-        external
-        onlyOwnerOrAdmin
-        notZeroAddress(receiver)
-        notZeroAmount(amount)
-    {
+    function mint(
+        address seller,
+        address receiver,
+        uint256 amount,
+        string memory newuri
+    ) external onlyOwnerOrAdmin notZeroAddress(receiver) notZeroAmount(amount) {
+        tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
 
-        _mint(receiver, tokenId, amount, "");
-        tokenCounter.increment();
+        uris[tokenId] = newuri;
+        bytes memory data = abi.encode("update", seller, address(this));
+        _mint(receiver, tokenId, amount, data);
 
         emit Minted(tokenId, receiver, block.timestamp);
     }

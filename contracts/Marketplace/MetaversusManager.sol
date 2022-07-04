@@ -28,6 +28,10 @@ contract MetaversusManager is
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    enum TypeNft {
+        ERC721,
+        ERC1155
+    }
     enum FeeType {
         FEE_CREATE,
         FEE_STAKING_NFT,
@@ -73,7 +77,7 @@ contract MetaversusManager is
     event SetFee(uint256 indexed newFee, uint256 indexed feeType);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event SetMarketplace(address indexed oldTreasury, address indexed newTreasury);
-    event Created(string indexed typeMint, address indexed to, uint256 indexed amount);
+    event Created(uint256 indexed typeMint, address indexed to, uint256 indexed amount);
 
     /**
      *  @notice Initialize new logic contract.
@@ -145,36 +149,24 @@ contract MetaversusManager is
     }
 
     /**
-     * @dev This seems to be the best way to compare strings in Solidity
-     */
-    function compareStrings(string memory a, string memory b) private pure returns (bool) {
-        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
-    }
-
-    /**
      *  @notice Create NFT
      *
      *  @dev    All caller can call this function.
      */
-    function createNFT(bytes memory params)
-        external
-        nonReentrant
-        // notZeroAmount(amount)
-        whenNotPaused
-    {
-        (string memory typeNft, uint256 amount) = abi.decode(params, (string, uint256));
-        require(amount > 0, "ERROR: Amount must greater than 0");
+    function createNFT(
+        TypeNft typeNft,
+        uint256 amount,
+        string memory uri
+    ) external nonReentrant notZeroAmount(amount) whenNotPaused {
         paymentToken.safeTransferFrom(_msgSender(), treasury, fees[uint256(FeeType.FEE_CREATE)]);
 
-        if (compareStrings(typeNft, "ERC721")) {
-            tokenMintERC721.mint(address(marketplace));
-            marketplace.updateCreateNFT(address(tokenMintERC721), 0, 1, _msgSender());
-        } else if (compareStrings(typeNft, "ERC1155")) {
-            tokenMintERC1155.mint(address(marketplace), amount);
-            marketplace.updateCreateNFT(address(tokenMintERC1155), 1, amount, _msgSender());
+        if (typeNft == TypeNft.ERC721) {
+            tokenMintERC721.mint(_msgSender(), address(marketplace), uri);
+        } else if (typeNft == TypeNft.ERC1155) {
+            tokenMintERC1155.mint(_msgSender(), address(marketplace), amount, uri);
         }
 
-        emit Created(typeNft, _msgSender(), amount);
+        emit Created(uint256(typeNft), _msgSender(), amount);
     }
 
     /**

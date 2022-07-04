@@ -64,6 +64,22 @@ describe("Marketplace Manager:", () => {
             token.address,
             treasury.address,
         ]);
+
+        MTVSManager = await ethers.getContractFactory("MetaversusManager");
+        mtvsManager = await upgrades.deployProxy(MTVSManager, [
+            owner.address,
+            tokenMintERC721.address,
+            tokenMintERC1155.address,
+            nftMTVSTicket.address,
+            token.address,
+            treasury.address,
+            mkpManager.address,
+            250,
+            350,
+            450,
+        ]);
+
+        await mkpManager.setMtvsManager(mtvsManager.address);
     });
 
     describe("Deployment:", async () => {
@@ -126,14 +142,14 @@ describe("Marketplace Manager:", () => {
     describe("getListingFee function:", async () => {
         it("should return tuple listingFee: ", async () => {
             const feeInfo = await mkpManager.getListingFee();
-            expect(feeInfo.listingFee).to.equal(250);
-            expect(feeInfo.denominator).to.equal(100000);
+            expect(feeInfo[0]).to.equal(2500);
+            expect(feeInfo[1]).to.equal(100000);
         });
     });
 
     describe("getRoyaltyInfo function:", async () => {
         it("should return correct royalInfo: ", async () => {
-            await tokenMintERC721.mint(user1.address);
+            await tokenMintERC721.mint(user1.address, "this_uri");
             const royalInfos = await mkpManager.getRoyaltyInfo(
                 tokenMintERC721.address,
                 1,
@@ -160,9 +176,37 @@ describe("Marketplace Manager:", () => {
             await token.mint(user1.address, "10000000000000000");
             await token.mint(owner.address, "1000000000000000000");
             await token.approve(user1.address, MAX_LIMIT);
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
-
-            await tokenMintERC721.connect(user1).buy("this_uri");
+            await token.connect(user1).approve(mtvsManager.address, MAX_LIMIT);
+            await tokenMintERC721.setAdmin(mtvsManager.address, true);
+            await tokenMintERC1155.setAdmin(mtvsManager.address, true);
+            await mkpManager.setAdmin(mtvsManager.address, true);
+            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri");
+            // ERC721
+            const latest_1 = await mkpManager.getLatestMarketItemByTokenId(
+                tokenMintERC721.address,
+                1
+            );
+            await mkpManager
+                .connect(user1)
+                .sellAvaiableInMarketplace(latest_1[0].marketItemId.toString(), 10005);
+            const data_ERC721 = await mkpManager.fetchMarketItemsByMarketID(
+                latest_1[0].marketItemId.toString()
+            );
+            expect(data_ERC721.price).to.equal(10005);
+            // ERC1155
+            await mtvsManager.connect(user1).createNFT(1, 100, "this_uri");
+            const latest_2 = await mkpManager.getLatestMarketItemByTokenId(
+                tokenMintERC1155.address,
+                1
+            );
+            await mkpManager
+                .connect(user1)
+                .sellAvaiableInMarketplace(latest_2[0].marketItemId.toString(), 100056);
+            const data_ERC1155 = await mkpManager.fetchMarketItemsByMarketID(
+                latest_2[0].marketItemId.toString()
+            );
+            expect(data_ERC1155.price).to.equal(100056);
+            expect(data_ERC1155.amount).to.equal(100);
         });
     });
 
