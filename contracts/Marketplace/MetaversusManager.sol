@@ -162,9 +162,25 @@ contract MetaversusManager is
         paymentToken.safeTransferFrom(_msgSender(), treasury, fees[uint256(FeeType.FEE_CREATE)]);
 
         if (typeNft == TypeNft.ERC721) {
-            tokenMintERC721.mint(_msgSender(), address(marketplace), uri);
+            tokenMintERC721.mint(_msgSender(), address(this), uri);
+            uint256 currentId = tokenMintERC721.getTokenCounter();
+            marketplace.createMarketInfo(
+                address(tokenMintERC721),
+                currentId,
+                amount,
+                0,
+                _msgSender()
+            );
         } else if (typeNft == TypeNft.ERC1155) {
             tokenMintERC1155.mint(_msgSender(), address(marketplace), amount, uri);
+            uint256 currentId = tokenMintERC1155.getTokenCounter();
+            marketplace.createMarketInfo(
+                address(tokenMintERC1155),
+                currentId,
+                amount,
+                0,
+                _msgSender()
+            );
         }
 
         emit Created(uint256(typeNft), _msgSender(), amount);

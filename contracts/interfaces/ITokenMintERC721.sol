@@ -2,6 +2,8 @@
 pragma solidity ^0.8.4;
 
 interface ITokenMintERC721 {
+    function getTokenCounter() external view returns (uint256 tokenId);
+
     function mint(
         address seller,
         address receiver,

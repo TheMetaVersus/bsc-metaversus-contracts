@@ -45,20 +45,25 @@ contract MarketPlaceManager is
     bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
     uint256 public constant DENOMINATOR = 1e5;
     enum NftStandard {
-        NONE,
         ERC721,
-        ERC1155
+        ERC1155,
+        NONE
+    }
+    enum MarketItemStatus {
+        FREE,
+        SELLING,
+        SOLD,
+        CANCELED
     }
     struct MarketItem {
         uint256 marketItemId;
         address nftContractAddress;
         uint256 tokenId;
         uint256 amount;
-        uint256 nftType;
-        address creator;
         address seller;
         address owner;
         uint256 price;
+        MarketItemStatus status;
     }
 
     /**
@@ -70,16 +75,6 @@ contract MarketPlaceManager is
      *  @notice treasury store the address of the TreasuryManager contract
      */
     address public treasury;
-
-    /**
-     *  @notice erc721Addr store the address of erc721Addr contract
-     */
-    address public erc721Addr;
-
-    /**
-     *  @notice erc1155Addr store the address of erc1155Addr contract
-     */
-    address public erc1155Addr;
 
     /**
      *  @notice listingFee is fee user must pay for contract when create
@@ -101,15 +96,25 @@ contract MarketPlaceManager is
         address indexed nftContract,
         uint256 indexed tokenId,
         uint256 amount,
-        uint256 nftType,
         address seller,
         address owner,
         uint256 price
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
-    event SetTokenMintERC721(address indexed oldAddr, address indexed newAddr);
-    event SetTokenMintERC1155(address indexed oldAddr, address indexed newAddr);
+    event SoldAvailableItem(uint256 indexed marketItemId, uint256 indexed price);
+    event CanceledSelling(uint256 indexed marketItemId);
+    event Bought(
+        uint256 indexed marketItemId,
+        MarketItem data,
+        uint256 indexed royaltyFee,
+        uint256 indexed netSaleValue
+    );
+
+    modifier validateId(uint256 id) {
+        require(id <= _marketItemIds.current() && id > 0, "ERROR: market ID is not exist !");
+        _;
+    }
 
     /**
      *  @notice Initialize new logic contract.
@@ -138,33 +143,13 @@ contract MarketPlaceManager is
         emit SetTreasury(oldTreasury, treasury);
     }
 
-    function setTokenMintERC721(address _erc721Addr)
-        external
-        onlyOwnerOrAdmin
-    // notZeroAddress(_erc721Addr)
-    {
-        address old = erc721Addr;
-        erc721Addr = _toLower(_erc721Addr);
-        emit SetTokenMintERC721(old, erc721Addr);
-    }
-
-    function setTokenMintERC1155(address _erc1155Addr)
-        external
-        onlyOwnerOrAdmin
-        notZeroAddress(_erc1155Addr)
-    {
-        address old = erc1155Addr;
-        erc1155Addr = _toLower(_erc1155Addr);
-        emit SetTokenMintERC1155(old, erc1155Addr);
-    }
-
     /**
-     *  @notice get Listing fee and demonator
+     *  @notice get Listing fee
      *
      *  @dev    All caller can call this function.
      */
-    function getListingFee() external view returns (uint256, uint256) {
-        return (listingFee, DENOMINATOR);
+    function getListingFee(uint256 amount) public view returns (uint256) {
+        return amount.mul(listingFee).div(DENOMINATOR);
     }
 
     /**
@@ -218,9 +203,9 @@ contract MarketPlaceManager is
     function sellAvaiableInMarketplace(uint256 marketItemId, uint256 price)
         external
         nonReentrant
+        validateId(marketItemId)
         notZeroAmount(price)
         whenNotPaused
-        returns (uint256)
     {
         require(
             marketItemIdToMarketItem[marketItemId].seller == _msgSender(),
@@ -228,7 +213,52 @@ contract MarketPlaceManager is
         );
 
         marketItemIdToMarketItem[marketItemId].price = price;
-        return marketItemId;
+        marketItemIdToMarketItem[marketItemId].status = MarketItemStatus.SELLING;
+
+        emit SoldAvailableItem(marketItemId, price);
+    }
+
+    function createMarketInfo(
+        address _nftAddress,
+        uint256 _tokenId,
+        uint256 _amount,
+        uint256 _grossSaleValue,
+        address _seller
+    ) public notZeroAddress(_nftAddress) notZeroAddress(_seller) notZeroAmount(_amount) {
+        NftStandard nftType = _checkNftStandard(_nftAddress);
+        require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
+
+        _marketItemIds.increment();
+        uint256 marketItemId = _marketItemIds.current();
+
+        MarketItemStatus status = MarketItemStatus.FREE;
+        uint256 price;
+        if (_seller == _msgSender()) {
+            status = MarketItemStatus.SELLING;
+            price = _grossSaleValue;
+        }
+        marketItemIdToMarketItem[marketItemId] = MarketItem(
+            marketItemId,
+            _nftAddress,
+            _tokenId,
+            _amount,
+            _seller,
+            address(0),
+            price,
+            status
+        );
+
+        marketItemOfOwner[_seller].add(marketItemId);
+
+        emit MarketItemCreated(
+            marketItemId,
+            _nftAddress,
+            _tokenId,
+            _amount,
+            _seller,
+            address(0),
+            price
+        );
     }
 
     /**
@@ -248,48 +278,10 @@ contract MarketPlaceManager is
         notZeroAmount(amount)
         notZeroAmount(grossSaleValue)
         whenNotPaused
-        returns (uint256)
     {
-        _marketItemIds.increment();
-        uint256 marketItemId = _marketItemIds.current();
+        createMarketInfo(nftContractAddress, tokenId, amount, grossSaleValue, _msgSender());
 
-        (address royaltiesReceiver, ) = getRoyaltyInfo(nftContractAddress, tokenId, grossSaleValue);
-
-        NftStandard nftType = _checkNftStandard(nftContractAddress);
-        require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
-
-        marketItemIdToMarketItem[marketItemId] = MarketItem(
-            marketItemId,
-            nftContractAddress,
-            tokenId,
-            amount,
-            uint256(nftType),
-            royaltiesReceiver,
-            _msgSender(),
-            address(0),
-            grossSaleValue
-        );
-        marketItemOfOwner[_msgSender()].add(marketItemId);
-
-        _transferNFTCall(
-            nftContractAddress,
-            tokenId,
-            amount,
-            uint256(nftType),
-            _msgSender(),
-            address(this)
-        );
-        emit MarketItemCreated(
-            marketItemId,
-            nftContractAddress,
-            tokenId,
-            amount,
-            uint256(nftType),
-            _msgSender(),
-            address(0),
-            grossSaleValue
-        );
-        return marketItemId;
+        _transferNFTCall(nftContractAddress, tokenId, amount, _msgSender(), address(this));
     }
 
     /**
@@ -297,13 +289,12 @@ contract MarketPlaceManager is
      *
      *  @dev    All caller can call this function.
      */
-    function cancelSell(address nftContractAddress, uint256 marketItemId)
+    function cancelSell(uint256 marketItemId)
         external
         nonReentrant
-        notZeroAddress(nftContractAddress)
+        validateId(marketItemId)
         whenNotPaused
     {
-        require(marketItemId <= _marketItemIds.current(), "ERROR: market ID is not exist !");
         require(
             marketItemIdToMarketItem[marketItemId].seller == _msgSender(),
             "ERROR: you are not the seller !"
@@ -311,19 +302,22 @@ contract MarketPlaceManager is
 
         MarketItem memory data = marketItemIdToMarketItem[marketItemId];
 
-        marketItemIdToMarketItem[marketItemId].owner = (_msgSender());
+        marketItemIdToMarketItem[marketItemId].owner = _msgSender();
+        marketItemIdToMarketItem[marketItemId].status = MarketItemStatus.CANCELED;
+
         marketItemOfOwner[_msgSender()].remove(marketItemId);
 
         paymentToken.safeTransferFrom(_msgSender(), address(this), listingFee);
 
         _transferNFTCall(
-            nftContractAddress,
+            data.nftContractAddress,
             data.tokenId,
             data.amount,
-            data.nftType,
             address(this),
             _msgSender()
         );
+
+        emit CanceledSelling(marketItemId);
     }
 
     /**
@@ -331,51 +325,63 @@ contract MarketPlaceManager is
      *
      *  @dev    All caller can call this function.
      */
-    function buy(address nftContractAddress, uint256 marketItemId)
+    function buy(uint256 marketItemId)
         external
         nonReentrant
-        notZeroAddress(nftContractAddress)
-        notZeroAmount(marketItemId)
+        validateId(marketItemId)
         whenNotPaused
     {
-        require(marketItemId <= _marketItemIds.current(), "ERROR: market ID is not exist !");
         MarketItem memory data = marketItemIdToMarketItem[marketItemId];
 
         marketItemIdToMarketItem[marketItemId].owner = (_msgSender());
+        marketItemIdToMarketItem[marketItemId].status = MarketItemStatus.SOLD;
         marketItemOfOwner[_msgSender()].remove(marketItemId);
 
         paymentToken.safeTransferFrom(_msgSender(), address(this), data.price);
 
-        uint256 netSaleValue = _deduceRoyalties(nftContractAddress, data.tokenId, data.price) -
-            data.price.mul(listingFee).div(DENOMINATOR);
+        uint256 netSaleValue = data.price - getListingFee(data.price);
+
+        uint256 royaltyFee = _deduceRoyalties(data.nftContractAddress, data.tokenId, netSaleValue);
+        netSaleValue -= royaltyFee;
 
         paymentToken.safeTransfer(data.seller, netSaleValue);
 
         _transferNFTCall(
-            nftContractAddress,
+            data.nftContractAddress,
             data.tokenId,
             data.amount,
-            data.nftType,
             address(this),
             _msgSender()
         );
+
+        emit Bought(marketItemId, data, royaltyFee, netSaleValue);
     }
 
+    /**
+     *  @notice Transfer nft call
+     */
     function _transferNFTCall(
         address nftContractAddress,
         uint256 tokenId,
         uint256 amount,
-        uint256 nftType,
         address from,
         address to
     ) internal {
-        if (nftType == uint256(NftStandard.ERC721)) {
+        NftStandard nftType = _checkNftStandard(nftContractAddress);
+        require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
+
+        if (nftType == NftStandard.ERC721) {
             IERC721Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId);
         } else {
             IERC1155Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId, amount, "");
         }
     }
 
+    /**
+     *  @notice check and get Royalties information
+     *
+     *  @dev    All caller can call this function.
+     */
     function getRoyaltyInfo(
         address _nftAddr,
         uint256 _tokenId,
@@ -387,33 +393,6 @@ contract MarketPlaceManager is
             return (royaltiesReceiver, royaltiesAmount);
         }
         return (address(0), 0);
-    }
-
-    function _updateCreateNFT(
-        address _nftAddress,
-        uint256 _tokenId,
-        uint256 _amount,
-        address _seller,
-        uint256 _type
-    ) internal notZeroAddress(_nftAddress) notZeroAddress(_seller) notZeroAmount(_amount) {
-        _marketItemIds.increment();
-        uint256 marketItemId = _marketItemIds.current();
-
-        (address _royaltiesReceiver, ) = getRoyaltyInfo(_nftAddress, _tokenId, 0);
-
-        marketItemIdToMarketItem[marketItemId] = MarketItem(
-            marketItemId,
-            _nftAddress,
-            _tokenId,
-            _amount,
-            _type,
-            _royaltiesReceiver,
-            _seller,
-            (address(0)),
-            0
-        );
-
-        marketItemOfOwner[_msgSender()].add(marketItemId);
     }
 
     /**
@@ -432,21 +411,7 @@ contract MarketPlaceManager is
             return (item, true);
         }
         // return empty value
-        unchecked {
-            MarketItem memory emptyMarketItem = MarketItem(
-                0,
-                address(0),
-                0,
-                0,
-                0,
-                address(0),
-                address(0),
-                address(0),
-                0
-            );
-
-            return (emptyMarketItem, false);
-        }
+        return (marketItemIdToMarketItem[0], false);
     }
 
     /**
@@ -458,10 +423,11 @@ contract MarketPlaceManager is
         uint256 itemsCount = _marketItemIds.current();
 
         MarketItem[] memory marketItems = new MarketItem[](itemsCount);
-
         uint256 currentIndex = 0;
         for (uint256 i = 0; i < itemsCount; i++) {
             MarketItem memory item = marketItemIdToMarketItem[i + 1];
+            if (item.status == MarketItemStatus.CANCELED || item.status == MarketItemStatus.SOLD)
+                continue;
             marketItems[currentIndex] = item;
             currentIndex += 1;
         }
@@ -507,51 +473,24 @@ contract MarketPlaceManager is
     function onERC721Received(
         address,
         address,
-        uint256 tokenId,
-        bytes memory data
-    ) public override returns (bytes4) {
-        if (keccak256(abi.encodePacked((""))) != keccak256(data)) {
-            (string memory action, address seller, address nftAddr, uint256 amount) = abi.decode(
-                data,
-                (string, address, address, uint256)
-            );
-
-            if (_compareStrings(action, "update") && _msgSender() == erc721Addr) {
-                _updateCreateNFT(nftAddr, tokenId, amount, seller, 0);
-            }
-        }
-
+        uint256,
+        bytes memory
+    ) public pure override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
+    /**
+     * @dev See {IERC1155Receiver-onERC1155Received}.
+     *
+     * Always returns `IERC1155Receiver.onERC1155Received.selector`.
+     */
     function onERC1155Received(
         address,
         address,
-        uint256 id,
-        uint256 value,
-        bytes memory data
-    ) public override returns (bytes4) {
-        if (keccak256(abi.encodePacked((""))) != keccak256(data)) {
-            (string memory action, address seller, address nftAddr) = abi.decode(
-                data,
-                (string, address, address)
-            );
-
-            if (_compareStrings(action, "update") && _msgSender() == erc1155Addr) {
-                _updateCreateNFT(nftAddr, id, value, seller, 1);
-            }
-        }
+        uint256,
+        uint256,
+        bytes memory
+    ) public pure override returns (bytes4) {
         return this.onERC1155Received.selector;
-    }
-
-    function _toLower(address str) internal pure returns (address) {
-        return abi.decode(abi.encode(str), (address));
-    }
-
-    /**
-     * @dev This seems to be the best way to compare strings in Solidity
-     */
-    function _compareStrings(string memory a, string memory b) private pure returns (bool) {
-        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 }

@@ -30,10 +30,10 @@ contract TokenMintERC721 is
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     /**
-     *  @notice tokenCounter uint256 (counter). This is the counter for store
+     *  @notice _tokenCounter uint256 (counter). This is the counter for store
      *          current token ID value in storage.
      */
-    CountersUpgradeable.Counter public tokenCounter;
+    CountersUpgradeable.Counter private _tokenCounter;
 
     /**
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
@@ -62,8 +62,8 @@ contract TokenMintERC721 is
 
     event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event Bought(uint256 indexed tokenId, address indexed to, uint256 timestamp);
-    event Minted(uint256 indexed tokenId, address indexed to, uint256 timestamp);
+    event Bought(uint256 indexed tokenId, address indexed to);
+    event Minted(uint256 indexed tokenId, address indexed to);
 
     /**
      *  @notice Set new uri for each token ID
@@ -136,14 +136,14 @@ contract TokenMintERC721 is
      *  @dev    All users can call this function.
      */
     function buy(string memory uri) external nonReentrant {
-        tokenCounter.increment();
-        uint256 tokenId = tokenCounter.current();
+        _tokenCounter.increment();
+        uint256 tokenId = _tokenCounter.current();
 
         uris[tokenId] = uri;
         _mint(_msgSender(), tokenId);
         paymentToken.safeTransferFrom(_msgSender(), treasury, price);
 
-        emit Bought(tokenId, _msgSender(), block.timestamp);
+        emit Bought(tokenId, _msgSender());
     }
 
     /**
@@ -156,14 +156,14 @@ contract TokenMintERC721 is
         address receiver,
         string memory uri
     ) external onlyOwnerOrAdmin notZeroAddress(seller) notZeroAddress(receiver) {
-        tokenCounter.increment();
-        uint256 tokenId = tokenCounter.current();
+        _tokenCounter.increment();
+        uint256 tokenId = _tokenCounter.current();
 
         uris[tokenId] = uri;
-        bytes memory data = abi.encode("update", seller, address(this), 1);
-        _safeMint(receiver, tokenId, data);
 
-        emit Minted(tokenId, receiver, block.timestamp);
+        _mint(receiver, tokenId);
+
+        emit Minted(tokenId, receiver);
     }
 
     /**
@@ -176,5 +176,14 @@ contract TokenMintERC721 is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    /**
+     *  @notice Get token counter
+     *
+     *  @dev    All caller can call this function.
+     */
+    function getTokenCounter() external view returns (uint256) {
+        return _tokenCounter.current();
     }
 }

@@ -30,10 +30,10 @@ contract TokenMintERC1155 is
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     /**
-     *  @notice tokenCounter uint256 (counter). This is the counter for store
+     *  @notice _tokenCounter uint256 (counter). This is the counter for store
      *          current token ID value in storage.
      */
-    CountersUpgradeable.Counter public tokenCounter;
+    CountersUpgradeable.Counter private _tokenCounter;
 
     /**
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
@@ -62,8 +62,8 @@ contract TokenMintERC1155 is
 
     event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event Bought(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
-    event Minted(uint256 indexed tokenId, address indexed to, uint256 indexed timestamp);
+    event Bought(uint256 indexed tokenId, address indexed to);
+    event Minted(uint256 indexed tokenId, address indexed to);
 
     /**
      *  @notice Initialize new logic contract.
@@ -140,8 +140,8 @@ contract TokenMintERC1155 is
      *  @dev    All users can call this function.
      */
     function buy(uint256 amount, string memory newuri) external notZeroAmount(amount) nonReentrant {
-        tokenCounter.increment();
-        uint256 tokenId = tokenCounter.current();
+        _tokenCounter.increment();
+        uint256 tokenId = _tokenCounter.current();
 
         uris[tokenId] = newuri;
 
@@ -149,7 +149,7 @@ contract TokenMintERC1155 is
 
         _mint(_msgSender(), tokenId, amount, "");
 
-        emit Bought(tokenId, _msgSender(), block.timestamp);
+        emit Bought(tokenId, _msgSender());
     }
 
     /**
@@ -169,13 +169,22 @@ contract TokenMintERC1155 is
         notZeroAddress(receiver)
         notZeroAmount(amount)
     {
-        tokenCounter.increment();
-        uint256 tokenId = tokenCounter.current();
+        _tokenCounter.increment();
+        uint256 tokenId = _tokenCounter.current();
 
         uris[tokenId] = newuri;
-        bytes memory data = abi.encode("update", seller, address(this));
-        _mint(receiver, tokenId, amount, data);
 
-        emit Minted(tokenId, receiver, block.timestamp);
+        _mint(receiver, tokenId, amount, "");
+
+        emit Minted(tokenId, receiver);
+    }
+
+    /**
+     *  @notice Get token counter
+     *
+     *  @dev    All caller can call this function.
+     */
+    function getTokenCounter() external view returns (uint256) {
+        return _tokenCounter.current();
     }
 }
