@@ -38,6 +38,7 @@ contract MarketPlaceManager is
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     using SafeMathUpgradeable for uint256;
+    using AddressUpgradeable for address;
     CountersUpgradeable.Counter private _marketItemIds;
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = type(IERC2981Upgradeable).interfaceId;
@@ -61,7 +62,7 @@ contract MarketPlaceManager is
         uint256 tokenId;
         uint256 amount;
         address seller;
-        address owner;
+        address buyer;
         uint256 price;
         MarketItemStatus status;
     }
@@ -158,6 +159,8 @@ contract MarketPlaceManager is
      *  @dev    All caller can call this function.
      */
     function _checkNftStandard(address _contract) internal view returns (NftStandard) {
+        // if(IERC721Upgradeable(_contract).supportsInterface.call()) {
+        // }
         if (IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721)) {
             return NftStandard.ERC721;
         }
@@ -218,13 +221,19 @@ contract MarketPlaceManager is
         emit SoldAvailableItem(marketItemId, price);
     }
 
-    function createMarketInfo(
+    /**
+     *  @notice Create market info with data
+     *
+     *  @dev    All caller can call this function.
+     */
+    function _createMarketInfo(
         address _nftAddress,
         uint256 _tokenId,
         uint256 _amount,
         uint256 _grossSaleValue,
         address _seller
-    ) public notZeroAddress(_nftAddress) notZeroAddress(_seller) notZeroAmount(_amount) {
+    ) private {
+        // check nft and tokenid in this contract ?
         NftStandard nftType = _checkNftStandard(_nftAddress);
         require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
 
@@ -261,6 +270,24 @@ contract MarketPlaceManager is
         );
     }
 
+    function callAfterMint(
+        address _nftAddress,
+        uint256 _tokenId,
+        uint256 _amount,
+        uint256 _grossSaleValue,
+        address _seller
+    )
+        external
+        onlyOwnerOrAdmin
+        notZeroAddress(_nftAddress)
+        notZeroAddress(_seller)
+        notZeroAmount(_amount)
+    {
+        require(_msgSender().isContract(), "ERROR: NOT ALLOWED !");
+        // require address
+        _createMarketInfo(_nftAddress, _tokenId, _amount, _grossSaleValue, _seller);
+    }
+
     /**
      *  @notice Sell any nft
      *
@@ -279,7 +306,7 @@ contract MarketPlaceManager is
         notZeroAmount(grossSaleValue)
         whenNotPaused
     {
-        createMarketInfo(nftContractAddress, tokenId, amount, grossSaleValue, _msgSender());
+        _createMarketInfo(nftContractAddress, tokenId, amount, grossSaleValue, _msgSender());
 
         _transferNFTCall(nftContractAddress, tokenId, amount, _msgSender(), address(this));
     }
@@ -302,7 +329,6 @@ contract MarketPlaceManager is
 
         MarketItem memory data = marketItemIdToMarketItem[marketItemId];
 
-        marketItemIdToMarketItem[marketItemId].owner = _msgSender();
         marketItemIdToMarketItem[marketItemId].status = MarketItemStatus.CANCELED;
 
         marketItemOfOwner[_msgSender()].remove(marketItemId);
@@ -333,7 +359,7 @@ contract MarketPlaceManager is
     {
         MarketItem memory data = marketItemIdToMarketItem[marketItemId];
 
-        marketItemIdToMarketItem[marketItemId].owner = (_msgSender());
+        marketItemIdToMarketItem[marketItemId].buyer = _msgSender();
         marketItemIdToMarketItem[marketItemId].status = MarketItemStatus.SOLD;
         marketItemOfOwner[_msgSender()].remove(marketItemId);
 

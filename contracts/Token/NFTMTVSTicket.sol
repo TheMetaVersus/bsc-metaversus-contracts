@@ -56,11 +56,6 @@ contract NFTMTVSTicket is
      */
     string public baseURI;
 
-    /**
-     *  @notice defaultRoyaltyInfo is array royalties info
-     */
-    RoyaltyInfo public defaultRoyaltyInfo;
-
     event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to, uint256 timestamp);
@@ -106,7 +101,6 @@ contract NFTMTVSTicket is
         treasury = _treasury;
         price = _price;
         _setDefaultRoyalty(_treasury, _feeNumerator);
-        defaultRoyaltyInfo = RoyaltyInfo(_treasury, _feeNumerator);
     }
 
     /**
@@ -137,12 +131,12 @@ contract NFTMTVSTicket is
      *  @dev    All users can call this function.
      */
     function buy() external nonReentrant {
+        tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
 
         paymentToken.safeTransferFrom(_msgSender(), treasury, price);
 
         _mint(_msgSender(), tokenId);
-        tokenCounter.increment();
 
         emit Bought(tokenId, _msgSender(), block.timestamp);
     }
@@ -153,10 +147,10 @@ contract NFTMTVSTicket is
      *  @dev    Only owner or admin can call this function.
      */
     function mint(address receiver) external onlyOwnerOrAdmin notZeroAddress(receiver) {
+        tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
 
         _mint(receiver, tokenId);
-        tokenCounter.increment();
 
         emit Minted(tokenId, receiver, block.timestamp);
     }

@@ -1,19 +1,11 @@
-const chai = require("chai");
 const { expect } = require("chai");
-const { upgrades } = require("hardhat");
-const { solidity } = require("ethereum-waffle");
+const { upgrades, ethers } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
-const Big = require("big.js");
-const { skipTime } = require("../utils");
-
-chai.use(solidity);
-const { add, subtract, multiply, divide } = require("js-big-decimal");
-const bigDecimal = require("js-big-decimal");
+const { add } = require("js-big-decimal");
 describe("TokenMintERC721:", () => {
     beforeEach(async () => {
-        MAX_LIMIT =
-            "115792089237316195423570985008687907853269984665640564039457584007913129639935";
         TOTAL_SUPPLY = "1000000000000000000000000000000";
+        ONE_ETHER = "1000000000000000000";
         PRICE = 1000;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -63,9 +55,10 @@ describe("TokenMintERC721:", () => {
             expect(symbol).to.equal("nMTVS");
             expect(price).to.equal(PRICE);
 
-            let royaltiesInfo = await tokenMintERC721.defaultRoyaltyInfo();
-            expect(royaltiesInfo.receiver).to.equal(treasury.address);
-            expect(royaltiesInfo.royaltyFraction).to.equal(250);
+            let royaltiesInfo = await tokenMintERC721.royaltyInfo(0, 10000);
+
+            expect(royaltiesInfo[0]).to.equal(treasury.address.toString());
+            expect(royaltiesInfo[1].toString()).to.equal("250");
         });
         it("Check tokenURI: ", async () => {
             const URI = "this_is_uri_1";
@@ -78,16 +71,6 @@ describe("TokenMintERC721:", () => {
         it("Check Owner: ", async () => {
             const ownerAddress = await tokenMintERC721.owner();
             expect(ownerAddress).to.equal(owner.address);
-        });
-    });
-
-    describe("isAdmin function:", async () => {
-        it("should return whether caller is admin or not: ", async () => {
-            await tokenMintERC721.setAdmin(user2.address, true);
-            expect(await tokenMintERC721.isAdmin(user2.address)).to.equal(true);
-
-            await tokenMintERC721.setAdmin(user2.address, false);
-            expect(await tokenMintERC721.isAdmin(user2.address)).to.equal(false);
         });
     });
 
@@ -135,9 +118,9 @@ describe("TokenMintERC721:", () => {
     describe("buy function:", async () => {
         it("should buy success: ", async () => {
             await token.mint(user1.address, TOTAL_SUPPLY);
-            await token.approve(user1.address, MAX_LIMIT);
-
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
 
             await expect(() =>
                 tokenMintERC721.connect(user1).buy("this_uri")
@@ -189,9 +172,11 @@ describe("TokenMintERC721:", () => {
             ).to.be.revertedWith("ERROR: Invalid address !");
         });
         it("should mint success: ", async () => {
-            await token.mint(owner.address, "1000000000000000000");
-            await token.approve(owner.address, MAX_LIMIT);
-            await token.connect(owner).approve(tokenMintERC721.address, MAX_LIMIT);
+            await token.mint(owner.address, ONE_ETHER);
+
+            await token
+                .connect(owner)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
 
             await tokenMintERC721.mint(user2.address, mkpManager.address, "this_uri");
             expect(await tokenMintERC721.balanceOf(mkpManager.address)).to.equal(1);

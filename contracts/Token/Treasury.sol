@@ -49,11 +49,11 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
     /**
      *  @notice Distribute reward depend on tokenomic.
      */
-    function setPaymentToken(address _paymentToken, bool allow)
+    function setPermitedPaymentToken(address _paymentToken, bool allow)
         external
         onlyOwnerOrAdmin
-        nonReentrant
         notZeroAddress(_paymentToken)
+        nonReentrant
     {
         if (allow) {
             _permitedTokens.add(_paymentToken);
@@ -74,10 +74,10 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
     )
         external
         onlyOwnerOrAdmin
-        nonReentrant
         notZeroAddress(_paymentToken)
         notZeroAddress(_destination)
         notZeroAmount(_amount)
+        nonReentrant
     {
         require(isPermitedToken(_paymentToken), "ERROR: Token is not permit !");
         IERC20Upgradeable(_paymentToken).safeTransfer(_destination, _amount);

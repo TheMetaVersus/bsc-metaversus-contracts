@@ -55,11 +55,6 @@ contract TokenMintERC1155 is
      */
     mapping(uint256 => string) public uris;
 
-    /**
-     *  @notice defaultRoyaltyInfo is array royalties info
-     */
-    RoyaltyInfo public defaultRoyaltyInfo;
-
     event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to);
@@ -83,7 +78,6 @@ contract TokenMintERC1155 is
         treasury = _treasury;
         price = _price;
         _setDefaultRoyalty(_treasury, _feeNumerator);
-        defaultRoyaltyInfo = RoyaltyInfo(_treasury, _feeNumerator);
     }
 
     /**

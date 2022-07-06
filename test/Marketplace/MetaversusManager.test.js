@@ -1,14 +1,12 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
-const { add, subtract, multiply, divide } = require("js-big-decimal");
-const abiCoder = ethers.utils.defaultAbiCoder;
+const { add } = require("js-big-decimal");
+
 describe("Metaversus Manager:", () => {
     beforeEach(async () => {
-        MAX_LIMIT =
-            "115792089237316195423570985008687907853269984665640564039457584007913129639935";
         TOTAL_SUPPLY = "1000000000000000000000000000000";
-        ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+        AMOUNT = "1000000000000000000000000000000";
         PRICE = "1000000000000000000";
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -102,16 +100,6 @@ describe("Metaversus Manager:", () => {
         });
     });
 
-    describe("isAdmin function:", async () => {
-        it("should return whether caller is admin or not: ", async () => {
-            await mtvsManager.setAdmin(user2.address, true);
-            expect(await mtvsManager.isAdmin(user2.address)).to.equal(true);
-
-            await mtvsManager.setAdmin(user2.address, false);
-            expect(await mtvsManager.isAdmin(user2.address)).to.equal(false);
-        });
-    });
-
     describe("setAdmin function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
@@ -192,16 +180,14 @@ describe("Metaversus Manager:", () => {
 
     describe("createNFT function:", async () => {
         it("should revert when amount equal to zero amount: ", async () => {
-            // let data = abiCoder.encode(["string", "uint256"], ["ERC721", "0"]);
             await expect(mtvsManager.connect(user1).createNFT(0, 0, "this_uri")).to.be.revertedWith(
                 "ERROR: amount must be greater than zero !"
             );
         });
         it("should create NFT success: ", async () => {
-            // let data = abiCoder.encode(["string", "uint256"], ["ERC721", "1000"]);
-            await token.mint(user2.address, "9000000000000000000");
-            await token.approve(user2.address, MAX_LIMIT);
-            await token.connect(user2).approve(mtvsManager.address, MAX_LIMIT);
+            await token.mint(user2.address, AMOUNT);
+
+            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
 
             await mkpManager.setAdmin(mtvsManager.address, true);
 
@@ -211,9 +197,11 @@ describe("Metaversus Manager:", () => {
                 mtvsManager.connect(user2).createNFT(0, 1, "this_uri")
             ).to.changeTokenBalance(token, user2, -250);
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 250));
+            // check owner nft
+            expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
 
             await tokenMintERC1155.setAdmin(mtvsManager.address, true);
-            data = abiCoder.encode(["string", "uint256"], ["ERC1155", "100"]);
+
             await expect(() =>
                 mtvsManager.connect(user2).createNFT(1, 100, "this_uri")
             ).to.changeTokenBalance(token, user2, -250);
@@ -223,28 +211,34 @@ describe("Metaversus Manager:", () => {
 
     describe("buyTicket function:", async () => {
         it("should buy ticket success: ", async () => {
-            await token.mint(user2.address, "9000000000000000000");
-            await token.approve(user2.address, MAX_LIMIT);
-            await token.connect(user2).approve(mtvsManager.address, MAX_LIMIT);
+            await token.mint(user2.address, AMOUNT);
+            await token.approve(user2.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
 
             await nftMTVSTicket.setAdmin(mtvsManager.address, true);
 
+            // check owner nft
             await expect(() => mtvsManager.connect(user2).buyTicket()).to.changeTokenBalance(
                 token,
                 user2,
                 -350
             );
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 350));
-
+            expect(await nftMTVSTicket.ownerOf(1)).to.equal(user2.address);
             expect(await nftMTVSTicket.balanceOf(user2.address)).to.equal(1);
         });
     });
 
     describe("buyTicketEvent function:", async () => {
+        it("should revert when amount equal to zero amount: ", async () => {
+            await expect(mtvsManager.connect(user1).buyTicketEvent(0)).to.be.revertedWith(
+                "ERROR: amount must be greater than zero !"
+            );
+        });
         it("should buy ticket success: ", async () => {
-            await token.mint(user2.address, "9000000000000000000");
-            await token.approve(user2.address, MAX_LIMIT);
-            await token.connect(user2).approve(mtvsManager.address, MAX_LIMIT);
+            await token.mint(user2.address, AMOUNT);
+            await token.approve(user2.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
 
             await expect(() => mtvsManager.connect(user2).buyTicketEvent(1)).to.changeTokenBalance(
                 token,

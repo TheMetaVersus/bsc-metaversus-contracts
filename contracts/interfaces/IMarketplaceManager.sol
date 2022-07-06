@@ -2,7 +2,7 @@
 pragma solidity ^0.8.4;
 
 interface IMarketplaceManager {
-    function createMarketInfo(
+    function callAfterMint(
         address _nftAddress,
         uint256 _tokenId,
         uint256 _amount,
