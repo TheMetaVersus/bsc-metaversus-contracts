@@ -1,17 +1,10 @@
-const chai = require("chai");
 const { expect } = require("chai");
-const { upgrades } = require("hardhat");
-const { solidity } = require("ethereum-waffle");
+const { upgrades, ethers } = require("hardhat");
 
-chai.use(solidity);
-const { add, subtract, multiply, divide } = require("js-big-decimal");
 const constants = require("@openzeppelin/test-helpers/src/constants");
 describe("MTVS Token:", () => {
     beforeEach(async () => {
-        MAX_LIMIT =
-            "115792089237316195423570985008687907853269984665640564039457584007913129639935";
         TOTAL_SUPPLY = "1000000000000000000000000000000";
-        ZERO_ADDR = "0x0000000000000000000000000000000000000000";
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -49,7 +42,7 @@ describe("MTVS Token:", () => {
         });
     });
 
-    describe("isComtroller function:", async () => {
+    describe("isController function:", async () => {
         it("should return role of account checking: ", async () => {
             expect(await token.isController(user1.address)).to.equal(false);
             await token.setController(user1.address, true);
@@ -58,6 +51,11 @@ describe("MTVS Token:", () => {
     });
 
     describe("setController function:", async () => {
+        it("should revert when caller not be owner: ", async () => {
+            await expect(
+                token.connect(user1).setController(user1.address, true)
+            ).to.be.revertedWith("Ownable: caller is not the owner");
+        });
         it("should revert when user address equal to zero address: ", async () => {
             await expect(token.setController(constants.ZERO_ADDRESS, true)).to.be.revertedWith(
                 "ERROR: Invalid address !"
@@ -79,7 +77,9 @@ describe("MTVS Token:", () => {
             );
         });
         it("should revert when receiver is zero address: ", async () => {
-            await expect(token.mint(ZERO_ADDR, 100)).to.be.revertedWith("ERROR: Invalid address !");
+            await expect(token.mint(constants.ZERO_ADDRESS, 100)).to.be.revertedWith(
+                "ERROR: Invalid address !"
+            );
         });
         it("should revert when amount equal to zero: ", async () => {
             await expect(token.mint(user1.address, 0)).to.be.revertedWith(
@@ -96,6 +96,11 @@ describe("MTVS Token:", () => {
         it("should revert when caller not be controller: ", async () => {
             await expect(token.connect(user1).burn(user1.address, 100)).to.be.revertedWith(
                 "Ownable: caller is not a controller"
+            );
+        });
+        it("should revert when amount equal to zero: ", async () => {
+            await expect(token.burn(user1.address, 0)).to.be.revertedWith(
+                "ERROR: Amount equal to zero !"
             );
         });
 

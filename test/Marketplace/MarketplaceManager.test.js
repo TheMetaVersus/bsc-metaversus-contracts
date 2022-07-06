@@ -4,11 +4,9 @@ const { upgrades, ethers } = require("hardhat");
 
 describe("Marketplace Manager:", () => {
     beforeEach(async () => {
-        MAX_LIMIT =
-            "115792089237316195423570985008687907853269984665640564039457584007913129639935";
         TOTAL_SUPPLY = "1000000000000000000000000000000";
-        ZERO_ADDR = "0x0000000000000000000000000000000000000000";
         PRICE = "1000000000000000000";
+        ONE_ETHER = "1000000000000000000";
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -92,16 +90,6 @@ describe("Marketplace Manager:", () => {
         });
     });
 
-    describe("isAdmin function:", async () => {
-        it("should return whether caller is admin or not: ", async () => {
-            await mkpManager.setAdmin(user2.address, true);
-            expect(await mkpManager.isAdmin(user2.address)).to.equal(true);
-
-            await mkpManager.setAdmin(user2.address, false);
-            expect(await mkpManager.isAdmin(user2.address)).to.equal(false);
-        });
-    });
-
     describe("setAdmin function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
@@ -140,9 +128,7 @@ describe("Marketplace Manager:", () => {
 
     describe("getListingFee function:", async () => {
         it("should return tuple listingFee: ", async () => {
-            const feeInfo = await mkpManager.getListingFee();
-            expect(feeInfo[0]).to.equal(2500);
-            expect(feeInfo[1]).to.equal(100000);
+            expect(await mkpManager.getListingFee(100000)).to.equal(2500);
         });
     });
 
@@ -161,27 +147,50 @@ describe("Marketplace Manager:", () => {
     });
 
     describe("sellAvaiableInMarketplace function:", async () => {
+        it("should revert when market Item ID invalid: ", async () => {
+            await expect(mkpManager.sellAvaiableInMarketplace(1, 0)).to.be.revertedWith(
+                "ERROR: market ID is not exist !"
+            );
+        });
         it("should revert when price equal to zero: ", async () => {
+            await token.mint(user1.address, ONE_ETHER);
+            await token.mint(owner.address, ONE_ETHER);
+            await token.approve(user1.address, ethers.constants.MaxUint256);
+            await token.connect(user1).approve(mtvsManager.address, ethers.constants.MaxUint256);
+            await tokenMintERC721.setAdmin(mtvsManager.address, true);
+            await tokenMintERC1155.setAdmin(mtvsManager.address, true);
+            await mkpManager.setAdmin(mtvsManager.address, true);
+
+            // ERC721
+            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri");
             await expect(mkpManager.sellAvaiableInMarketplace(1, 0)).to.be.revertedWith(
                 "ERROR: amount must be greater than zero !"
             );
         });
         it("should revert when caller is not owner: ", async () => {
+            await token.mint(user1.address, ONE_ETHER);
+            await token.mint(owner.address, ONE_ETHER);
+            await token.approve(user1.address, ethers.constants.MaxUint256);
+            await token.connect(user1).approve(mtvsManager.address, ethers.constants.MaxUint256);
+            await tokenMintERC721.setAdmin(mtvsManager.address, true);
+            await tokenMintERC1155.setAdmin(mtvsManager.address, true);
+            await mkpManager.setAdmin(mtvsManager.address, true);
+
+            // ERC721
+            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri");
             await expect(mkpManager.sellAvaiableInMarketplace(1, 1000)).to.be.revertedWith(
                 "ERROR: sender is not owner this NFT"
             );
         });
         it("should sell success and return marketItemId: ", async () => {
-            await token.mint(user1.address, "10000000000000000");
-            await token.mint(owner.address, "1000000000000000000");
-            await token.approve(user1.address, MAX_LIMIT);
-            await token.connect(user1).approve(mtvsManager.address, MAX_LIMIT);
+            await token.mint(user1.address, ONE_ETHER);
+            await token.mint(owner.address, ONE_ETHER);
+            await token.approve(user1.address, ethers.constants.MaxUint256);
+            await token.connect(user1).approve(mtvsManager.address, ethers.constants.MaxUint256);
             await tokenMintERC721.setAdmin(mtvsManager.address, true);
             await tokenMintERC1155.setAdmin(mtvsManager.address, true);
             await mkpManager.setAdmin(mtvsManager.address, true);
 
-            await mkpManager.setTokenMintERC721(tokenMintERC721.address);
-            await mkpManager.setTokenMintERC1155(tokenMintERC1155.address);
             // ERC721
             await mtvsManager.connect(user1).createNFT(0, 1, "this_uri");
             const latest_1 = await mkpManager.getLatestMarketItemByTokenId(
@@ -231,9 +240,11 @@ describe("Marketplace Manager:", () => {
             );
         });
         it("should sell success and return marketItemId: ", async () => {
-            await token.mint(user1.address, "100000000000000000000000000000");
+            await token.mint(user1.address, ONE_ETHER);
 
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
 
             await tokenMintERC721.connect(user1).buy("this_uri");
 
@@ -252,20 +263,17 @@ describe("Marketplace Manager:", () => {
     });
 
     describe("cancelSell function:", async () => {
-        it("should revert when nft contract equal to zero address: ", async () => {
-            await expect(mkpManager.cancelSell(constants.ZERO_ADDRESS, 0)).to.be.revertedWith(
-                "ERROR: Invalid address !"
-            );
-        });
         it("should revert when market ID not exist: ", async () => {
-            await expect(mkpManager.cancelSell(tokenMintERC721.address, 123)).to.be.revertedWith(
+            await expect(mkpManager.cancelSell(123)).to.be.revertedWith(
                 "ERROR: market ID is not exist !"
             );
         });
         it("should revert when caller is not seller: ", async () => {
-            await token.mint(user1.address, "100000000000000000000000000000");
+            await token.mint(user1.address, ONE_ETHER);
 
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
 
             await tokenMintERC721.connect(user1).buy("this_uri");
 
@@ -275,15 +283,17 @@ describe("Marketplace Manager:", () => {
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
 
-            await expect(
-                mkpManager.cancelSell(tokenMintERC721.address, marketId)
-            ).to.be.revertedWith("ERROR: you are not the seller !");
+            await expect(mkpManager.cancelSell(marketId)).to.be.revertedWith(
+                "ERROR: you are not the seller !"
+            );
         });
         it("should cancel sell success: ", async () => {
-            await token.mint(user1.address, "100000000000000000000000000000");
+            await token.mint(user1.address, "1000000000000000000000000000000");
 
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
-            await token.connect(user1).approve(mkpManager.address, MAX_LIMIT);
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+            await token.connect(user1).approve(mkpManager.address, ethers.constants.MaxUint256);
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
@@ -293,35 +303,25 @@ describe("Marketplace Manager:", () => {
             const marketId = event.args[0].toString();
 
             await expect(() =>
-                mkpManager.connect(user1).cancelSell(tokenMintERC721.address, marketId)
+                mkpManager.connect(user1).cancelSell(marketId)
             ).to.changeTokenBalance(tokenMintERC721, user1, 1);
         });
     });
 
     describe("buy function:", async () => {
-        it("should revert when nft contract equal to zero address: ", async () => {
-            await expect(mkpManager.buy(constants.ZERO_ADDRESS, 0)).to.be.revertedWith(
-                "ERROR: Invalid address !"
-            );
-        });
-        it("should revert when market ID equal to zero: ", async () => {
-            await expect(mkpManager.buy(tokenMintERC721.address, 0)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
-        });
-
         it("should revert when market ID not exist: ", async () => {
-            await expect(mkpManager.buy(tokenMintERC721.address, 123)).to.be.revertedWith(
-                "ERROR: market ID is not exist !"
-            );
+            await expect(mkpManager.buy(0)).to.be.revertedWith("ERROR: market ID is not exist !");
+            await expect(mkpManager.buy(123)).to.be.revertedWith("ERROR: market ID is not exist !");
         });
 
         it("should buy success: ", async () => {
-            await token.mint(user1.address, "100000000000000000000000000000");
-            await token.mint(user2.address, "100000000000000000000000000000");
+            await token.mint(user1.address, ONE_ETHER);
+            await token.mint(user2.address, ONE_ETHER);
 
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
-            await token.connect(user2).approve(mkpManager.address, MAX_LIMIT);
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(mkpManager.address, ethers.constants.MaxUint256);
 
             await tokenMintERC721.connect(user1).buy("this_uri");
 
@@ -331,22 +331,28 @@ describe("Marketplace Manager:", () => {
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
 
-            await expect(() =>
-                mkpManager.connect(user2).buy(tokenMintERC721.address, marketId)
-            ).to.changeTokenBalance(tokenMintERC721, user2, 1);
+            await expect(() => mkpManager.connect(user2).buy(marketId)).to.changeTokenBalance(
+                tokenMintERC721,
+                user2,
+                1
+            );
         });
     });
 
     describe("getLatestMarketItemByTokenId function:", async () => {
         it("should return latest market item: ", async () => {
-            await token.mint(user1.address, "100000000000000000000000000000");
-            await token.mint(user2.address, "100000000000000000000000000000");
+            await token.mint(user1.address, ONE_ETHER);
+            await token.mint(user2.address, ONE_ETHER);
 
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
-            await token.connect(user2).approve(tokenMintERC1155.address, MAX_LIMIT);
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+            await token
+                .connect(user2)
+                .approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
 
-            await token.connect(user1).approve(treasury.address, MAX_LIMIT);
-            await token.connect(user2).approve(treasury.address, MAX_LIMIT);
+            await token.connect(user1).approve(treasury.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(treasury.address, ethers.constants.MaxUint256);
             // ERC721
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
@@ -383,11 +389,15 @@ describe("Marketplace Manager:", () => {
             await token.mint(user1.address, "100000000000000000000000000000");
             await token.mint(user2.address, "100000000000000000000000000000");
 
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
-            await token.connect(user2).approve(tokenMintERC1155.address, MAX_LIMIT);
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+            await token
+                .connect(user2)
+                .approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
 
-            await token.connect(user1).approve(treasury.address, MAX_LIMIT);
-            await token.connect(user2).approve(treasury.address, MAX_LIMIT);
+            await token.connect(user1).approve(treasury.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(treasury.address, ethers.constants.MaxUint256);
             // ERC721
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
@@ -429,11 +439,15 @@ describe("Marketplace Manager:", () => {
             await token.mint(user1.address, "100000000000000000000000000000");
             await token.mint(user2.address, "100000000000000000000000000000");
 
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
-            await token.connect(user2).approve(tokenMintERC1155.address, MAX_LIMIT);
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+            await token
+                .connect(user2)
+                .approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
 
-            await token.connect(user1).approve(treasury.address, MAX_LIMIT);
-            await token.connect(user2).approve(treasury.address, MAX_LIMIT);
+            await token.connect(user1).approve(treasury.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(treasury.address, ethers.constants.MaxUint256);
             // ERC721
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
@@ -480,11 +494,15 @@ describe("Marketplace Manager:", () => {
             await token.mint(user1.address, "100000000000000000000000000000");
             await token.mint(user2.address, "100000000000000000000000000000");
 
-            await token.connect(user1).approve(tokenMintERC721.address, MAX_LIMIT);
-            await token.connect(user2).approve(tokenMintERC1155.address, MAX_LIMIT);
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+            await token
+                .connect(user2)
+                .approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
 
-            await token.connect(user1).approve(treasury.address, MAX_LIMIT);
-            await token.connect(user2).approve(treasury.address, MAX_LIMIT);
+            await token.connect(user1).approve(treasury.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(treasury.address, ethers.constants.MaxUint256);
             // ERC721
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);

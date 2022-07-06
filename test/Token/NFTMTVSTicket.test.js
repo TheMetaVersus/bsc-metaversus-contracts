@@ -1,12 +1,11 @@
 const { constants } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
-const { upgrades } = require("hardhat");
-const { add, subtract, multiply, divide } = require("js-big-decimal");
+const { upgrades, ethers } = require("hardhat");
+const { add } = require("js-big-decimal");
 describe("NFTMTVSTicket:", () => {
     beforeEach(async () => {
-        MAX_LIMIT =
-            "115792089237316195423570985008687907853269984665640564039457584007913129639935";
         TOTAL_SUPPLY = "1000000000000000000000000000000";
+        ONE_ETHER = "1000000000000000000";
         PRICE = 1000;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -48,7 +47,7 @@ describe("NFTMTVSTicket:", () => {
             expect(symbol).to.equal("nftMTVS");
         });
         it("Check tokenURI: ", async () => {
-            const tokenId = 0;
+            const tokenId = 1;
             await nftMTVSTicket.mint(user1.address);
             const URI = "this_is_uri_1";
             const tx = await nftMTVSTicket.setBaseURI(URI);
@@ -60,16 +59,6 @@ describe("NFTMTVSTicket:", () => {
         it("Check Owner: ", async () => {
             const ownerAddress = await nftMTVSTicket.owner();
             expect(ownerAddress).to.equal(owner.address);
-        });
-    });
-
-    describe("isAdmin function:", async () => {
-        it("should return whether caller is admin or not: ", async () => {
-            await nftMTVSTicket.setAdmin(user2.address, true);
-            expect(await nftMTVSTicket.isAdmin(user2.address)).to.equal(true);
-
-            await nftMTVSTicket.setAdmin(user2.address, false);
-            expect(await nftMTVSTicket.isAdmin(user2.address)).to.equal(false);
         });
     });
 
@@ -115,7 +104,7 @@ describe("NFTMTVSTicket:", () => {
     });
 
     describe("setPrice function:", async () => {
-        it("should revert when newPrice equal to zero: ", async () => {
+        it("should revert when Ownable: caller is not an owner or admin:", async () => {
             await expect(nftMTVSTicket.connect(user1).setPrice(1000)).to.be.revertedWith(
                 "Ownable: caller is not an owner or admin"
             );
@@ -141,8 +130,8 @@ describe("NFTMTVSTicket:", () => {
     describe("buy function:", async () => {
         it("should buy success: ", async () => {
             await token.mint(user1.address, TOTAL_SUPPLY);
-            await token.approve(user1.address, MAX_LIMIT);
-            await token.connect(user1).approve(nftMTVSTicket.address, MAX_LIMIT);
+
+            await token.connect(user1).approve(nftMTVSTicket.address, ethers.constants.MaxUint256);
 
             await expect(() => nftMTVSTicket.connect(user1).buy()).to.changeTokenBalance(
                 token,
@@ -150,9 +139,9 @@ describe("NFTMTVSTicket:", () => {
                 -PRICE
             );
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
-
+            expect(await nftMTVSTicket.ownerOf(1)).to.equal(user1.address);
             expect(await nftMTVSTicket.balanceOf(user1.address)).to.equal(1);
-            expect(await nftMTVSTicket.tokenURI(0)).to.equal(".json");
+            expect(await nftMTVSTicket.tokenURI(1)).to.equal(".json");
         });
     });
 
@@ -168,9 +157,9 @@ describe("NFTMTVSTicket:", () => {
             );
         });
         it("should mint success: ", async () => {
-            await token.mint(owner.address, "1000000000000000000");
-            await token.approve(owner.address, MAX_LIMIT);
-            await token.connect(owner).approve(nftMTVSTicket.address, MAX_LIMIT);
+            await token.mint(owner.address, ONE_ETHER);
+
+            await token.connect(owner).approve(nftMTVSTicket.address, ethers.constants.MaxUint256);
 
             await nftMTVSTicket.mint(user2.address);
             expect(await nftMTVSTicket.balanceOf(user2.address)).to.equal(1);

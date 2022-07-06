@@ -33,6 +33,11 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         _;
     }
 
+    modifier notZeroAmount(uint256 amount) {
+        require(amount > 0, "ERROR: Amount equal to zero !");
+        _;
+    }
+
     event SetController(address indexed user, bool allow);
     event Minted(address indexed receiver, uint256 indexed amount, uint256 timestamp);
 
@@ -79,10 +84,10 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      */
     function mint(address receiver, uint256 amount)
         external
-        notZeroAddress(receiver)
         onlyControllers
+        notZeroAddress(receiver)
+        notZeroAmount(amount)
     {
-        require(amount > 0, "ERROR: Amount equal to zero !");
         _mint(receiver, amount);
 
         emit Minted(receiver, amount, block.timestamp);
@@ -93,7 +98,7 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      *
      *  @dev    Only controllers can call this function.
      */
-    function burn(address from, uint256 amount) external onlyControllers {
+    function burn(address from, uint256 amount) external onlyControllers notZeroAmount(amount) {
         _burn(from, amount);
     }
 }
