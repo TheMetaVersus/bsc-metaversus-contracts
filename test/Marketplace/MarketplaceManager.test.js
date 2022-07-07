@@ -7,6 +7,7 @@ describe("Marketplace Manager:", () => {
         TOTAL_SUPPLY = "1000000000000000000000000000000";
         PRICE = "1000000000000000000";
         ONE_ETHER = "1000000000000000000";
+        ONE_WEEK = 604800;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -148,7 +149,7 @@ describe("Marketplace Manager:", () => {
 
     describe("sellAvaiableInMarketplace function:", async () => {
         it("should revert when market Item ID invalid: ", async () => {
-            await expect(mkpManager.sellAvaiableInMarketplace(1, 0)).to.be.revertedWith(
+            await expect(mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK)).to.be.revertedWith(
                 "ERROR: market ID is not exist !"
             );
         });
@@ -163,7 +164,7 @@ describe("Marketplace Manager:", () => {
 
             // ERC721
             await mtvsManager.connect(user1).createNFT(0, 1, "this_uri");
-            await expect(mkpManager.sellAvaiableInMarketplace(1, 0)).to.be.revertedWith(
+            await expect(mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK)).to.be.revertedWith(
                 "ERROR: amount must be greater than zero !"
             );
         });
@@ -178,9 +179,9 @@ describe("Marketplace Manager:", () => {
 
             // ERC721
             await mtvsManager.connect(user1).createNFT(0, 1, "this_uri");
-            await expect(mkpManager.sellAvaiableInMarketplace(1, 1000)).to.be.revertedWith(
-                "ERROR: sender is not owner this NFT"
-            );
+            await expect(
+                mkpManager.sellAvaiableInMarketplace(1, 1000, ONE_WEEK)
+            ).to.be.revertedWith("ERROR: sender is not owner this NFT");
         });
         it("should sell success and return marketItemId: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
@@ -200,7 +201,7 @@ describe("Marketplace Manager:", () => {
 
             await mkpManager
                 .connect(user1)
-                .sellAvaiableInMarketplace(latest_1[0].marketItemId.toString(), 10005);
+                .sellAvaiableInMarketplace(latest_1[0].marketItemId.toString(), 10005, ONE_WEEK);
             const data_ERC721 = await mkpManager.fetchMarketItemsByMarketID(
                 latest_1[0].marketItemId.toString()
             );
@@ -213,7 +214,7 @@ describe("Marketplace Manager:", () => {
             );
             await mkpManager
                 .connect(user1)
-                .sellAvaiableInMarketplace(latest_2[0].marketItemId.toString(), 100056);
+                .sellAvaiableInMarketplace(latest_2[0].marketItemId.toString(), 100056, ONE_WEEK);
             const data_ERC1155 = await mkpManager.fetchMarketItemsByMarketID(
                 latest_2[0].marketItemId.toString()
             );
@@ -225,19 +226,19 @@ describe("Marketplace Manager:", () => {
 
     describe("sell function:", async () => {
         it("should revert when nft contract equal to zero address: ", async () => {
-            await expect(mkpManager.sell(constants.ZERO_ADDRESS, 0, 100, 100)).to.be.revertedWith(
-                "ERROR: Invalid address !"
-            );
+            await expect(
+                mkpManager.sell(constants.ZERO_ADDRESS, 0, 100, 100, ONE_WEEK)
+            ).to.be.revertedWith("ERROR: Invalid address !");
         });
         it("should revert when amount equal to zero: ", async () => {
-            await expect(mkpManager.sell(tokenMintERC721.address, 0, 0, 100)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
+            await expect(
+                mkpManager.sell(tokenMintERC721.address, 0, 0, 100, ONE_WEEK)
+            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should revert when gross sale value equal to zero: ", async () => {
-            await expect(mkpManager.sell(tokenMintERC721.address, 0, 100, 0)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
+            await expect(
+                mkpManager.sell(tokenMintERC721.address, 0, 100, 0, ONE_WEEK)
+            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should sell success and return marketItemId: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
@@ -249,7 +250,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
-            const tx = await mkpManager.connect(user1).sell(tokenMintERC721.address, 1, 1, 1000);
+            const tx = await mkpManager
+                .connect(user1)
+                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -278,7 +281,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
-            const tx = await mkpManager.connect(user1).sell(tokenMintERC721.address, 1, 1, 1000);
+            const tx = await mkpManager
+                .connect(user1)
+                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -297,7 +302,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
-            const tx = await mkpManager.connect(user1).sell(tokenMintERC721.address, 1, 1, 1000);
+            const tx = await mkpManager
+                .connect(user1)
+                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -326,7 +333,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
-            const tx = await mkpManager.connect(user1).sell(tokenMintERC721.address, 1, 1, 1000);
+            const tx = await mkpManager
+                .connect(user1)
+                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -357,7 +366,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
 
-            let tx = await mkpManager.connect(user1).sell(tokenMintERC721.address, 1, 1, 1234);
+            let tx = await mkpManager
+                .connect(user1)
+                .sell(tokenMintERC721.address, 1, 1, 1234, ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -371,7 +382,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC1155.connect(user2).buy(100, "this_uri");
             await tokenMintERC1155.connect(user2).setApprovalForAll(mkpManager.address, true);
 
-            tx = await mkpManager.connect(user2).sell(tokenMintERC1155.address, 1, 100, 4321);
+            tx = await mkpManager
+                .connect(user2)
+                .sell(tokenMintERC1155.address, 1, 100, 4321, ONE_WEEK);
             listener = await tx.wait();
             event = listener.events.find(x => x.event == "MarketItemCreated");
             marketId = event.args[0].toString();
@@ -402,7 +415,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
 
-            let tx = await mkpManager.connect(user1).sell(tokenMintERC721.address, 1, 1, 1234);
+            let tx = await mkpManager
+                .connect(user1)
+                .sell(tokenMintERC721.address, 1, 1, 1234, ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -416,7 +431,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC1155.connect(user2).buy(100, "this_uri");
             await tokenMintERC1155.connect(user2).setApprovalForAll(mkpManager.address, true);
 
-            tx = await mkpManager.connect(user2).sell(tokenMintERC1155.address, 1, 100, 4321);
+            tx = await mkpManager
+                .connect(user2)
+                .sell(tokenMintERC1155.address, 1, 100, 4321, ONE_WEEK);
             listener = await tx.wait();
             event = listener.events.find(x => x.event == "MarketItemCreated");
             marketId = event.args[0].toString();
@@ -452,7 +469,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
 
-            let tx = await mkpManager.connect(user1).sell(tokenMintERC721.address, 1, 1, 1234);
+            let tx = await mkpManager
+                .connect(user1)
+                .sell(tokenMintERC721.address, 1, 1, 1234, ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -471,7 +490,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC1155.connect(user2).buy(100, "this_uri");
             await tokenMintERC1155.connect(user2).setApprovalForAll(mkpManager.address, true);
 
-            tx = await mkpManager.connect(user2).sell(tokenMintERC1155.address, 1, 100, 4321);
+            tx = await mkpManager
+                .connect(user2)
+                .sell(tokenMintERC1155.address, 1, 100, 4321, ONE_WEEK);
             listener = await tx.wait();
             event = listener.events.find(x => x.event == "MarketItemCreated");
             marketId = event.args[0].toString();
@@ -507,7 +528,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
 
-            let tx = await mkpManager.connect(user1).sell(tokenMintERC721.address, 1, 1, 1234);
+            let tx = await mkpManager
+                .connect(user1)
+                .sell(tokenMintERC721.address, 1, 1, 1234, ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -521,7 +544,9 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC1155.connect(user2).buy(100, "this_uri");
             await tokenMintERC1155.connect(user2).setApprovalForAll(mkpManager.address, true);
 
-            tx = await mkpManager.connect(user2).sell(tokenMintERC1155.address, 1, 100, 4321);
+            tx = await mkpManager
+                .connect(user2)
+                .sell(tokenMintERC1155.address, 1, 100, 4321, ONE_WEEK);
             listener = await tx.wait();
             event = listener.events.find(x => x.event == "MarketItemCreated");
             marketId = event.args[0].toString();
