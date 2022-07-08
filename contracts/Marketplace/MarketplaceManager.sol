@@ -64,6 +64,7 @@ contract MarketPlaceManager is
         address seller;
         address buyer;
         uint256 price;
+        uint256 endTime;
         MarketItemStatus status;
     }
 
@@ -83,6 +84,11 @@ contract MarketPlaceManager is
     uint256 public listingFee;
 
     /**
+     *  @notice mtvsManager store the address of the MTVS Manager contract
+     */
+    address public mtvsManager;
+
+    /**
      *  @notice marketItemIdToMarketItem is mapping market ID to Market Item
      */
     mapping(uint256 => MarketItem) public marketItemIdToMarketItem;
@@ -99,9 +105,11 @@ contract MarketPlaceManager is
         uint256 amount,
         address seller,
         address owner,
-        uint256 price
+        uint256 price,
+        uint256 endTime
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
+    event SetMTVSManager(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event SoldAvailableItem(uint256 indexed marketItemId, uint256 indexed price);
     event CanceledSelling(uint256 indexed marketItemId);
@@ -145,6 +153,17 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice set treasury to change TreasuryManager address.
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function setMTVSManager(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
+        address old = mtvsManager;
+        mtvsManager = account;
+        emit SetMTVSManager(old, mtvsManager);
+    }
+
+    /**
      *  @notice get Listing fee
      *
      *  @dev    All caller can call this function.
@@ -153,19 +172,47 @@ contract MarketPlaceManager is
         return amount.mul(listingFee).div(DENOMINATOR);
     }
 
+    function updateStatus() public onlyOwnerOrAdmin {
+        for (uint256 i = 0; i < _marketItemIds.current(); i++) {
+            MarketItem storage item = marketItemIdToMarketItem[i + 1];
+            if (item.endTime <= block.timestamp) {
+                item.status = MarketItemStatus.FREE;
+            }
+        }
+    }
+
+    /**
+     *  @notice Check standard without error when not support function supportsInterface
+     */
+    function is721(address _contract) private returns (bool) {
+        (bool success, ) = _contract.call(
+            abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC721)
+        );
+
+        return success && IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721);
+    }
+
+    /**
+     *  @notice Check standard without error when not support function supportsInterface
+     */
+    function is1155(address _contract) private returns (bool) {
+        (bool success, ) = _contract.call(
+            abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC1155)
+        );
+
+        return success && IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155);
+    }
+
     /**
      *  @notice Check standard of nft contract address
      *
      *  @dev    All caller can call this function.
      */
-    function _checkNftStandard(address _contract) internal view returns (NftStandard) {
-        // if(IERC721Upgradeable(_contract).supportsInterface.call()) {
-        // }
-        if (IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721)) {
+    function _checkNftStandard(address _contract) internal returns (NftStandard) {
+        if (is721(_contract)) {
             return NftStandard.ERC721;
         }
-
-        if (IERC1155Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155)) {
+        if (is1155(_contract)) {
             return NftStandard.ERC1155;
         }
 
@@ -203,13 +250,11 @@ contract MarketPlaceManager is
      *
      *  @dev    All caller can call this function.
      */
-    function sellAvaiableInMarketplace(uint256 marketItemId, uint256 price)
-        external
-        nonReentrant
-        validateId(marketItemId)
-        notZeroAmount(price)
-        whenNotPaused
-    {
+    function sellAvaiableInMarketplace(
+        uint256 marketItemId,
+        uint256 price,
+        uint256 time
+    ) external nonReentrant validateId(marketItemId) notZeroAmount(price) whenNotPaused {
         require(
             marketItemIdToMarketItem[marketItemId].seller == _msgSender(),
             "ERROR: sender is not owner this NFT"
@@ -217,7 +262,7 @@ contract MarketPlaceManager is
 
         marketItemIdToMarketItem[marketItemId].price = price;
         marketItemIdToMarketItem[marketItemId].status = MarketItemStatus.SELLING;
-
+        marketItemIdToMarketItem[marketItemId].endTime = time;
         emit SoldAvailableItem(marketItemId, price);
     }
 
@@ -231,9 +276,9 @@ contract MarketPlaceManager is
         uint256 _tokenId,
         uint256 _amount,
         uint256 _grossSaleValue,
-        address _seller
+        address _seller,
+        uint256 _time
     ) private {
-        // check nft and tokenid in this contract ?
         NftStandard nftType = _checkNftStandard(_nftAddress);
         require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
 
@@ -242,7 +287,7 @@ contract MarketPlaceManager is
 
         MarketItemStatus status = MarketItemStatus.FREE;
         uint256 price;
-        if (_seller == _msgSender()) {
+        if (_time > block.timestamp && _grossSaleValue > 0) {
             status = MarketItemStatus.SELLING;
             price = _grossSaleValue;
         }
@@ -254,6 +299,7 @@ contract MarketPlaceManager is
             _seller,
             address(0),
             price,
+            _time,
             status
         );
 
@@ -266,7 +312,8 @@ contract MarketPlaceManager is
             _amount,
             _seller,
             address(0),
-            price
+            price,
+            _time
         );
     }
 
@@ -275,7 +322,8 @@ contract MarketPlaceManager is
         uint256 _tokenId,
         uint256 _amount,
         uint256 _grossSaleValue,
-        address _seller
+        address _seller,
+        uint256 _time
     )
         external
         onlyOwnerOrAdmin
@@ -284,8 +332,8 @@ contract MarketPlaceManager is
         notZeroAmount(_amount)
     {
         require(_msgSender().isContract(), "ERROR: NOT ALLOWED !");
-        // require address
-        _createMarketInfo(_nftAddress, _tokenId, _amount, _grossSaleValue, _seller);
+
+        _createMarketInfo(_nftAddress, _tokenId, _amount, _grossSaleValue, _seller, _time);
     }
 
     /**
@@ -297,16 +345,25 @@ contract MarketPlaceManager is
         address nftContractAddress,
         uint256 tokenId,
         uint256 amount,
-        uint256 grossSaleValue
+        uint256 grossSaleValue,
+        uint256 endTime
     )
         external
         nonReentrant
         notZeroAddress(nftContractAddress)
         notZeroAmount(amount)
         notZeroAmount(grossSaleValue)
+        notZeroAmount(endTime)
         whenNotPaused
     {
-        _createMarketInfo(nftContractAddress, tokenId, amount, grossSaleValue, _msgSender());
+        _createMarketInfo(
+            nftContractAddress,
+            tokenId,
+            amount,
+            grossSaleValue,
+            _msgSender(),
+            endTime
+        );
 
         _transferNFTCall(nftContractAddress, tokenId, amount, _msgSender(), address(this));
     }

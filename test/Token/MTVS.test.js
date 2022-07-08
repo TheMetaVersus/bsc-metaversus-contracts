@@ -93,21 +93,14 @@ describe("MTVS Token:", () => {
     });
 
     describe("burn function:", async () => {
-        it("should revert when caller not be controller: ", async () => {
-            await expect(token.connect(user1).burn(user1.address, 100)).to.be.revertedWith(
-                "Ownable: caller is not a controller"
-            );
-        });
         it("should revert when amount equal to zero: ", async () => {
-            await expect(token.burn(user1.address, 0)).to.be.revertedWith(
-                "ERROR: Amount equal to zero !"
-            );
+            await expect(token.burn(0)).to.be.revertedWith("ERROR: Amount equal to zero !");
         });
 
         it("should burn success: ", async () => {
             await token.mint(user1.address, 100);
 
-            await token.connect(owner).burn(user1.address, 50);
+            await token.connect(user1).burn(50);
 
             expect(await token.balanceOf(user1.address)).to.equal(50);
         });
