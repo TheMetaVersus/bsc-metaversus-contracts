@@ -7,6 +7,7 @@ interface IMarketplaceManager {
         uint256 _tokenId,
         uint256 _amount,
         uint256 _grossSaleValue,
-        address _seller
+        address _seller,
+        uint256 _time
     ) external;
 }

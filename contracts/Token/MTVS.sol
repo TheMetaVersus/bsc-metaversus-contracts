@@ -96,9 +96,9 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     /**
      *  @notice Burn token
      *
-     *  @dev    Only controllers can call this function.
+     *  @dev   All caller can call this function.
      */
-    function burn(address from, uint256 amount) external onlyControllers notZeroAmount(amount) {
-        _burn(from, amount);
+    function burn(uint256 amount) external notZeroAmount(amount) {
+        _burn(_msgSender(), amount);
     }
 }

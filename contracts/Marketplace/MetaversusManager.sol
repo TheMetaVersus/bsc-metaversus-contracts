@@ -157,14 +157,23 @@ contract MetaversusManager is
     function createNFT(
         TypeNft typeNft,
         uint256 amount,
-        string memory uri
+        string memory uri,
+        uint256 price,
+        uint256 time
     ) external nonReentrant notZeroAmount(amount) whenNotPaused {
         paymentToken.safeTransferFrom(_msgSender(), treasury, fees[uint256(FeeType.FEE_CREATE)]);
 
         if (typeNft == TypeNft.ERC721) {
             tokenMintERC721.mint(_msgSender(), address(marketplace), uri);
             uint256 currentId = tokenMintERC721.getTokenCounter();
-            marketplace.callAfterMint(address(tokenMintERC721), currentId, amount, 0, _msgSender());
+            marketplace.callAfterMint(
+                address(tokenMintERC721),
+                currentId,
+                amount,
+                price,
+                _msgSender(),
+                time
+            );
         } else if (typeNft == TypeNft.ERC1155) {
             tokenMintERC1155.mint(_msgSender(), address(marketplace), amount, uri);
             uint256 currentId = tokenMintERC1155.getTokenCounter();
@@ -172,8 +181,9 @@ contract MetaversusManager is
                 address(tokenMintERC1155),
                 currentId,
                 amount,
-                0,
-                _msgSender()
+                price,
+                _msgSender(),
+                time
             );
         }
 

@@ -163,7 +163,8 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setAdmin(mtvsManager.address, true);
 
             // ERC721
-            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri");
+
+            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0);
             await expect(mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK)).to.be.revertedWith(
                 "ERROR: amount must be greater than zero !"
             );
@@ -178,7 +179,7 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setAdmin(mtvsManager.address, true);
 
             // ERC721
-            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri");
+            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0);
             await expect(
                 mkpManager.sellAvaiableInMarketplace(1, 1000, ONE_WEEK)
             ).to.be.revertedWith("ERROR: sender is not owner this NFT");
@@ -193,7 +194,7 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setAdmin(mtvsManager.address, true);
 
             // ERC721
-            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri");
+            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0);
             const latest_1 = await mkpManager.getLatestMarketItemByTokenId(
                 tokenMintERC721.address,
                 1
@@ -207,7 +208,7 @@ describe("Marketplace Manager:", () => {
             );
             expect(data_ERC721.price).to.equal(10005);
             // ERC1155
-            await mtvsManager.connect(user1).createNFT(1, 100, "this_uri");
+            await mtvsManager.connect(user1).createNFT(1, 100, "this_uri", 0, 0);
             const latest_2 = await mkpManager.getLatestMarketItemByTokenId(
                 tokenMintERC1155.address,
                 1
@@ -250,9 +251,13 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
+            const blockNumAfter = await ethers.provider.getBlockNumber();
+            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+            const current = blockAfter.timestamp;
+
             const tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1000, current + ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -414,10 +419,13 @@ describe("Marketplace Manager:", () => {
             // ERC721
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
+            const blockNumAfter = await ethers.provider.getBlockNumber();
+            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+            let current = blockAfter.timestamp;
 
             let tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1234, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1234, current + ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -430,10 +438,10 @@ describe("Marketplace Manager:", () => {
             // ERC1155
             await tokenMintERC1155.connect(user2).buy(100, "this_uri");
             await tokenMintERC1155.connect(user2).setApprovalForAll(mkpManager.address, true);
-
+            current = blockAfter.timestamp;
             tx = await mkpManager
                 .connect(user2)
-                .sell(tokenMintERC1155.address, 1, 100, 4321, ONE_WEEK);
+                .sell(tokenMintERC1155.address, 1, 100, 4321, current + ONE_WEEK);
             listener = await tx.wait();
             event = listener.events.find(x => x.event == "MarketItemCreated");
             marketId = event.args[0].toString();
@@ -468,10 +476,13 @@ describe("Marketplace Manager:", () => {
             // ERC721
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
+            const blockNumAfter = await ethers.provider.getBlockNumber();
+            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+            let current = blockAfter.timestamp;
 
             let tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1234, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1234, current + ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -489,10 +500,10 @@ describe("Marketplace Manager:", () => {
             // ERC1155
             await tokenMintERC1155.connect(user2).buy(100, "this_uri");
             await tokenMintERC1155.connect(user2).setApprovalForAll(mkpManager.address, true);
-
+            current = blockAfter.timestamp;
             tx = await mkpManager
                 .connect(user2)
-                .sell(tokenMintERC1155.address, 1, 100, 4321, ONE_WEEK);
+                .sell(tokenMintERC1155.address, 1, 100, 4321, current + ONE_WEEK);
             listener = await tx.wait();
             event = listener.events.find(x => x.event == "MarketItemCreated");
             marketId = event.args[0].toString();
@@ -527,10 +538,13 @@ describe("Marketplace Manager:", () => {
             // ERC721
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
+            const blockNumAfter = await ethers.provider.getBlockNumber();
+            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+            let current = blockAfter.timestamp;
 
             let tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1234, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1234, current + ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -543,10 +557,10 @@ describe("Marketplace Manager:", () => {
             // ERC1155
             await tokenMintERC1155.connect(user2).buy(100, "this_uri");
             await tokenMintERC1155.connect(user2).setApprovalForAll(mkpManager.address, true);
-
+            current = blockAfter.timestamp;
             tx = await mkpManager
                 .connect(user2)
-                .sell(tokenMintERC1155.address, 1, 100, 4321, ONE_WEEK);
+                .sell(tokenMintERC1155.address, 1, 100, 4321, current + ONE_WEEK);
             listener = await tx.wait();
             event = listener.events.find(x => x.event == "MarketItemCreated");
             marketId = event.args[0].toString();
