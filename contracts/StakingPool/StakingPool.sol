@@ -68,11 +68,6 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     uint256 private _startTime;
 
     /**
-     *  @notice _startTime is timestamp start staking in pool.
-     */
-    uint256 public limitStaking;
-
-    /**
      *  @notice _stakeToken IERC20 is interface of staked token.
      */
     IERC20Upgradeable private _stakeToken;
@@ -214,7 +209,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @dev    Only user has NFT can call this function.
      */
     function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
-        if (_startTime == 0) {
+        if (_startTime < block.timestamp) {
             _startTime = block.timestamp;
         }
 
