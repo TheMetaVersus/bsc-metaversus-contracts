@@ -14,7 +14,7 @@ import "../Adminable.sol";
  *
  *  @author Metaversus Team
  *
- *  @notice This smart contract is the staking pool for staking, earning more MTVS token with standard ERC721 and ERC1155
+ *  @notice This smart contract is the staking pool for staking, earning more MTVS token with standard ERC20
  *          all action which user could stake, unstake, claim them.
  */
 contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, PausableUpgradeable {
@@ -313,6 +313,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             "Please request and can withdraw after 24 hours"
         );
         user.lazyUnstake.isRequested = false;
+        user.lazyClaim.isRequested = false;
 
         // Auto claim
         if (user.totalAmount > 0) {
