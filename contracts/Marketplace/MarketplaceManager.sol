@@ -133,7 +133,7 @@ contract MarketPlaceManager is
         address _paymentToken,
         address _treasury
     ) public initializer {
-        OwnableUpgradeable.__Ownable_init();
+        Adminable.__Adminable_init();
         PausableUpgradeable.__Pausable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
@@ -170,15 +170,6 @@ contract MarketPlaceManager is
      */
     function getListingFee(uint256 amount) public view returns (uint256) {
         return amount.mul(listingFee).div(DENOMINATOR);
-    }
-
-    function updateStatus() public onlyOwnerOrAdmin {
-        for (uint256 i = 0; i < _marketItemIds.current(); i++) {
-            MarketItem storage item = marketItemIdToMarketItem[i + 1];
-            if (item.endTime <= block.timestamp) {
-                item.status = MarketItemStatus.FREE;
-            }
-        }
     }
 
     /**
@@ -255,14 +246,13 @@ contract MarketPlaceManager is
         uint256 price,
         uint256 time
     ) external nonReentrant validateId(marketItemId) notZeroAmount(price) whenNotPaused {
-        require(
-            marketItemIdToMarketItem[marketItemId].seller == _msgSender(),
-            "ERROR: sender is not owner this NFT"
-        );
+        MarketItem storage item = marketItemIdToMarketItem[marketItemId];
+        require(item.status == MarketItemStatus.FREE, "ERROR: market item is not free !");
+        require(item.seller == _msgSender(), "ERROR: sender is not owner this NFT");
 
-        marketItemIdToMarketItem[marketItemId].price = price;
-        marketItemIdToMarketItem[marketItemId].status = MarketItemStatus.SELLING;
-        marketItemIdToMarketItem[marketItemId].endTime = time;
+        item.price = price;
+        item.status = MarketItemStatus.SELLING;
+        item.endTime = time;
         emit SoldAvailableItem(marketItemId, price);
     }
 
@@ -331,8 +321,8 @@ contract MarketPlaceManager is
         notZeroAddress(_seller)
         notZeroAmount(_amount)
     {
-        require(_msgSender().isContract(), "ERROR: NOT ALLOWED !");
-
+        require(_msgSender().isContract(), "ERROR: not allowed !");
+        // create market item to store data
         _createMarketInfo(_nftAddress, _tokenId, _amount, _grossSaleValue, _seller, _time);
     }
 
@@ -356,6 +346,7 @@ contract MarketPlaceManager is
         notZeroAmount(endTime)
         whenNotPaused
     {
+        // create market item to store data selling
         _createMarketInfo(
             nftContractAddress,
             tokenId,
@@ -364,7 +355,7 @@ contract MarketPlaceManager is
             _msgSender(),
             endTime
         );
-
+        // transfer nft to contract for selling
         _transferNFTCall(nftContractAddress, tokenId, amount, _msgSender(), address(this));
     }
 
@@ -379,23 +370,20 @@ contract MarketPlaceManager is
         validateId(marketItemId)
         whenNotPaused
     {
+        MarketItem memory item = marketItemIdToMarketItem[marketItemId];
         require(
-            marketItemIdToMarketItem[marketItemId].seller == _msgSender(),
-            "ERROR: you are not the seller !"
+            item.status == MarketItemStatus.FREE || item.status == MarketItemStatus.SELLING,
+            "ERROR: NFT not available !"
         );
-
-        MarketItem memory data = marketItemIdToMarketItem[marketItemId];
-
-        marketItemIdToMarketItem[marketItemId].status = MarketItemStatus.CANCELED;
-
+        require(item.seller == _msgSender(), "ERROR: you are not the seller !");
+        // update market item
+        item.status = MarketItemStatus.CANCELED;
         marketItemOfOwner[_msgSender()].remove(marketItemId);
-
-        paymentToken.safeTransferFrom(_msgSender(), address(this), listingFee);
-
+        // transfer nft back seller
         _transferNFTCall(
-            data.nftContractAddress,
-            data.tokenId,
-            data.amount,
+            item.nftContractAddress,
+            item.tokenId,
+            item.amount,
             address(this),
             _msgSender()
         );
@@ -415,20 +403,22 @@ contract MarketPlaceManager is
         whenNotPaused
     {
         MarketItem memory data = marketItemIdToMarketItem[marketItemId];
+        require(data.status == MarketItemStatus.SELLING, "ERROR: NFT is not selling");
 
-        marketItemIdToMarketItem[marketItemId].buyer = _msgSender();
-        marketItemIdToMarketItem[marketItemId].status = MarketItemStatus.SOLD;
+        // update new buyer for martket item
+        data.buyer = _msgSender();
+        data.status = MarketItemStatus.SOLD;
         marketItemOfOwner[_msgSender()].remove(marketItemId);
-
+        // request token
         paymentToken.safeTransferFrom(_msgSender(), address(this), data.price);
-
+        // pay listing fee
         uint256 netSaleValue = data.price - getListingFee(data.price);
-
+        // pay 2.5% royalties from the amount actually received
         uint256 royaltyFee = _deduceRoyalties(data.nftContractAddress, data.tokenId, netSaleValue);
         netSaleValue -= royaltyFee;
-
+        // pay 97.5% of the amount actually received to seller
         paymentToken.safeTransfer(data.seller, netSaleValue);
-
+        // transfer nft to buyer
         _transferNFTCall(
             data.nftContractAddress,
             data.tokenId,
