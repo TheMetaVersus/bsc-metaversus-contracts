@@ -5,14 +5,14 @@ const {
   subtract,
   multiply,
   divide,
-  compareTo,
+  compareTo
 } = require("js-big-decimal");
-const skipTime = async (seconds) => {
+const skipTime = async seconds => {
   await network.provider.send("evm_increaseTime", [seconds]);
   await network.provider.send("evm_mine");
 };
 
-const setTime = async (time) => {
+const setTime = async time => {
   await network.provider.send("evm_setNextBlockTimestamp", [time]);
   await network.provider.send("evm_mine");
 };
@@ -34,7 +34,7 @@ const getProfitRoot = (pool, days, deposedCash, round) => {
     .toString();
 };
 
-const skipBlock = async (blockNumber) => {
+const skipBlock = async blockNumber => {
   for (let index = 0; index < blockNumber; index++) {
     await hre.ethers.provider.send("evm_mine");
   }
@@ -49,6 +49,11 @@ const acceptable = (expected, actual, eps) => {
   return compareTo(eps, subtract(expected, actual).replace("-", "")) !== -1;
 };
 
+const getCurrentTime = async () => {
+  const blockNumber = await hre.ethers.provider.getBlockNumber();
+  const block = await hre.ethers.provider.getBlock(blockNumber);
+  return block.timestamp;
+};
 module.exports = {
   skipTime,
   setTime,
@@ -57,4 +62,5 @@ module.exports = {
   skipBlock,
   getCurrentBlock,
   acceptable,
+  getCurrentTime
 };

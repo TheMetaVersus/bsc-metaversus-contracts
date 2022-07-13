@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { upgrades } = require("hardhat");
-const { skipTime, acceptable } = require("../utils");
+const { skipTime, acceptable, getCurrentTime } = require("../utils");
 const { add, multiply, divide, subtract } = require("js-big-decimal");
 
 describe("Staking Pool:", () => {
@@ -9,15 +9,9 @@ describe("Staking Pool:", () => {
         poolDuration = 9 * 30 * 24 * 60 * 60; // 9 months
         OVER_AMOUNT = ethers.utils.parseEther("1000000");
         ONE_ETHER = ethers.utils.parseEther("1");
-        ZERO = 0;
         ONE_YEAR = 31104000;
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         PRICE = 10000;
-
-        const blockNumAfter = await ethers.provider.getBlockNumber();
-        const blockAfter = await ethers.provider.getBlock(blockNumAfter);
-        const timestampAfter = blockAfter.timestamp;
-        CURRENT_TIME = timestampAfter;
 
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -58,6 +52,8 @@ describe("Staking Pool:", () => {
         ]);
 
         await staking.deployed();
+        CURRENT = await getCurrentTime();
+        await staking.setStartTime(CURRENT);
     });
 
     describe("Deployment:", async () => {
@@ -100,7 +96,7 @@ describe("Staking Pool:", () => {
     });
     describe("getStartTime:", async () => {
         it("should return start time of staking pool: ", async () => {
-            expect(await staking.getStartTime()).to.equal(ZERO);
+            expect(await staking.getStartTime()).to.equal(CURRENT.toString());
         });
     });
 
@@ -153,7 +149,20 @@ describe("Staking Pool:", () => {
             expect(await token.balanceOf(user1.address)).to.equal(0);
         });
     });
+    describe("calReward:", async () => {
+        it("should return zero reward: ", async () => {
+            const calReward = await staking.calReward(user1.address);
+
+            expect(calReward).to.equal(0);
+        });
+    });
     describe("pendingRewards:", async () => {
+        it("should return zero reward: ", async () => {
+            const pendingRewards = await staking.pendingRewards(user1.address);
+
+            expect(pendingRewards).to.equal(0);
+        });
+
         it("should return pending reward: ", async () => {
             await nftMTVSTicket.mint(user1.address);
             const claimTime = 4 * 30 * 24 * 60 * 60;
@@ -185,11 +194,11 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime);
             await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith(
-                "Not allow unstake at this time"
+                "ERROR: not allow unstake at this time"
             );
         });
 
-        it("should revert when Requested !: ", async () => {
+        it("should revert when ERROR: requested !: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             await nftMTVSTicket.mint(user1.address);
@@ -199,7 +208,9 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime + poolDuration);
             await staking.connect(user1).requestUnstake();
-            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith("Requested !");
+            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith(
+                "ERROR: requested !"
+            );
         });
 
         it("should request success: ", async () => {
@@ -224,9 +235,9 @@ describe("Staking Pool:", () => {
             await token.mint(user1.address, ONE_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             await nftMTVSTicket.mint(user1.address);
-
+            await staking.setStartTime(0);
             await expect(staking.connect(user1).requestClaim()).to.be.revertedWith(
-                "Pool is not start !"
+                "ERROR: pool is not start !"
             );
         });
         it("should revert when more request: ", async () => {
@@ -239,7 +250,9 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime);
             await staking.connect(user1).requestClaim();
-            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("Requested !");
+            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith(
+                "ERROR: requested !"
+            );
         });
         it("should request success: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
@@ -264,16 +277,16 @@ describe("Staking Pool:", () => {
 
             await staking.connect(user1).stake(ONE_ETHER);
 
-            await skipTime(10 * 30 * 24 * 60 * 60);
+            await skipTime(30 * 24 * 60 * 60);
             await staking.connect(user1).requestClaim();
             await skipTime(23 * 60 * 60 + 1); // 23h
 
             await expect(staking.connect(user1).claim()).to.be.revertedWith(
-                "Please request and can claim after 24 hours"
+                "ERROR: please request and can claim after 24 hours"
             );
         });
 
-        it("should revert when amount of reward value equal to zero ", async () => {
+        it("should revert when amount of ERROR: reward value equal to zero ", async () => {
             // emulator balance
             await token.mint(staking.address, ONE_ETHER);
             await token.mint(user1.address, ONE_ETHER);
@@ -283,16 +296,12 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
 
             await skipTime(10 * 30 * 24 * 60 * 60);
-            await staking.connect(user1).requestUnstake();
-            await skipTime(24 * 60 * 60 + 1);
-
-            await staking.connect(user1).unstake(ONE_ETHER);
 
             await staking.connect(user1).requestClaim();
             await skipTime(24 * 60 * 60 + 1);
 
             await expect(staking.connect(user1).claim()).to.be.revertedWith(
-                "Reward value equal to zero"
+                "ERROR: staking pool had been expired !"
             );
         });
 
@@ -332,7 +341,7 @@ describe("Staking Pool:", () => {
             await skipTime(unstakeTime);
 
             await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith(
-                "Staking: StakingPool for NFT has not expired yet.."
+                "ERROR: staking pool for NFT has not expired yet !"
             );
         });
         it("should revert when request not finish after 24 hours: ", async () => {
@@ -346,7 +355,7 @@ describe("Staking Pool:", () => {
             await skipTime(unstakeTime);
 
             await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith(
-                "Please request and can withdraw after 24 hours"
+                "ERROR: please request and can withdraw after 24 hours"
             );
         });
         it("should revert when connot unstake more than staked amount: ", async () => {
@@ -360,7 +369,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).requestUnstake();
             await skipTime(25 * 60 * 60);
             await expect(staking.connect(user1).unstake(OVER_AMOUNT)).to.be.revertedWith(
-                "Staking: Cannot unstake more than staked amount."
+                "ERROR: cannot unstake more than staked amount"
             );
         });
         it("should unstake success: ", async () => {
@@ -381,6 +390,7 @@ describe("Staking Pool:", () => {
             expect(await token.balanceOf(staking.address)).to.equal(
                 subtract(ONE_ETHER, pendingRewards)
             );
+
             expect(await token.balanceOf(user1.address)).to.equal(add(ONE_ETHER, pendingRewards));
         });
     });

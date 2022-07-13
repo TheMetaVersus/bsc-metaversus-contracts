@@ -1,12 +1,14 @@
+const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 const { constants } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-
+const { multiply, add, subtract } = require("js-big-decimal");
+const erc721 = require("../../artifacts/contracts/Token/TokenMintERC721.sol/TokenMintERC721.json");
 describe("Marketplace Manager:", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = "1000000000000000000000000000000";
-        PRICE = "1000000000000000000";
-        ONE_ETHER = "1000000000000000000";
+        TOTAL_SUPPLY = ethers.utils.parseEther("1000");
+        PRICE = ethers.utils.parseEther("1");
+        ONE_ETHER = ethers.utils.parseEther("1");
         ONE_WEEK = 604800;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -127,6 +129,24 @@ describe("Marketplace Manager:", () => {
         });
     });
 
+    describe("setMTVSManager function:", async () => {
+        it("should revert when caller is not owner or admin: ", async () => {
+            await expect(
+                mkpManager.connect(user1).setMTVSManager(user2.address)
+            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+        });
+        it("should set mtvsManager success: ", async () => {
+            await mkpManager.setMTVSManager(treasury.address);
+            expect(await mkpManager.mtvsManager()).to.equal(treasury.address);
+
+            await mkpManager.setMTVSManager(user1.address);
+            expect(await mkpManager.mtvsManager()).to.equal(user1.address);
+
+            await mkpManager.setMTVSManager(mtvsManager.address);
+            expect(await mkpManager.mtvsManager()).to.equal(mtvsManager.address);
+        });
+    });
+
     describe("getListingFee function:", async () => {
         it("should return tuple listingFee: ", async () => {
             expect(await mkpManager.getListingFee(100000)).to.equal(2500);
@@ -184,7 +204,7 @@ describe("Marketplace Manager:", () => {
                 mkpManager.sellAvaiableInMarketplace(1, 1000, ONE_WEEK)
             ).to.be.revertedWith("ERROR: sender is not owner this NFT");
         });
-        it("should sell success and return marketItemId: ", async () => {
+        it("should sellAvaiableInMarketplace success and return marketItemId: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
             await token.mint(owner.address, ONE_ETHER);
             await token.approve(user1.address, ethers.constants.MaxUint256);
@@ -229,7 +249,7 @@ describe("Marketplace Manager:", () => {
         it("should revert when nft contract equal to zero address: ", async () => {
             await expect(
                 mkpManager.sell(constants.ZERO_ADDRESS, 0, 100, 100, ONE_WEEK)
-            ).to.be.revertedWith("ERROR: Invalid address !");
+            ).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should revert when amount equal to zero: ", async () => {
             await expect(
@@ -241,7 +261,22 @@ describe("Marketplace Manager:", () => {
                 mkpManager.sell(tokenMintERC721.address, 0, 100, 0, ONE_WEEK)
             ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
-        it("should sell success and return marketItemId: ", async () => {
+        it("should revert ERROR: NFT address is compatible !", async () => {
+            await token.mint(user1.address, ONE_ETHER);
+
+            await token
+                .connect(user1)
+                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+
+            const blockNumAfter = await ethers.provider.getBlockNumber();
+            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+            const current = blockAfter.timestamp;
+
+            await expect(
+                mkpManager.connect(user1).sell(treasury.address, 1, 1, 1000, current + ONE_WEEK)
+            ).to.be.revertedWith("ERROR: NFT address is compatible !");
+        });
+        it("should sell success : ", async () => {
             await token.mint(user1.address, ONE_ETHER);
 
             await token
@@ -338,22 +373,40 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
+
+            const blockNumAfter = await ethers.provider.getBlockNumber();
+            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+            const current = blockAfter.timestamp;
+
             const tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, ONE_ETHER, current + ONE_WEEK);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
-
+            console.log("marketId", marketId);
             await expect(() => mkpManager.connect(user2).buy(marketId)).to.changeTokenBalance(
                 tokenMintERC721,
                 user2,
                 1
             );
+            const valueNotListingFee = multiply(0.025, ONE_ETHER);
+            expect(await token.balanceOf(treasury.address)).to.equal(
+                add(
+                    TOTAL_SUPPLY,
+                    add(PRICE, subtract(valueNotListingFee, multiply(valueNotListingFee, 0.025)))
+                )
+            );
         });
     });
 
     describe("getLatestMarketItemByTokenId function:", async () => {
+        it("should return zero market item: ", async () => {
+            const data = await mkpManager.getLatestMarketItemByTokenId(tokenMintERC721.address, 1);
+
+            expect(data[0].marketItemId).to.equal(0);
+            expect(data[1]).to.equal(false);
+        });
         it("should return latest market item: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
             await token.mint(user2.address, ONE_ETHER);

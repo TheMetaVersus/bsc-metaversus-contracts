@@ -21,12 +21,6 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeMathUpgradeable for uint256;
 
-    struct UserHistory {
-        string action;
-        uint256 timestamp;
-        uint256 amount;
-    }
-
     struct Lazy {
         uint256 unlockedTime;
         bool isRequested;
@@ -35,11 +29,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     struct UserInfo {
         uint256 totalAmount;
         uint256 pendingRewards;
-        uint256 indexLength;
         uint256 lastClaim;
         Lazy lazyUnstake;
         Lazy lazyClaim;
-        UserHistory[] userHistory;
     }
 
     /**
@@ -82,9 +74,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     mapping(address => UserInfo) public users;
 
-    event Staked(address indexed user, uint256 indexed amount);
-    event UnStaked(address indexed user, uint256 indexed amount);
-    event Claimed(address indexed user, uint256 indexed amount);
+    event Staked(address indexed user, uint256 amount);
+    event UnStaked(address indexed user, uint256 amount);
+    event Claimed(address indexed user, uint256 amount);
     event EmergencyWithdrawed(address indexed owner, address indexed token);
     event SetRewardRate(uint256 indexed rate);
     event SetUnstakeTime(uint256 indexed pendingTime);
@@ -104,7 +96,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         uint256 rewardRate_,
         uint256 poolDuration_
     ) public initializer {
-        OwnableUpgradeable.__Ownable_init();
+        Adminable.__Adminable_init();
         transferOwnership(owner_);
         _stakeToken = stakeToken_;
         _rewardToken = rewardToken_;
@@ -153,7 +145,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setStartTime(uint256 startTime) external notZeroAmount(startTime) onlyOwnerOrAdmin {
+    function setStartTime(uint256 startTime) external onlyOwnerOrAdmin {
         _startTime = startTime;
         emit SetStartTime(startTime);
     }
@@ -209,10 +201,11 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @dev    Only user has NFT can call this function.
      */
     function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
-        if (_startTime < block.timestamp) {
-            _startTime = block.timestamp;
-        }
-
+        require(
+            _startTime.add(_poolDuration) > block.timestamp,
+            "ERROR: staking pool for NFT had been expired !"
+        );
+        // calculate pending rewards of staked amount before
         UserInfo storage user = users[_msgSender()];
         if (user.totalAmount > 0) {
             uint256 pending = calReward(_msgSender());
@@ -221,12 +214,14 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             }
         }
         user.lastClaim = block.timestamp;
-        // Request transfer from user to contract
+
+        // add extra token just deposited
         user.totalAmount = user.totalAmount.add(_amount);
         _stakedAmount = _stakedAmount.add(_amount);
-        user.indexLength = user.indexLength.add(1);
-        user.userHistory.push(UserHistory("Staked", user.totalAmount, block.timestamp));
+
+        // request transfer token
         _stakeToken.safeTransferFrom(_msgSender(), address(this), _amount);
+
         emit Staked(_msgSender(), _amount);
     }
 
@@ -249,12 +244,13 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     function requestUnstake() external nonReentrant whenNotPaused returns (uint256) {
         require(
             _startTime.add(_poolDuration) < block.timestamp && _startTime != 0,
-            "Not allow unstake at this time"
+            "ERROR: not allow unstake at this time"
         );
         UserInfo storage user = users[_msgSender()];
-        require(!user.lazyUnstake.isRequested, "Requested !");
+        require(!user.lazyUnstake.isRequested, "ERROR: requested !");
         user.lazyUnstake.isRequested = true;
         user.lazyUnstake.unlockedTime = block.timestamp + pendingUnstake;
+
         emit RequestUnstake(_msgSender());
         return user.lazyUnstake.unlockedTime;
     }
@@ -263,12 +259,13 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Request claim before unstake activity
      */
     function requestClaim() external nonReentrant whenNotPaused returns (uint256) {
-        require(_startTime > 0, "Pool is not start !");
+        require(_startTime > 0, "ERROR: pool is not start !");
         UserInfo storage user = users[_msgSender()];
-        require(!user.lazyClaim.isRequested, "Requested !");
+        require(!user.lazyClaim.isRequested, "ERROR: requested !");
 
         user.lazyClaim.isRequested = true;
         user.lazyClaim.unlockedTime = block.timestamp + pendingUnstake;
+
         emit RequestClaim(_msgSender());
         return user.lazyClaim.unlockedTime;
     }
@@ -279,24 +276,26 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     function claim() external nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
         require(
-            user.lazyClaim.isRequested && user.lazyClaim.unlockedTime <= block.timestamp,
-            "Please request and can claim after 24 hours"
+            _startTime.add(_poolDuration) >= block.timestamp,
+            "ERROR: staking pool had been expired !"
         );
-        require(user.totalAmount > 0, "Reward value equal to zero");
+        require(
+            user.lazyClaim.isRequested && user.lazyClaim.unlockedTime <= block.timestamp,
+            "ERROR: please request and can claim after 24 hours"
+        );
+        // update status of request
         user.lazyClaim.isRequested = false;
+        user.lastClaim = block.timestamp;
+
         if (user.totalAmount > 0) {
-            if (_startTime <= block.timestamp) {
-                uint256 pending = pendingRewards(_msgSender());
-                if (pending > 0) {
-                    user.pendingRewards = 0;
-                    _rewardToken.safeTransfer(_msgSender(), pending);
-                }
+            uint256 pending = pendingRewards(_msgSender());
+            if (pending > 0) {
+                user.pendingRewards = 0;
+                // transfer token
+                _rewardToken.safeTransfer(_msgSender(), pending);
                 emit Claimed(_msgSender(), pending);
             }
         }
-        user.lastClaim = block.timestamp;
-        user.indexLength = user.indexLength.add(1);
-        user.userHistory.push(UserHistory("Claimed", user.totalAmount, block.timestamp));
     }
 
     /**
@@ -306,35 +305,32 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         UserInfo storage user = users[_msgSender()];
         require(
             _startTime.add(_poolDuration) <= block.timestamp,
-            "Staking: StakingPool for NFT has not expired yet.."
+            "ERROR: staking pool for NFT has not expired yet !"
         );
         require(
             user.lazyUnstake.isRequested && user.lazyUnstake.unlockedTime <= block.timestamp,
-            "Please request and can withdraw after 24 hours"
+            "ERROR: please request and can withdraw after 24 hours"
         );
-        user.lazyUnstake.isRequested = false;
-        user.lazyClaim.isRequested = false;
+        require(user.totalAmount >= _amount, "ERROR: cannot unstake more than staked amount");
 
         // Auto claim
-        if (user.totalAmount > 0) {
-            if (_startTime <= block.timestamp) {
-                uint256 pending = pendingRewards(_msgSender());
-                if (pending > 0) {
-                    user.pendingRewards = 0;
-                    _rewardToken.safeTransfer(_msgSender(), pending);
-                }
-            }
-        }
+        uint256 pending = pendingRewards(_msgSender());
 
+        // update status of request
+        user.lazyUnstake.isRequested = false;
+        user.lazyClaim.isRequested = false;
         user.lastClaim = block.timestamp;
-
-        require(user.totalAmount >= _amount, "Staking: Cannot unstake more than staked amount.");
-
+        // update data before transfer
         user.totalAmount = user.totalAmount.sub(_amount);
         _stakedAmount = _stakedAmount.sub(_amount);
+        // claim token
+        if (pending > 0) {
+            user.pendingRewards = 0;
+            _rewardToken.safeTransfer(_msgSender(), pending);
+        }
+
+        // transfer token
         _stakeToken.safeTransfer(_msgSender(), _amount);
-        user.indexLength = user.indexLength.add(1);
-        user.userHistory.push(UserHistory("Unstaked", user.totalAmount, block.timestamp));
 
         emit UnStaked(_msgSender(), _amount);
     }
