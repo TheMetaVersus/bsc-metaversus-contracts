@@ -4,7 +4,7 @@ const { constants } = require("@openzeppelin/test-helpers");
 
 describe("Treasury:", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = "1000000000000000000000000000000";
+        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
 
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -59,7 +59,7 @@ describe("Treasury:", () => {
         it("should revert when payment token is invalid address: ", async () => {
             await expect(
                 treasury.setPermitedPaymentToken(constants.ZERO_ADDRESS, true)
-            ).to.be.revertedWith("ERROR: Invalid address !");
+            ).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should set payment token success: ", async () => {
             await treasury.setPermitedPaymentToken(token.address, true);
@@ -78,7 +78,7 @@ describe("Treasury:", () => {
         });
         it("should revert when payment token is not permit: ", async () => {
             await expect(treasury.distribute(token.address, user1.address, 10)).to.be.revertedWith(
-                "ERROR: Token is not permit !"
+                "ERROR: token is not permit !"
             );
         });
         it("should revert when payment token is invalid address: ", async () => {
@@ -86,14 +86,14 @@ describe("Treasury:", () => {
             await treasury.setPermitedPaymentToken(token.address, true);
             await expect(
                 treasury.distribute(constants.ZERO_ADDRESS, user1.address, 10)
-            ).to.be.revertedWith("ERROR: Invalid address !");
+            ).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should revert when destination address is invalid address: ", async () => {
             await token.mint(treasury.address, 100);
             await treasury.setPermitedPaymentToken(token.address, true);
             await expect(
                 treasury.distribute(token.address, constants.ZERO_ADDRESS, 10)
-            ).to.be.revertedWith("ERROR: Invalid address !");
+            ).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should revert when token amount equal to zero: ", async () => {
             await token.mint(treasury.address, 100);

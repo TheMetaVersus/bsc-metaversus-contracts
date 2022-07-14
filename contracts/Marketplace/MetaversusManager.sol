@@ -95,7 +95,7 @@ contract MetaversusManager is
         uint256 _feeStakingNFT,
         uint256 _feeEventNFT
     ) public initializer {
-        OwnableUpgradeable.__Ownable_init();
+        Adminable.__Adminable_init();
         PausableUpgradeable.__Pausable_init();
         transferOwnership(_owner);
         treasury = _treasury;

@@ -2,10 +2,11 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
 
-const { add } = require("js-big-decimal");
+const { add, subtract } = require("js-big-decimal");
 describe("TokenMintERC1155:", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = "1000000000000000000000000000000";
+        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
+        ONE_ETHER = ethers.utils.parseEther("1");
         PRICE = 10000;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -84,6 +85,26 @@ describe("TokenMintERC1155:", () => {
         });
     });
 
+    describe("setURI function:", async () => {
+        it("should setURI: ", async () => {
+            const URI = "this_is_uri_1.json";
+            await tokenMintERC1155.mint(user1.address, mkpManager.address, 100, URI);
+
+            const newURI = await tokenMintERC1155.uri(1);
+
+            expect(newURI).to.equal(URI);
+            await tokenMintERC1155.setURI("new_uri.json", 1);
+            expect(await tokenMintERC1155.uri(1)).to.equal("new_uri.json");
+        });
+    });
+
+    describe("setPrice function:", async () => {
+        it("should setPrice: ", async () => {
+            await tokenMintERC1155.setPrice(1000);
+            expect(await tokenMintERC1155.price()).to.equal(1000);
+        });
+    });
+
     describe("setTreasury function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
@@ -92,7 +113,7 @@ describe("TokenMintERC1155:", () => {
         });
         it("should revert when address equal to zero address: ", async () => {
             await expect(tokenMintERC1155.setTreasury(constants.ZERO_ADDRESS)).to.be.revertedWith(
-                "ERROR: Invalid address !"
+                "ERROR: invalid address !"
             );
         });
         it("should set treasury success: ", async () => {
@@ -114,7 +135,7 @@ describe("TokenMintERC1155:", () => {
             );
         });
         it("should buy success: ", async () => {
-            await token.mint(user1.address, "1000000000000000000");
+            await token.mint(user1.address, ONE_ETHER);
 
             await token
                 .connect(user1)
@@ -126,6 +147,9 @@ describe("TokenMintERC1155:", () => {
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
 
             expect(await tokenMintERC1155.balanceOf(user1.address, 1)).to.equal(100);
+
+            expect(await token.balanceOf(user1.address)).to.equal(subtract(ONE_ETHER, PRICE));
+            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
         });
     });
 
@@ -140,12 +164,12 @@ describe("TokenMintERC1155:", () => {
         it("should revert when seller address equal to zero address: ", async () => {
             await expect(
                 tokenMintERC1155.mint(constants.ZERO_ADDRESS, mkpManager.address, 100, "this_uri")
-            ).to.be.revertedWith("ERROR: Invalid address !");
+            ).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should revert when receiver address equal to zero address: ", async () => {
             await expect(
                 tokenMintERC1155.mint(user1.address, constants.ZERO_ADDRESS, 100, "this_uri")
-            ).to.be.revertedWith("ERROR: Invalid address !");
+            ).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should revert when amount equal to zero address: ", async () => {
             await expect(
@@ -153,7 +177,7 @@ describe("TokenMintERC1155:", () => {
             ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should mint success: ", async () => {
-            await token.mint(owner.address, "1000000000000000000");
+            await token.mint(owner.address, ONE_ETHER);
 
             await token
                 .connect(owner)

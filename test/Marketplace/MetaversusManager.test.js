@@ -1,13 +1,13 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
-const { add } = require("js-big-decimal");
+const { add, subtract } = require("js-big-decimal");
 
 describe("Metaversus Manager:", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = "1000000000000000000000000000000";
-        AMOUNT = "1000000000000000000000000000000";
-        PRICE = "1000000000000000000";
+        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
+        AMOUNT = ethers.utils.parseEther("1000000000000");
+        PRICE = ethers.utils.parseEther("1");
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -126,7 +126,7 @@ describe("Metaversus Manager:", () => {
         });
         it("should revert when address equal to zero address: ", async () => {
             await expect(mtvsManager.setMarketplace(constants.ZERO_ADDRESS)).to.be.revertedWith(
-                "ERROR: Invalid address !"
+                "ERROR: invalid address !"
             );
         });
         it("should set marketplace address success: ", async () => {
@@ -261,6 +261,7 @@ describe("Metaversus Manager:", () => {
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 350));
             expect(await nftMTVSTicket.ownerOf(1)).to.equal(user2.address);
             expect(await nftMTVSTicket.balanceOf(user2.address)).to.equal(1);
+            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 350));
         });
     });
 

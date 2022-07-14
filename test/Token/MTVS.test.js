@@ -4,7 +4,7 @@ const { upgrades, ethers } = require("hardhat");
 const constants = require("@openzeppelin/test-helpers/src/constants");
 describe("MTVS Token:", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = "1000000000000000000000000000000";
+        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -58,7 +58,7 @@ describe("MTVS Token:", () => {
         });
         it("should revert when user address equal to zero address: ", async () => {
             await expect(token.setController(constants.ZERO_ADDRESS, true)).to.be.revertedWith(
-                "ERROR: Invalid address !"
+                "ERROR: invalid address !"
             );
         });
         it("should set controller success: ", async () => {
@@ -78,7 +78,7 @@ describe("MTVS Token:", () => {
         });
         it("should revert when receiver is zero address: ", async () => {
             await expect(token.mint(constants.ZERO_ADDRESS, 100)).to.be.revertedWith(
-                "ERROR: Invalid address !"
+                "ERROR: invalid address !"
             );
         });
         it("should revert when amount equal to zero: ", async () => {
