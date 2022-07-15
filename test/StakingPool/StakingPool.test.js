@@ -47,6 +47,7 @@ describe("Staking Pool:", () => {
             owner.address,
             token.address,
             token.address,
+            nftMTVSTicket.address,
             REWARD_RATE,
             poolDuration,
         ]);

@@ -1,11 +1,11 @@
 const { constants } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { add } = require("js-big-decimal");
+const { add, subtract } = require("js-big-decimal");
 describe("NFTMTVSTicket:", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = "1000000000000000000000000000000";
-        ONE_ETHER = "1000000000000000000";
+        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
+        ONE_ETHER = ethers.utils.parseEther("1");
         PRICE = 1000;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -88,7 +88,7 @@ describe("NFTMTVSTicket:", () => {
         });
         it("should revert when address equal to zero address: ", async () => {
             await expect(nftMTVSTicket.setTreasury(constants.ZERO_ADDRESS)).to.be.revertedWith(
-                "ERROR: Invalid address !"
+                "ERROR: invalid address !"
             );
         });
         it("should set treasury success: ", async () => {
@@ -142,13 +142,16 @@ describe("NFTMTVSTicket:", () => {
             expect(await nftMTVSTicket.ownerOf(1)).to.equal(user1.address);
             expect(await nftMTVSTicket.balanceOf(user1.address)).to.equal(1);
             expect(await nftMTVSTicket.tokenURI(1)).to.equal(".json");
+
+            expect(await token.balanceOf(user1.address)).to.equal(subtract(TOTAL_SUPPLY, PRICE));
+            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
         });
     });
 
     describe("mint function:", async () => {
         it("should revert when receiver is zero address: ", async () => {
             await expect(nftMTVSTicket.mint(constants.ZERO_ADDRESS)).to.be.revertedWith(
-                "ERROR: Invalid address !"
+                "ERROR: invalid address !"
             );
         });
         it("should revert when caller is not owner or admin: ", async () => {
@@ -163,6 +166,16 @@ describe("NFTMTVSTicket:", () => {
 
             await nftMTVSTicket.mint(user2.address);
             expect(await nftMTVSTicket.balanceOf(user2.address)).to.equal(1);
+        });
+    });
+
+    describe("supportsInterface function:", async () => {
+        it("should supportsInterface: ", async () => {
+            let boolVal = await nftMTVSTicket.supportsInterface(0x01ffc9a7);
+            expect(boolVal).to.equal(true);
+
+            boolVal = await nftMTVSTicket.supportsInterface(0xffffffff);
+            expect(boolVal).to.equal(false);
         });
     });
 });
