@@ -18,10 +18,14 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
     bytes32 internal keyHash;
     uint256 internal fee;
 
+    event SetKeyHashAndFee(bytes32 indexed keyHash, uint256 fee);
+    event SetAdmin(address indexed admin, bool allow);
+    event FullFilled(bytes32 indexed requestId, uint256 randomness);
+    event RequestId(bytes32 indexed reqId);
     modifier onlyOwnerOrAdmin() {
         require(
             _msgSender() == owner() || admins[_msgSender()],
-            "Ownable: Only owner or admin can access !"
+            "Ownable: only owner or admin can access !"
         );
         _;
     }
@@ -32,7 +36,7 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
         bytes32 _keyHash
     ) VRFConsumerBase(_vrfCoordinator, _linkToken) {
         keyHash = _keyHash;
-        fee = 5e15;
+        fee = 1e17;
     }
 
     /**
@@ -43,6 +47,8 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
     function setKeyHashAndFee(uint256 _fee, bytes32 _keyHash) external onlyOwnerOrAdmin {
         fee = _fee;
         keyHash = _keyHash;
+
+        emit SetKeyHashAndFee(keyHash, fee);
     }
 
     /**
@@ -51,8 +57,10 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
      *  @dev   Only owner or admin can call this function.
      */
     function getRandomNumber() external override onlyOwnerOrAdmin returns (bytes32) {
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
-        return requestRandomness(keyHash, fee);
+        require(LINK.balanceOf(address(this)) >= fee, "ERROR: not enough LINK");
+        bytes32 reqId = requestRandomness(keyHash, fee);
+        emit RequestId(reqId);
+        return reqId;
     }
 
     /**
@@ -60,6 +68,8 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
      */
     function fulfillRandomness(bytes32 _requestId, uint256 _randomness) internal override {
         requestIdToRandomness[_requestId] = _randomness;
+
+        emit FullFilled(_requestId, _randomness);
     }
 
     /**
@@ -68,7 +78,7 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
      *  @dev   All caller can call this function.
      */
     function randomForRequestID(bytes32 _requestID) external view override returns (uint256) {
-        require(isRequestIDFulfilled(_requestID), "Not fulfilled");
+        require(isRequestIDFulfilled(_requestID), "ERROR: not fullfilled");
         return requestIdToRandomness[_requestID];
     }
 
@@ -97,5 +107,7 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
      */
     function setAdmin(address admin, bool allow) external onlyOwner {
         admins[admin] = allow;
+
+        emit SetAdmin(admin, allow);
     }
 }

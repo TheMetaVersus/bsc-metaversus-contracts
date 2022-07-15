@@ -20,6 +20,9 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      */
     mapping(address => bool) public controllers;
 
+    event SetController(address indexed user, bool allow);
+    event Minted(address indexed receiver, uint256 amount);
+
     modifier onlyControllers() {
         require(
             (owner() == _msgSender() || controllers[_msgSender()]),
@@ -29,7 +32,7 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     modifier notZeroAddress(address addr) {
-        require(addr != address(0), "ERROR: Invalid address !");
+        require(addr != address(0), "ERROR: invalid address !");
         _;
     }
 
@@ -37,9 +40,6 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         require(amount > 0, "ERROR: Amount equal to zero !");
         _;
     }
-
-    event SetController(address indexed user, bool allow);
-    event Minted(address indexed receiver, uint256 indexed amount, uint256 timestamp);
 
     /**
      *  @notice Initialize new logic contract.
@@ -90,7 +90,7 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     {
         _mint(receiver, amount);
 
-        emit Minted(receiver, amount, block.timestamp);
+        emit Minted(receiver, amount);
     }
 
     /**

@@ -72,7 +72,7 @@ contract TokenMintERC1155 is
         uint256 _price
     ) public initializer {
         ERC1155Upgradeable.__ERC1155_init(__uri);
-        OwnableUpgradeable.__Ownable_init();
+        Adminable.__Adminable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;

@@ -94,7 +94,7 @@ contract TokenMintERC721 is
         uint256 _price
     ) public initializer {
         ERC721Upgradeable.__ERC721_init(_name, _symbol);
-        OwnableUpgradeable.__Ownable_init();
+        Adminable.__Adminable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;

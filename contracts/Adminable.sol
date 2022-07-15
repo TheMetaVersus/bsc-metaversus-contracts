@@ -27,7 +27,7 @@ contract Adminable is OwnableUpgradeable {
     }
 
     modifier notZeroAddress(address addr) {
-        require(addr != address(0), "ERROR: Invalid address !");
+        require(addr != address(0), "ERROR: invalid address !");
         _;
     }
 

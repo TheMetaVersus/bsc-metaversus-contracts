@@ -79,7 +79,7 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
         notZeroAmount(_amount)
         nonReentrant
     {
-        require(isPermitedToken(_paymentToken), "ERROR: Token is not permit !");
+        require(isPermitedToken(_paymentToken), "ERROR: token is not permit !");
         IERC20Upgradeable(_paymentToken).safeTransfer(_destination, _amount);
 
         emit Distributed(_paymentToken, _destination, _amount);
