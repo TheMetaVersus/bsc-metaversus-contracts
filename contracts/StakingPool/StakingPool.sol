@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "../Adminable.sol";
 
 /**
@@ -70,6 +71,11 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     IERC20Upgradeable private _rewardToken;
 
     /**
+     *  @notice _nftAddress IERC721 is interfacce of nft
+     */
+    IERC721Upgradeable private _nftAddress;
+
+    /**
      *  @notice Mapping an address to a information of corresponding user address.
      */
     mapping(address => UserInfo) public users;
@@ -93,6 +99,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         address owner_,
         IERC20Upgradeable stakeToken_,
         IERC20Upgradeable rewardToken_,
+        IERC721Upgradeable nftAddress_,
         uint256 rewardRate_,
         uint256 poolDuration_
     ) public initializer {
@@ -102,6 +109,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         _rewardToken = rewardToken_;
         _rewardRate = rewardRate_;
         _poolDuration = poolDuration_;
+        _nftAddress = nftAddress_;
         pendingUnstake = 1 days;
     }
 
@@ -110,6 +118,13 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function getStakeToken() external view returns (address) {
         return address(_stakeToken);
+    }
+
+    /**
+     *  @notice Get nft address.
+     */
+    function getNftAddress() external view returns (address) {
+        return address(_nftAddress);
     }
 
     /**
@@ -204,6 +219,10 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         require(
             _startTime.add(_poolDuration) > block.timestamp,
             "ERROR: staking pool for NFT had been expired !"
+        );
+        require(
+            _nftAddress.balanceOf(_msgSender()) > 0,
+            "ERROR: require own nft for stake MTVS token"
         );
         // calculate pending rewards of staked amount before
         UserInfo storage user = users[_msgSender()];
@@ -358,7 +377,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a < b) return a;
-        else return b;
+        return b;
     }
 
     /**

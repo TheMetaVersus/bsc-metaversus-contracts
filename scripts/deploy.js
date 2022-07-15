@@ -120,6 +120,7 @@ async function main() {
     admin,
     mtvs.address,
     mtvs.address,
+    nftMTVSTicket.address,
     process.env.REWARD_RATE,
     process.env.POOL_DURATION
   ]);

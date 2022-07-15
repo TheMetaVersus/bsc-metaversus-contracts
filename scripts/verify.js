@@ -4,6 +4,14 @@ const contracts = require("../contracts-verify.json");
 async function main() {
   try {
     await hre.run("verify:verify", {
+      address: contracts.treasury,
+      contract: "contracts/Token/Treasury.sol:Treasury"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+  try {
+    await hre.run("verify:verify", {
       address: contracts.mtvs,
       contract: "contracts/Token/MTVS.sol:MTVS"
     });
@@ -14,7 +22,7 @@ async function main() {
   try {
     await hre.run("verify:verify", {
       address: contracts.tokenMintERC721,
-      contract: "contracts/Token/tokenMintERC721.sol:tokenMintERC721"
+      contract: "contracts/Token/TokenMintERC721.sol:TokenMintERC721"
     });
   } catch (err) {
     console.log("err :>> ", err);
@@ -23,7 +31,7 @@ async function main() {
   try {
     await hre.run("verify:verify", {
       address: contracts.tokenMintERC1155,
-      contract: "contracts/Token/tokenMintERC1155.sol:tokenMintERC1155"
+      contract: "contracts/Token/TokenMintERC1155.sol:TokenMintERC1155"
     });
   } catch (err) {
     console.log("err :>> ", err);
@@ -32,7 +40,7 @@ async function main() {
   try {
     await hre.run("verify:verify", {
       address: contracts.nftMTVSTicket,
-      contract: "contracts/Token/nftMTVSTicket.sol:nftMTVSTicket"
+      contract: "contracts/Token/NFTMTVSTicket.sol:NFTMTVSTicket"
     });
   } catch (err) {
     console.log("err :>> ", err);

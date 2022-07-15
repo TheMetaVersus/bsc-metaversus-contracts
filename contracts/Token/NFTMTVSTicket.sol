@@ -56,10 +56,16 @@ contract NFTMTVSTicket is
      */
     string public baseURI;
 
+    /**
+     *  @notice isLocked is status of lock nft
+     */
+    bool public isLocked;
+
     event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event Bought(uint256 indexed tokenId, address indexed to, uint256 timestamp);
-    event Minted(uint256 indexed tokenId, address indexed to, uint256 timestamp);
+    event Bought(uint256 indexed tokenId, address indexed to);
+    event Minted(uint256 indexed tokenId, address indexed to);
+    event SetLocked(bool indexed status);
 
     /**
      *  @notice Set base URI
@@ -95,7 +101,7 @@ contract NFTMTVSTicket is
         uint256 _price
     ) public initializer {
         ERC721Upgradeable.__ERC721_init(_name, _symbol);
-        OwnableUpgradeable.__Ownable_init();
+        Adminable.__Adminable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;
@@ -126,6 +132,16 @@ contract NFTMTVSTicket is
     }
 
     /**
+     *  @notice Set lock NFT
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function setLocked(bool status) external onlyOwnerOrAdmin {
+        isLocked = status;
+        emit SetLocked(status);
+    }
+
+    /**
      *  @notice Buy NFT directly
      *
      *  @dev    All users can call this function.
@@ -138,7 +154,7 @@ contract NFTMTVSTicket is
 
         _mint(_msgSender(), tokenId);
 
-        emit Bought(tokenId, _msgSender(), block.timestamp);
+        emit Bought(tokenId, _msgSender());
     }
 
     /**
@@ -152,7 +168,7 @@ contract NFTMTVSTicket is
 
         _mint(receiver, tokenId);
 
-        emit Minted(tokenId, receiver, block.timestamp);
+        emit Minted(tokenId, receiver);
     }
 
     /**
@@ -165,5 +181,17 @@ contract NFTMTVSTicket is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    /**
+     * @notice Set up status for transfer
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, tokenId);
+        require(!isLocked, "ERROR: NFT not allow to transfer");
     }
 }
