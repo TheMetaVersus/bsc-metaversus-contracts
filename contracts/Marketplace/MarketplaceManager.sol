@@ -51,8 +51,7 @@ contract MarketPlaceManager is
         NONE
     }
     enum MarketItemStatus {
-        FREE,
-        SELLING,
+        LISTING,
         SOLD,
         CANCELED
     }
@@ -84,11 +83,6 @@ contract MarketPlaceManager is
     uint256 public listingFee;
 
     /**
-     *  @notice mtvsManager store the address of the MTVS Manager contract
-     */
-    address public mtvsManager;
-
-    /**
      *  @notice marketItemIdToMarketItem is mapping market ID to Market Item
      */
     mapping(uint256 => MarketItem) public marketItemIdToMarketItem;
@@ -109,7 +103,6 @@ contract MarketPlaceManager is
         uint256 endTime
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event SetMTVSManager(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event SoldAvailableItem(uint256 indexed marketItemId, uint256 indexed price);
     event CanceledSelling(uint256 indexed marketItemId);
@@ -126,6 +119,20 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice Pause action
+     */
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    /**
+     *  @notice Unpause action
+     */
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
@@ -139,6 +146,7 @@ contract MarketPlaceManager is
         transferOwnership(_owner);
         treasury = _treasury;
         listingFee = 25e2; // 2.5%
+        pause();
     }
 
     /**
@@ -150,17 +158,6 @@ contract MarketPlaceManager is
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
-    }
-
-    /**
-     *  @notice set treasury to change TreasuryManager address.
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setMTVSManager(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
-        address old = mtvsManager;
-        mtvsManager = account;
-        emit SetMTVSManager(old, mtvsManager);
     }
 
     /**
@@ -247,11 +244,11 @@ contract MarketPlaceManager is
         uint256 time
     ) external nonReentrant validateId(marketItemId) notZeroAmount(price) whenNotPaused {
         MarketItem storage item = marketItemIdToMarketItem[marketItemId];
-        require(item.status == MarketItemStatus.FREE, "ERROR: market item is not free !");
+        require(item.endTime < block.timestamp, "ERROR: market item is not free !");
         require(item.seller == _msgSender(), "ERROR: sender is not owner this NFT");
 
         item.price = price;
-        item.status = MarketItemStatus.SELLING;
+        item.status = MarketItemStatus.LISTING;
         item.endTime = time;
         emit SoldAvailableItem(marketItemId, price);
     }
@@ -275,11 +272,11 @@ contract MarketPlaceManager is
         _marketItemIds.increment();
         uint256 marketItemId = _marketItemIds.current();
 
-        MarketItemStatus status = MarketItemStatus.FREE;
         uint256 price;
+        uint256 time;
         if (_time > block.timestamp && _grossSaleValue > 0) {
-            status = MarketItemStatus.SELLING;
             price = _grossSaleValue;
+            time = _time;
         }
         marketItemIdToMarketItem[marketItemId] = MarketItem(
             marketItemId,
@@ -289,8 +286,8 @@ contract MarketPlaceManager is
             _seller,
             address(0),
             price,
-            _time,
-            status
+            time,
+            MarketItemStatus.LISTING
         );
 
         marketItemOfOwner[_seller].add(marketItemId);
@@ -303,7 +300,7 @@ contract MarketPlaceManager is
             _seller,
             address(0),
             price,
-            _time
+            time
         );
     }
 
@@ -371,10 +368,7 @@ contract MarketPlaceManager is
         whenNotPaused
     {
         MarketItem memory item = marketItemIdToMarketItem[marketItemId];
-        require(
-            item.status == MarketItemStatus.FREE || item.status == MarketItemStatus.SELLING,
-            "ERROR: NFT not available !"
-        );
+        require(item.status == MarketItemStatus.LISTING, "ERROR: NFT not available !");
         require(item.seller == _msgSender(), "ERROR: you are not the seller !");
         // update market item
         item.status = MarketItemStatus.CANCELED;
@@ -403,7 +397,10 @@ contract MarketPlaceManager is
         whenNotPaused
     {
         MarketItem memory data = marketItemIdToMarketItem[marketItemId];
-        require(data.status == MarketItemStatus.SELLING, "ERROR: NFT is not selling");
+        require(
+            data.status == MarketItemStatus.LISTING && data.endTime > block.timestamp,
+            "ERROR: NFT is not selling"
+        );
 
         // update new buyer for martket item
         data.buyer = _msgSender();

@@ -54,13 +54,12 @@ describe("VRF chainlink:", () => {
             let event = listener.events.find(x => x.event == "RequestId");
 
             const Id = event.args[0].toString();
-            console.log(event, Id);
 
             await randomVRF.connect(vrfAddress).rawFulfillRandomness(Id, 123, {
                 gasLimit: 3000000,
             });
 
-            // shoulf return true
+            // should return true
             let boolVal = await randomVRF.isRequestIDFulfilled(Id);
 
             expect(boolVal).to.equal(false);

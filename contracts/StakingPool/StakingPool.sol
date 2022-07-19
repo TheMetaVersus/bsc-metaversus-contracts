@@ -93,6 +93,20 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     event RequestClaim(address indexed sender);
 
     /**
+     *  @notice Pause action
+     */
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    /**
+     *  @notice Unpause action
+     */
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
@@ -111,6 +125,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         _poolDuration = poolDuration_;
         _nftAddress = nftAddress_;
         pendingUnstake = 1 days;
+        pause();
     }
 
     /**
@@ -153,6 +168,13 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function getStartTime() external view returns (uint256) {
         return _startTime;
+    }
+
+    /**
+     *  @notice Get status of pool
+     */
+    function isActivePool() external view returns (bool) {
+        return (_startTime.add(_poolDuration) >= block.timestamp) && !paused();
     }
 
     /**

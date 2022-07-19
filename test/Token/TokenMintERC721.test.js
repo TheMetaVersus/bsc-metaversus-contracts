@@ -61,12 +61,12 @@ describe("TokenMintERC721:", () => {
             expect(royaltiesInfo[1].toString()).to.equal("250");
         });
         it("Check tokenURI: ", async () => {
-            const URI = "this_is_uri_1";
+            const URI = "this_is_uri_1.json";
             await tokenMintERC721.mint(user1.address, mkpManager.address, URI);
 
             const newURI = await tokenMintERC721.tokenURI(1);
 
-            expect(newURI).to.equal(URI + ".json");
+            expect(newURI).to.equal(URI);
         });
         it("Check Owner: ", async () => {
             const ownerAddress = await tokenMintERC721.owner();
@@ -93,13 +93,13 @@ describe("TokenMintERC721:", () => {
     });
     describe("setTokenURI function:", async () => {
         it("should setTokenURI: ", async () => {
-            const URI = "this_is_uri_1";
+            const URI = "this_is_uri_1.json";
             await tokenMintERC721.mint(user1.address, mkpManager.address, URI);
 
             const newURI = await tokenMintERC721.tokenURI(1);
 
-            expect(newURI).to.equal(URI + ".json");
-            await tokenMintERC721.setTokenURI("new_uri", 1);
+            expect(newURI).to.equal(URI);
+            await tokenMintERC721.setTokenURI("new_uri.json", 1);
             expect(await tokenMintERC721.tokenURI(1)).to.equal("new_uri.json");
         });
     });
@@ -141,7 +141,7 @@ describe("TokenMintERC721:", () => {
                 .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
 
             await expect(() =>
-                tokenMintERC721.connect(user1).buy("this_uri")
+                tokenMintERC721.connect(user1).buy("this_uri.json")
             ).to.changeTokenBalance(token, user1, -PRICE);
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
 
