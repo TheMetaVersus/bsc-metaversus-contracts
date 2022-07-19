@@ -1,9 +1,7 @@
-const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 const { constants } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { multiply, add, subtract } = require("js-big-decimal");
-const erc721 = require("../../artifacts/contracts/Token/TokenMintERC721.sol/TokenMintERC721.json");
 describe("Marketplace Manager:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000");
@@ -80,6 +78,9 @@ describe("Marketplace Manager:", () => {
             350,
             450,
         ]);
+
+        await mtvsManager.unpause();
+        await mkpManager.unpause();
     });
 
     describe("Deployment:", async () => {
@@ -126,24 +127,6 @@ describe("Marketplace Manager:", () => {
 
             await mkpManager.setTreasury(treasury.address);
             expect(await mkpManager.treasury()).to.equal(treasury.address);
-        });
-    });
-
-    describe("setMTVSManager function:", async () => {
-        it("should revert when caller is not owner or admin: ", async () => {
-            await expect(
-                mkpManager.connect(user1).setMTVSManager(user2.address)
-            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
-        });
-        it("should set mtvsManager success: ", async () => {
-            await mkpManager.setMTVSManager(treasury.address);
-            expect(await mkpManager.mtvsManager()).to.equal(treasury.address);
-
-            await mkpManager.setMTVSManager(user1.address);
-            expect(await mkpManager.mtvsManager()).to.equal(user1.address);
-
-            await mkpManager.setMTVSManager(mtvsManager.address);
-            expect(await mkpManager.mtvsManager()).to.equal(mtvsManager.address);
         });
     });
 
@@ -384,7 +367,7 @@ describe("Marketplace Manager:", () => {
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
-            console.log("marketId", marketId);
+
             await expect(() => mkpManager.connect(user2).buy(marketId)).to.changeTokenBalance(
                 tokenMintERC721,
                 user2,

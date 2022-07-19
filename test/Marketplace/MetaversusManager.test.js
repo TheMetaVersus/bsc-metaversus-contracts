@@ -78,6 +78,9 @@ describe("Metaversus Manager:", () => {
             350,
             450,
         ]);
+
+        await mtvsManager.unpause();
+        await mkpManager.unpause();
     });
 
     describe("Deployment:", async () => {
@@ -212,7 +215,8 @@ describe("Metaversus Manager:", () => {
                 mtvsManager.connect(user2).createNFT(1, 100, "this_uri", 0, time)
             ).to.changeTokenBalance(token, user2, -250);
             allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
-            expect(allItems[1].status).to.equal(0); //  1 is SELLING
+            expect(allItems[1].status).to.equal(0);
+            expect(parseInt(allItems[1].endTime)).lessThan(current);
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 500));
         });
         it("should create and sale NFT success: ", async () => {
@@ -234,7 +238,9 @@ describe("Metaversus Manager:", () => {
             // check owner nft
             expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
             const allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
-            expect(allItems[0].status).to.equal(1); // 1 is SELLING
+            expect(allItems[0].status).to.equal(0);
+            expect(parseInt(allItems[0].endTime)).greaterThan(current);
+
             // await tokenMintERC1155.setAdmin(mtvsManager.address, true);
 
             // await expect(() =>

@@ -54,6 +54,8 @@ describe("Staking Pool:", () => {
 
         await staking.deployed();
         CURRENT = await getCurrentTime();
+
+        await staking.unpause();
         await staking.setStartTime(CURRENT);
     });
 
@@ -98,6 +100,16 @@ describe("Staking Pool:", () => {
     describe("getStartTime:", async () => {
         it("should return start time of staking pool: ", async () => {
             expect(await staking.getStartTime()).to.equal(CURRENT.toString());
+        });
+    });
+    describe("isActivePool:", async () => {
+        it("should return status of pool: ", async () => {
+            const time = await getCurrentTime();
+            await staking.setStartTime(time);
+            expect(await staking.isActivePool()).to.equal(true);
+            await skipTime(time + 9 * 30 * 24 * 60 * 60 + 1);
+
+            expect(await staking.isActivePool()).to.equal(false);
         });
     });
 

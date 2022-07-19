@@ -74,11 +74,7 @@ contract TokenMintERC721 is
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
-
-        string memory currentURI = uris[tokenId];
-
-        return
-            bytes(currentURI).length > 0 ? string(abi.encodePacked(currentURI, ".json")) : ".json";
+        return uris[tokenId];
     }
 
     /**

@@ -61,6 +61,20 @@ describe("NFTMTVSTicket:", () => {
             expect(ownerAddress).to.equal(owner.address);
         });
     });
+    describe("setLocked function:", async () => {
+        it("should revert when caller is not owner: ", async () => {
+            await expect(nftMTVSTicket.connect(user1).setLocked(true)).to.be.revertedWith(
+                "Ownable: caller is not an owner or admin"
+            );
+        });
+        it("should set locked success: ", async () => {
+            await expect(nftMTVSTicket.setLocked(true))
+                .to.emit(nftMTVSTicket, "SetLocked")
+                .withArgs(true);
+
+            expect(await nftMTVSTicket.isLocked()).to.equal(true);
+        });
+    });
 
     describe("setAdmin function:", async () => {
         it("should revert when caller is not owner: ", async () => {

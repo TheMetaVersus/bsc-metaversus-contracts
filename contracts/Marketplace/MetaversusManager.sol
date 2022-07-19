@@ -81,6 +81,20 @@ contract MetaversusManager is
     event Created(uint256 indexed typeMint, address indexed to, uint256 indexed amount);
 
     /**
+     *  @notice Pause action
+     */
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    /**
+     *  @notice Unpause action
+     */
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
@@ -107,6 +121,28 @@ contract MetaversusManager is
         fees[uint256(FeeType.FEE_CREATE)] = _feeCreate;
         fees[uint256(FeeType.FEE_STAKING_NFT)] = _feeStakingNFT;
         fees[uint256(FeeType.FEE_EVENT_NFT)] = _feeEventNFT;
+        pause();
+    }
+
+    /**
+     *  @notice Get create fee
+     */
+    function getCreateFee() external view returns (uint256) {
+        return fees[0];
+    }
+
+    /**
+     *  @notice Get buy ticket fee
+     */
+    function getTicketFee() external view returns (uint256) {
+        return fees[1];
+    }
+
+    /**
+     *  @notice Get buy ticket event fee
+     */
+    function getTicketEventFee() external view returns (uint256) {
+        return fees[2];
     }
 
     /**
