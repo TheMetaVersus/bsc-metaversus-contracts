@@ -40,6 +40,8 @@ contract MarketPlaceManager is
     using SafeMathUpgradeable for uint256;
     using AddressUpgradeable for address;
     CountersUpgradeable.Counter private _marketItemIds;
+    CountersUpgradeable.Counter private _soldCounter;
+    CountersUpgradeable.Counter private _cancelCounter;
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = type(IERC2981Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
@@ -65,6 +67,7 @@ contract MarketPlaceManager is
         uint256 price;
         uint256 endTime;
         MarketItemStatus status;
+        uint256 nftType;
     }
 
     /**
@@ -106,12 +109,7 @@ contract MarketPlaceManager is
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event SoldAvailableItem(uint256 indexed marketItemId, uint256 indexed price);
     event CanceledSelling(uint256 indexed marketItemId);
-    event Bought(
-        uint256 indexed marketItemId,
-        MarketItem data,
-        uint256 indexed royaltyFee,
-        uint256 indexed netSaleValue
-    );
+    event Bought(uint256 indexed marketItemId, MarketItem data, uint256 indexed netSaleValue);
 
     modifier validateId(uint256 id) {
         require(id <= _marketItemIds.current() && id > 0, "ERROR: market ID is not exist !");
@@ -205,6 +203,17 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice Check standard without error when not support function supportsInterface
+     */
+    function isRoyalty(address _contract) private returns (bool) {
+        (bool success, ) = _contract.call(
+            abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC2981)
+        );
+
+        return success && IERC2981Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
+    }
+
+    /**
      *  @notice Check standard of nft contract address
      */
     function _checkNftStandard(address _contract) private returns (NftStandard) {
@@ -227,21 +236,24 @@ contract MarketPlaceManager is
         uint256 grossSaleValue
     ) private returns (uint256 netSaleAmount) {
         // Get amount of royalties to pays and recipient
-        (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
-            nftContractAddress,
-            tokenId,
-            grossSaleValue
-        );
+        if (isRoyalty(nftContractAddress)) {
+            (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
+                nftContractAddress,
+                tokenId,
+                grossSaleValue
+            );
 
-        // Deduce royalties from sale value
-        uint256 netSaleValue = grossSaleValue - royaltiesAmount;
-        // Transfer royalties to rightholder if not zero
-        if (royaltiesAmount > 0) {
-            paymentToken.safeTransfer(royaltiesReceiver, royaltiesAmount);
+            // Deduce royalties from sale value
+            uint256 netSaleValue = grossSaleValue - royaltiesAmount;
+            // Transfer royalties to rightholder if not zero
+            if (royaltiesAmount > 0) {
+                paymentToken.safeTransfer(royaltiesReceiver, royaltiesAmount);
+            }
+            // Broadcast royalties payment
+            emit RoyaltiesPaid(tokenId, royaltiesAmount);
+            return netSaleValue;
         }
-        // Broadcast royalties payment
-        emit RoyaltiesPaid(tokenId, royaltiesAmount);
-        return netSaleValue;
+        return grossSaleValue;
     }
 
     /**
@@ -298,7 +310,8 @@ contract MarketPlaceManager is
             address(0),
             price,
             time,
-            MarketItemStatus.LISTING
+            MarketItemStatus.LISTING,
+            uint256(nftType)
         );
 
         marketItemOfOwner[_seller].add(marketItemId);
@@ -384,6 +397,7 @@ contract MarketPlaceManager is
         // update market item
         item.status = MarketItemStatus.CANCELED;
         marketItemOfOwner[_msgSender()].remove(marketItemId);
+        _cancelCounter.increment();
         // transfer nft back seller
         _transferNFTCall(
             item.nftContractAddress,
@@ -422,8 +436,9 @@ contract MarketPlaceManager is
         // pay listing fee
         uint256 netSaleValue = data.price - getListingFee(data.price);
         // pay 2.5% royalties from the amount actually received
-        uint256 royaltyFee = _deduceRoyalties(data.nftContractAddress, data.tokenId, netSaleValue);
-        netSaleValue -= royaltyFee;
+        netSaleValue = _deduceRoyalties(data.nftContractAddress, data.tokenId, netSaleValue);
+
+        _soldCounter.increment();
         // pay 97.5% of the amount actually received to seller
         paymentToken.safeTransfer(data.seller, netSaleValue);
         // transfer nft to buyer
@@ -435,7 +450,7 @@ contract MarketPlaceManager is
             _msgSender()
         );
 
-        emit Bought(marketItemId, data, royaltyFee, netSaleValue);
+        emit Bought(marketItemId, data, netSaleValue);
     }
 
     /**
@@ -468,31 +483,9 @@ contract MarketPlaceManager is
         uint256 _tokenId,
         uint256 _salePrice
     ) public view returns (address, uint256) {
-        if (IERC2981Upgradeable(_nftAddr).supportsInterface(_INTERFACE_ID_ERC2981)) {
-            (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981Upgradeable(_nftAddr)
-                .royaltyInfo(_tokenId, _salePrice);
-            return (royaltiesReceiver, royaltiesAmount);
-        }
-        return (address(0), 0);
-    }
-
-    /**
-     * @dev Get Latest Market Item by the token id
-     */
-    function getLatestMarketItemByTokenId(address nftAddress, uint256 tokenId)
-        external
-        view
-        returns (MarketItem memory, bool)
-    {
-        uint256 itemsCount = _marketItemIds.current();
-
-        for (uint256 i = itemsCount; i > 0; i--) {
-            MarketItem memory item = marketItemIdToMarketItem[i];
-            if (item.tokenId != tokenId || item.nftContractAddress != nftAddress) continue;
-            return (item, true);
-        }
-        // return empty value
-        return (marketItemIdToMarketItem[0], false);
+        (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981Upgradeable(_nftAddr)
+            .royaltyInfo(_tokenId, _salePrice);
+        return (royaltiesReceiver, royaltiesAmount);
     }
 
     /**
@@ -522,7 +515,9 @@ contract MarketPlaceManager is
      *  @dev    All caller can call this function.
      */
     function fetchAvailableMarketItems() external view returns (MarketItem[] memory) {
-        uint256 itemsCount = _marketItemIds.current();
+        uint256 itemsCount = _marketItemIds.current() -
+            _cancelCounter.current() -
+            _soldCounter.current();
 
         MarketItem[] memory marketItems = new MarketItem[](itemsCount);
         uint256 currentIndex = 0;

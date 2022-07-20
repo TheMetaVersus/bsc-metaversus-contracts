@@ -34,8 +34,7 @@ contract MetaversusManager is
     }
     enum FeeType {
         FEE_CREATE,
-        FEE_STAKING_NFT,
-        FEE_EVENT_NFT
+        FEE_STAKING_NFT
     }
 
     /**
@@ -106,8 +105,7 @@ contract MetaversusManager is
         address _treasury,
         address _marketplaceAddr,
         uint256 _feeCreate,
-        uint256 _feeStakingNFT,
-        uint256 _feeEventNFT
+        uint256 _feeStakingNFT
     ) public initializer {
         Adminable.__Adminable_init();
         PausableUpgradeable.__Pausable_init();
@@ -120,7 +118,6 @@ contract MetaversusManager is
         nftTicket = INFTMTVSTicket(_nftTicket);
         fees[uint256(FeeType.FEE_CREATE)] = _feeCreate;
         fees[uint256(FeeType.FEE_STAKING_NFT)] = _feeStakingNFT;
-        fees[uint256(FeeType.FEE_EVENT_NFT)] = _feeEventNFT;
         pause();
     }
 
@@ -139,10 +136,32 @@ contract MetaversusManager is
     }
 
     /**
-     *  @notice Get buy ticket event fee
+     *  @notice Get all params
      */
-    function getTicketEventFee() external view returns (uint256) {
-        return fees[2];
+    function getAllConstantParams()
+        external
+        view
+        returns (
+            address,
+            address,
+            address,
+            address,
+            address,
+            address,
+            uint256,
+            uint256
+        )
+    {
+        return (
+            treasury,
+            address(marketplace),
+            address(nftTicket),
+            address(tokenMintERC1155),
+            address(tokenMintERC721),
+            address(paymentToken),
+            fees[0],
+            fees[1]
+        );
     }
 
     /**
@@ -247,13 +266,14 @@ contract MetaversusManager is
      *
      *  @dev    All caller can call this function.
      */
-    function buyTicketEvent(uint256 eventId)
+    function buyTicketEvent(uint256 eventId, uint256 amount)
         external
         nonReentrant
         notZeroAmount(eventId)
+        notZeroAmount(amount)
         whenNotPaused
     {
-        paymentToken.safeTransferFrom(_msgSender(), treasury, fees[uint256(FeeType.FEE_EVENT_NFT)]);
+        paymentToken.safeTransferFrom(_msgSender(), treasury, amount);
 
         emit BoughtTicketEvent(_msgSender(), eventId);
     }
