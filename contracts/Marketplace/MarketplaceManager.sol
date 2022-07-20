@@ -170,6 +170,19 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice Check standard
+     */
+    function checkStandard(address _contract) public view returns (uint256) {
+        if (IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721)) {
+            return uint256(NftStandard.ERC721);
+        }
+        if (IERC1155Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155)) {
+            return uint256(NftStandard.ERC1155);
+        }
+        return uint256(NftStandard.NONE);
+    }
+
+    /**
      *  @notice Check standard without error when not support function supportsInterface
      */
     function is721(address _contract) private returns (bool) {
@@ -188,15 +201,13 @@ contract MarketPlaceManager is
             abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC1155)
         );
 
-        return success && IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155);
+        return success && IERC1155Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155);
     }
 
     /**
      *  @notice Check standard of nft contract address
-     *
-     *  @dev    All caller can call this function.
      */
-    function _checkNftStandard(address _contract) internal returns (NftStandard) {
+    function _checkNftStandard(address _contract) private returns (NftStandard) {
         if (is721(_contract)) {
             return NftStandard.ERC721;
         }
@@ -367,7 +378,7 @@ contract MarketPlaceManager is
         validateId(marketItemId)
         whenNotPaused
     {
-        MarketItem memory item = marketItemIdToMarketItem[marketItemId];
+        MarketItem storage item = marketItemIdToMarketItem[marketItemId];
         require(item.status == MarketItemStatus.LISTING, "ERROR: NFT not available !");
         require(item.seller == _msgSender(), "ERROR: you are not the seller !");
         // update market item
@@ -396,7 +407,7 @@ contract MarketPlaceManager is
         validateId(marketItemId)
         whenNotPaused
     {
-        MarketItem memory data = marketItemIdToMarketItem[marketItemId];
+        MarketItem storage data = marketItemIdToMarketItem[marketItemId];
         require(
             data.status == MarketItemStatus.LISTING && data.endTime > block.timestamp,
             "ERROR: NFT is not selling"
@@ -482,6 +493,27 @@ contract MarketPlaceManager is
         }
         // return empty value
         return (marketItemIdToMarketItem[0], false);
+    }
+
+    /**
+     * @dev Get Latest history by the token id
+     */
+    function getHistoryByTokenId(
+        address nftAddress,
+        uint256 tokenId,
+        uint256 limit
+    ) external view returns (MarketItem[] memory) {
+        uint256 itemsCount = _marketItemIds.current();
+        uint256 currentIndex = 0;
+        MarketItem[] memory items = new MarketItem[](limit);
+        for (uint256 i = itemsCount; i > 0; i--) {
+            MarketItem memory item = marketItemIdToMarketItem[i];
+            if (item.tokenId != tokenId || item.nftContractAddress != nftAddress) continue;
+            items[currentIndex] = item;
+            currentIndex += 1;
+            if (currentIndex == limit) break;
+        }
+        return items;
     }
 
     /**
