@@ -8,8 +8,8 @@
 /site
 /artifacts
 /cache
-# /contracts.json
-
+/contracts.json
+/contracts-verify.json
 # Logs
 logs
 *.log

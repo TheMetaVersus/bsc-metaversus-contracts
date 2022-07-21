@@ -267,6 +267,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @dev    Only user has NFT can call this function.
      */
     function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
+        require(block.timestamp > _startTime, "ERROR: not time for stake !");
         require(
             _startTime.add(_poolDuration) > block.timestamp,
             "ERROR: staking pool for NFT had been expired !"

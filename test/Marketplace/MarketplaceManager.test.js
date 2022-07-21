@@ -2,6 +2,7 @@ const { constants } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { multiply, add, subtract } = require("js-big-decimal");
+const { getCurrentTime } = require("../utils");
 describe("Marketplace Manager:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000");
@@ -303,9 +304,10 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
+            const curent = await getCurrentTime();
             const tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1000, add(curent, ONE_ETHER));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -324,9 +326,10 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
+            const curent = await getCurrentTime();
             const tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1000, add(curent, ONE_ETHER));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -405,10 +408,10 @@ describe("Marketplace Manager:", () => {
             // ERC721
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
-
+            const curent = await getCurrentTime();
             let tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1234, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1234, add(curent, ONE_ETHER));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -424,7 +427,7 @@ describe("Marketplace Manager:", () => {
 
             tx = await mkpManager
                 .connect(user2)
-                .sell(tokenMintERC1155.address, 1, 100, 4321, ONE_WEEK);
+                .sell(tokenMintERC1155.address, 1, 100, 4321, add(curent, ONE_ETHER));
             listener = await tx.wait();
             event = listener.events.find(x => x.event == "MarketItemCreated");
             marketId = event.args[0].toString();

@@ -387,6 +387,7 @@ contract MarketPlaceManager is
         notZeroAmount(endTime)
         whenNotPaused
     {
+        require(endTime > block.timestamp, "ERROR: Only sell");
         // create market item to store data selling
         _createMarketInfo(
             nftContractAddress,
