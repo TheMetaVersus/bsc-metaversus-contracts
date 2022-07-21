@@ -567,6 +567,7 @@ contract MarketPlaceManager is
                 continue;
             marketItems[currentIndex] = item;
             currentIndex += 1;
+            if (currentIndex == itemsCount) break;
         }
 
         return marketItems;

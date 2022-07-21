@@ -490,8 +490,27 @@ describe("Marketplace Manager:", () => {
 
             expect(data1155[0].marketItemId).to.equal(marketId);
 
+            await token.mint(user2.address, ONE_ETHER);
+
+            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
+
+            await mkpManager.setAdmin(mtvsManager.address, true);
+
+            await tokenMintERC721.setAdmin(mtvsManager.address, true);
+
+            await expect(() =>
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 0, 0)
+            ).to.changeTokenBalance(token, user2, -250);
+            // expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 250));
+            // check owner nft
+            expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
+
+            let allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
+            expect(allItems[0].status).to.equal(0); // 0 is FREE
+
             const allData = await mkpManager.fetchAvailableMarketItems();
-            expect(allData.length).to.equal(2);
+            // console.log(allData);
+            expect(allData.length).to.equal(3);
             expect(allData[0].price.toString()).to.equal("1234");
             expect(allData[1].price.toString()).to.equal("4321");
         });
