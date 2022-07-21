@@ -76,7 +76,6 @@ describe("Metaversus Manager:", () => {
             mkpManager.address,
             250,
             350,
-            450,
         ]);
 
         await mtvsManager.unpause();
@@ -94,7 +93,6 @@ describe("Metaversus Manager:", () => {
 
             expect(await mtvsManager.fees(0)).to.equal(250);
             expect(await mtvsManager.fees(1)).to.equal(350);
-            expect(await mtvsManager.fees(2)).to.equal(450);
         });
 
         it("Check Owner: ", async () => {
@@ -155,11 +153,9 @@ describe("Metaversus Manager:", () => {
         it("should set fee success: ", async () => {
             await mtvsManager.setFee(100, 0);
             await mtvsManager.setFee(150, 1);
-            await mtvsManager.setFee(200, 2);
 
             expect(await mtvsManager.fees(0)).to.equal(100);
             expect(await mtvsManager.fees(1)).to.equal(150);
-            expect(await mtvsManager.fees(2)).to.equal(200);
         });
     });
 
@@ -272,8 +268,13 @@ describe("Metaversus Manager:", () => {
     });
 
     describe("buyTicketEvent function:", async () => {
+        it("should revert when eventId equal to zero amount: ", async () => {
+            await expect(mtvsManager.connect(user1).buyTicketEvent(0, 100)).to.be.revertedWith(
+                "ERROR: amount must be greater than zero !"
+            );
+        });
         it("should revert when amount equal to zero amount: ", async () => {
-            await expect(mtvsManager.connect(user1).buyTicketEvent(0)).to.be.revertedWith(
+            await expect(mtvsManager.connect(user1).buyTicketEvent(1, 0)).to.be.revertedWith(
                 "ERROR: amount must be greater than zero !"
             );
         });
@@ -281,13 +282,11 @@ describe("Metaversus Manager:", () => {
             await token.mint(user2.address, AMOUNT);
             await token.approve(user2.address, ethers.constants.MaxUint256);
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
-
-            await expect(() => mtvsManager.connect(user2).buyTicketEvent(1)).to.changeTokenBalance(
-                token,
-                user2,
-                -450
-            );
-            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 450));
+            const price = 10000;
+            await expect(() =>
+                mtvsManager.connect(user2).buyTicketEvent(1, price)
+            ).to.changeTokenBalance(token, user2, -price);
+            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, price));
         });
     });
 });

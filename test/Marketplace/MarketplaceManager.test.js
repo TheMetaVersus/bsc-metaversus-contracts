@@ -76,7 +76,6 @@ describe("Marketplace Manager:", () => {
             mkpManager.address,
             250,
             350,
-            450,
         ]);
 
         await mtvsManager.unpause();
