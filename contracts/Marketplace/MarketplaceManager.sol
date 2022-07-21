@@ -40,8 +40,6 @@ contract MarketPlaceManager is
     using SafeMathUpgradeable for uint256;
     using AddressUpgradeable for address;
     CountersUpgradeable.Counter private _marketItemIds;
-    CountersUpgradeable.Counter private _soldCounter;
-    CountersUpgradeable.Counter private _cancelCounter;
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = type(IERC2981Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
@@ -418,7 +416,7 @@ contract MarketPlaceManager is
         // update market item
         item.status = MarketItemStatus.CANCELED;
         marketItemOfOwner[_msgSender()].remove(marketItemId);
-        _cancelCounter.increment();
+
         // transfer nft back seller
         _transferNFTCall(
             item.nftContractAddress,
@@ -459,7 +457,6 @@ contract MarketPlaceManager is
         // pay 2.5% royalties from the amount actually received
         netSaleValue = _deduceRoyalties(data.nftContractAddress, data.tokenId, netSaleValue);
 
-        _soldCounter.increment();
         // pay 97.5% of the amount actually received to seller
         paymentToken.safeTransfer(data.seller, netSaleValue);
         // transfer nft to buyer
@@ -555,19 +552,14 @@ contract MarketPlaceManager is
      *  @dev    All caller can call this function.
      */
     function fetchAvailableMarketItems() external view returns (MarketItem[] memory) {
-        uint256 itemsCount = _marketItemIds.current() -
-            _cancelCounter.current() -
-            _soldCounter.current();
+        uint256 itemsCount = _marketItemIds.current();
 
         MarketItem[] memory marketItems = new MarketItem[](itemsCount);
         uint256 currentIndex = 0;
         for (uint256 i = 0; i < itemsCount; i++) {
             MarketItem memory item = marketItemIdToMarketItem[i + 1];
-            if (item.status == MarketItemStatus.CANCELED || item.status == MarketItemStatus.SOLD)
-                continue;
             marketItems[currentIndex] = item;
             currentIndex += 1;
-            if (currentIndex == itemsCount) break;
         }
 
         return marketItems;
