@@ -142,6 +142,28 @@ describe("NFTMTVSTicket:", () => {
     });
 
     describe("buy function:", async () => {
+        it("should revert when have a NFT: ", async () => {
+            await token.mint(user1.address, TOTAL_SUPPLY);
+
+            await token.connect(user1).approve(nftMTVSTicket.address, ethers.constants.MaxUint256);
+
+            await expect(() => nftMTVSTicket.connect(user1).buy()).to.changeTokenBalance(
+                token,
+                user1,
+                -PRICE
+            );
+            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
+            expect(await nftMTVSTicket.ownerOf(1)).to.equal(user1.address);
+            expect(await nftMTVSTicket.balanceOf(user1.address)).to.equal(1);
+            expect(await nftMTVSTicket.tokenURI(1)).to.equal(".json");
+
+            expect(await token.balanceOf(user1.address)).to.equal(subtract(TOTAL_SUPPLY, PRICE));
+            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
+
+            await expect(nftMTVSTicket.connect(user1).buy()).to.be.revertedWith(
+                "ERROR: Each account have only one"
+            );
+        });
         it("should buy success: ", async () => {
             await token.mint(user1.address, TOTAL_SUPPLY);
 
@@ -171,6 +193,18 @@ describe("NFTMTVSTicket:", () => {
         it("should revert when caller is not owner or admin: ", async () => {
             await expect(nftMTVSTicket.connect(user2).mint(user2.address)).to.be.revertedWith(
                 "Ownable: caller is not an owner or admin"
+            );
+        });
+        it("should revert when have a NFT: ", async () => {
+            await token.mint(owner.address, ONE_ETHER);
+
+            await token.connect(owner).approve(nftMTVSTicket.address, ethers.constants.MaxUint256);
+
+            await nftMTVSTicket.mint(user2.address);
+            expect(await nftMTVSTicket.balanceOf(user2.address)).to.equal(1);
+
+            await expect(nftMTVSTicket.mint(user2.address)).to.be.revertedWith(
+                "ERROR: Each account have only one"
             );
         });
         it("should mint success: ", async () => {

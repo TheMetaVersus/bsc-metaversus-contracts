@@ -147,6 +147,7 @@ contract NFTMTVSTicket is
      *  @dev    All users can call this function.
      */
     function buy() external nonReentrant {
+        require(balanceOf(_msgSender()) == 0, "ERROR: Each account have only one");
         tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
 
@@ -163,6 +164,7 @@ contract NFTMTVSTicket is
      *  @dev    Only owner or admin can call this function.
      */
     function mint(address receiver) external onlyOwnerOrAdmin notZeroAddress(receiver) {
+        require(balanceOf(receiver) == 0, "ERROR: Each account have only one");
         tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
 

@@ -2,6 +2,7 @@ const { constants } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { multiply, add, subtract } = require("js-big-decimal");
+const { getCurrentTime } = require("../utils");
 describe("Marketplace Manager:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000");
@@ -303,9 +304,10 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
+            const curent = await getCurrentTime();
             const tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1000, add(curent, ONE_ETHER));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -324,9 +326,10 @@ describe("Marketplace Manager:", () => {
             await tokenMintERC721.connect(user1).buy("this_uri");
 
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
+            const curent = await getCurrentTime();
             const tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1000, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1000, add(curent, ONE_ETHER));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -405,10 +408,10 @@ describe("Marketplace Manager:", () => {
             // ERC721
             await tokenMintERC721.connect(user1).buy("this_uri");
             await tokenMintERC721.connect(user1).approve(mkpManager.address, 1);
-
+            const curent = await getCurrentTime();
             let tx = await mkpManager
                 .connect(user1)
-                .sell(tokenMintERC721.address, 1, 1, 1234, ONE_WEEK);
+                .sell(tokenMintERC721.address, 1, 1, 1234, add(curent, ONE_ETHER));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -424,7 +427,7 @@ describe("Marketplace Manager:", () => {
 
             tx = await mkpManager
                 .connect(user2)
-                .sell(tokenMintERC1155.address, 1, 100, 4321, ONE_WEEK);
+                .sell(tokenMintERC1155.address, 1, 100, 4321, add(curent, ONE_ETHER));
             listener = await tx.wait();
             event = listener.events.find(x => x.event == "MarketItemCreated");
             marketId = event.args[0].toString();
@@ -487,8 +490,27 @@ describe("Marketplace Manager:", () => {
 
             expect(data1155[0].marketItemId).to.equal(marketId);
 
+            await token.mint(user2.address, ONE_ETHER);
+
+            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
+
+            await mkpManager.setAdmin(mtvsManager.address, true);
+
+            await tokenMintERC721.setAdmin(mtvsManager.address, true);
+
+            await expect(() =>
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 0, 0)
+            ).to.changeTokenBalance(token, user2, -250);
+            // expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 250));
+            // check owner nft
+            expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
+
+            let allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
+            expect(allItems[0].status).to.equal(0); // 0 is FREE
+
             const allData = await mkpManager.fetchAvailableMarketItems();
-            expect(allData.length).to.equal(2);
+            // console.log(allData);
+            expect(allData.length).to.equal(3);
             expect(allData[0].price.toString()).to.equal("1234");
             expect(allData[1].price.toString()).to.equal("4321");
         });
