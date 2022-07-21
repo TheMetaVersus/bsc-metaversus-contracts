@@ -313,6 +313,10 @@ contract MarketPlaceManager is
 
         uint256 price;
         uint256 time;
+        uint256 amount = 1;
+        if (nftType == NftStandard.ERC1155) {
+            amount = _amount;
+        }
         if (_time > block.timestamp && _grossSaleValue > 0) {
             price = _grossSaleValue;
             time = _time;
@@ -321,7 +325,7 @@ contract MarketPlaceManager is
             marketItemId,
             _nftAddress,
             _tokenId,
-            _amount,
+            amount,
             _seller,
             address(0),
             price,
@@ -336,7 +340,7 @@ contract MarketPlaceManager is
             marketItemId,
             _nftAddress,
             _tokenId,
-            _amount,
+            amount,
             _seller,
             address(0),
             price,
