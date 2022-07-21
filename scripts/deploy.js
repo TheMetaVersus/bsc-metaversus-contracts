@@ -107,8 +107,7 @@ async function main() {
     treasury.address,
     mkpManager.address,
     process.env.CREATE_FEE,
-    process.env.CREATE_MTVS_NFT_FEE,
-    process.env.TICKET_EVENT_FEE
+    process.env.CREATE_MTVS_NFT_FEE
   ]);
   await mtvsManager.deployed();
   console.log("mtvsManager deployed in:", mtvsManager.address);

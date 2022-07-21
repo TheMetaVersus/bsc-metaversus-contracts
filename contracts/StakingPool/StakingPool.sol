@@ -171,9 +171,38 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     }
 
     /**
+     *  @notice Get all params
+     */
+    function getAllParams()
+        external
+        view
+        returns (
+            address,
+            address,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            bool
+        )
+    {
+        return (
+            address(_stakeToken),
+            address(_nftAddress),
+            _stakedAmount,
+            _poolDuration,
+            _rewardRate,
+            _startTime,
+            pendingUnstake,
+            isActivePool()
+        );
+    }
+
+    /**
      *  @notice Get status of pool
      */
-    function isActivePool() external view returns (bool) {
+    function isActivePool() public view returns (bool) {
         return (_startTime.add(_poolDuration) >= block.timestamp) && !paused();
     }
 

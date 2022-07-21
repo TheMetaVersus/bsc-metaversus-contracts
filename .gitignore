@@ -8,7 +8,7 @@
 /site
 /artifacts
 /cache
-/contracts.json
+# /contracts.json
 
 # Logs
 logs

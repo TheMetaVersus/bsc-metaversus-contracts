@@ -138,7 +138,7 @@ contract MetaversusManager is
     /**
      *  @notice Get all params
      */
-    function getAllConstantParams()
+    function getAllParams()
         external
         view
         returns (

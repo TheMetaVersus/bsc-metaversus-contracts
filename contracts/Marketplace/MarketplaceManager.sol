@@ -148,6 +148,22 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice Get all params
+     */
+    function getAllParams()
+        external
+        view
+        returns (
+            address,
+            address,
+            uint256,
+            uint256
+        )
+    {
+        return (treasury, address(paymentToken), listingFee, DENOMINATOR);
+    }
+
+    /**
      *  @notice set treasury to change TreasuryManager address.
      *
      *  @dev    Only owner or admin can call this function.
@@ -203,7 +219,7 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Check standard without error when not support function supportsInterface
+     *  @notice Check ruyalty without error when not support function supportsInterface
      */
     function isRoyalty(address _contract) private returns (bool) {
         (bool success, ) = _contract.call(
@@ -486,6 +502,25 @@ contract MarketPlaceManager is
         (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981Upgradeable(_nftAddr)
             .royaltyInfo(_tokenId, _salePrice);
         return (royaltiesReceiver, royaltiesAmount);
+    }
+
+    /**
+     * @dev Get Latest Market Item by the token id
+     */
+    function getLatestMarketItemByTokenId(address nftAddress, uint256 tokenId)
+        external
+        view
+        returns (MarketItem memory, bool)
+    {
+        uint256 itemsCount = _marketItemIds.current();
+
+        for (uint256 i = itemsCount; i > 0; i--) {
+            MarketItem memory item = marketItemIdToMarketItem[i];
+            if (item.tokenId != tokenId || item.nftContractAddress != nftAddress) continue;
+            return (item, true);
+        }
+        // return empty value
+        return (marketItemIdToMarketItem[0], false);
     }
 
     /**
