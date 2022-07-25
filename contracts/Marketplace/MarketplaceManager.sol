@@ -287,6 +287,15 @@ contract MarketPlaceManager is
         item.price = price;
         item.status = MarketItemStatus.LISTING;
         item.endTime = time;
+
+        // self transfer
+        _transferNFTCall(
+            item.nftContractAddress,
+            item.tokenId,
+            item.amount,
+            address(this),
+            address(this)
+        );
         emit SoldAvailableItem(marketItemId, price);
     }
 
