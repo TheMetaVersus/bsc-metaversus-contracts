@@ -119,11 +119,11 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     ) public initializer {
         Adminable.__Adminable_init();
         transferOwnership(owner_);
-        _stakeToken = stakeToken_;
-        _rewardToken = rewardToken_;
+        _stakeToken = IERC20Upgradeable(stakeToken_);
+        _rewardToken = IERC20Upgradeable(rewardToken_);
         _rewardRate = rewardRate_;
         _poolDuration = poolDuration_;
-        _nftAddress = nftAddress_;
+        _nftAddress = IERC721Upgradeable(nftAddress_);
         pendingUnstake = 1 days;
         pause();
     }
@@ -262,6 +262,20 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     }
 
     /**
+     *  @notice Get pending claim time of corresponding user address.
+     */
+    function getPendingClaimTime(address user) external view returns (uint256) {
+        return users[user].lazyClaim.unlockedTime;
+    }
+
+    /**
+     *  @notice Get pending unstake time of corresponding user address.
+     */
+    function getPendingUnstakeTime(address user) external view returns (uint256) {
+        return users[user].lazyUnstake.unlockedTime;
+    }
+
+    /**
      *  @notice Stake amount of token to staking pool.
      *
      *  @dev    Only user has NFT can call this function.
@@ -354,9 +368,6 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             user.lazyClaim.isRequested && user.lazyClaim.unlockedTime <= block.timestamp,
             "ERROR: please request and can claim after 24 hours"
         );
-        // update status of request
-        user.lazyClaim.isRequested = false;
-        user.lastClaim = block.timestamp;
 
         if (user.totalAmount > 0) {
             uint256 pending = pendingRewards(_msgSender());
@@ -367,6 +378,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
                 emit Claimed(_msgSender(), pending);
             }
         }
+        // update status of request
+        user.lazyClaim.isRequested = false;
+        user.lastClaim = block.timestamp;
     }
 
     /**
