@@ -95,19 +95,41 @@ contract MarketPlaceManager is
 
     event MarketItemCreated(
         uint256 indexed marketItemId,
-        address indexed nftContract,
-        uint256 indexed tokenId,
+        address nftContract,
+        uint256 tokenId,
         uint256 amount,
-        address seller,
-        address owner,
+        address indexed seller,
+        address indexed buyer,
         uint256 price,
         uint256 endTime
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
-    event SoldAvailableItem(uint256 indexed marketItemId, uint256 indexed price);
-    event CanceledSelling(uint256 indexed marketItemId);
-    event Bought(uint256 indexed marketItemId, MarketItem data, uint256 indexed netSaleValue);
+    event SoldAvailableItem(
+        uint256 indexed marketItemId,
+        address indexed seller,
+        uint256 price,
+        uint256 endTime
+    );
+    event CanceledSelling(
+        uint256 indexed marketItemId,
+        address indexed nftContract,
+        uint256 tokenId,
+        uint256 amount,
+        address indexed seller,
+        uint256 price
+    );
+    event Bought(
+        uint256 indexed marketItemId,
+        address nftContract,
+        uint256 tokenId,
+        uint256 amount,
+        address indexed seller,
+        address indexed buyer,
+        uint256 price,
+        uint256 endTime,
+        uint256 nftType
+    );
 
     modifier validateId(uint256 id) {
         require(id <= _marketItemIds.current() && id > 0, "ERROR: market ID is not exist !");
@@ -135,7 +157,13 @@ contract MarketPlaceManager is
         address _owner,
         address _paymentToken,
         address _treasury
-    ) public initializer {
+    )
+        public
+        initializer
+        notZeroAddress(_owner)
+        notZeroAddress(_paymentToken)
+        notZeroAddress(_treasury)
+    {
         Adminable.__Adminable_init();
         PausableUpgradeable.__Pausable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
@@ -296,7 +324,8 @@ contract MarketPlaceManager is
             address(this),
             address(this)
         );
-        emit SoldAvailableItem(marketItemId, price);
+
+        emit SoldAvailableItem(marketItemId, item.seller, item.price, item.endTime);
     }
 
     /**
@@ -435,7 +464,14 @@ contract MarketPlaceManager is
             _msgSender()
         );
 
-        emit CanceledSelling(marketItemId);
+        emit CanceledSelling(
+            marketItemId,
+            item.nftContractAddress,
+            item.tokenId,
+            item.amount,
+            item.seller,
+            item.price
+        );
     }
 
     /**
@@ -477,7 +513,17 @@ contract MarketPlaceManager is
             _msgSender()
         );
 
-        emit Bought(marketItemId, data, netSaleValue);
+        emit Bought(
+            marketItemId,
+            data.nftContractAddress,
+            data.tokenId,
+            data.amount,
+            data.seller,
+            data.buyer,
+            data.price,
+            data.endTime,
+            data.nftType
+        );
     }
 
     /**

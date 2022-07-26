@@ -57,7 +57,6 @@ contract TokenMintERC1155 is
 
     event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event Bought(uint256 indexed tokenId, address indexed to);
     event Minted(uint256 indexed tokenId, address indexed to);
 
     /**
@@ -70,7 +69,15 @@ contract TokenMintERC1155 is
         address _treasury,
         uint96 _feeNumerator,
         uint256 _price
-    ) public initializer {
+    )
+        public
+        initializer
+        notZeroAddress(_owner)
+        notZeroAddress(_paymentToken)
+        notZeroAddress(_treasury)
+        notZeroAmount(_feeNumerator)
+        notZeroAmount(_price)
+    {
         ERC1155Upgradeable.__ERC1155_init(__uri);
         Adminable.__Adminable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
@@ -126,24 +133,6 @@ contract TokenMintERC1155 is
         uint256 oldPrice = price;
         price = newPrice;
         emit SetPrice(oldPrice, price);
-    }
-
-    /**
-     *  @notice Buy NFT directly
-     *
-     *  @dev    All users can call this function.
-     */
-    function buy(uint256 amount, string memory newuri) external notZeroAmount(amount) nonReentrant {
-        _tokenCounter.increment();
-        uint256 tokenId = _tokenCounter.current();
-
-        uris[tokenId] = newuri;
-
-        paymentToken.safeTransferFrom(_msgSender(), treasury, price);
-
-        _mint(_msgSender(), tokenId, amount, "");
-
-        emit Bought(tokenId, _msgSender());
     }
 
     /**

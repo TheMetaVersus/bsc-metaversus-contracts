@@ -34,7 +34,7 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(address _owner) public initializer {
+    function initialize(address _owner) public initializer notZeroAddress(_owner) {
         Adminable.__Adminable_init();
         transferOwnership(_owner);
     }
@@ -53,7 +53,6 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
         external
         onlyOwnerOrAdmin
         notZeroAddress(_paymentToken)
-        nonReentrant
     {
         if (allow) {
             _permitedTokens.add(_paymentToken);

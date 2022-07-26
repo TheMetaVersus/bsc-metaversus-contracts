@@ -57,7 +57,6 @@ contract TokenMintERC721 is
 
     event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event Bought(uint256 indexed tokenId, address indexed to);
     event Minted(uint256 indexed tokenId, address indexed to);
 
     /**
@@ -88,7 +87,15 @@ contract TokenMintERC721 is
         address _treasury,
         uint96 _feeNumerator,
         uint256 _price
-    ) public initializer {
+    )
+        public
+        initializer
+        notZeroAddress(_owner)
+        notZeroAddress(_paymentToken)
+        notZeroAddress(_treasury)
+        notZeroAmount(_feeNumerator)
+        notZeroAmount(_price)
+    {
         ERC721Upgradeable.__ERC721_init(_name, _symbol);
         Adminable.__Adminable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
@@ -118,22 +125,6 @@ contract TokenMintERC721 is
         uint256 oldPrice = price;
         price = newPrice;
         emit SetPrice(oldPrice, price);
-    }
-
-    /**
-     *  @notice Buy NFT directly
-     *
-     *  @dev    All users can call this function.
-     */
-    function buy(string memory uri) external nonReentrant {
-        _tokenCounter.increment();
-        uint256 tokenId = _tokenCounter.current();
-
-        uris[tokenId] = uri;
-        _mint(_msgSender(), tokenId);
-        paymentToken.safeTransferFrom(_msgSender(), treasury, price);
-
-        emit Bought(tokenId, _msgSender());
     }
 
     /**

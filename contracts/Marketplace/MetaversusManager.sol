@@ -106,7 +106,14 @@ contract MetaversusManager is
         address _marketplaceAddr,
         uint256 _feeCreate,
         uint256 _feeStakingNFT
-    ) public initializer {
+    )
+        public
+        initializer
+        notZeroAddress(_owner)
+        notZeroAddress(_treasury)
+        notZeroAmount(_feeCreate)
+        notZeroAmount(_feeStakingNFT)
+    {
         Adminable.__Adminable_init();
         PausableUpgradeable.__Pausable_init();
         transferOwnership(_owner);
