@@ -99,7 +99,15 @@ contract NFTMTVSTicket is
         address _treasury,
         uint96 _feeNumerator,
         uint256 _price
-    ) public initializer {
+    )
+        public
+        initializer
+        notZeroAddress(_owner)
+        notZeroAddress(_paymentToken)
+        notZeroAddress(_treasury)
+        notZeroAmount(_feeNumerator)
+        notZeroAmount(_price)
+    {
         ERC721Upgradeable.__ERC721_init(_name, _symbol);
         Adminable.__Adminable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);

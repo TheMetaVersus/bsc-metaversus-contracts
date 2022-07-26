@@ -36,19 +36,19 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     }
 
     /**
-     *  @notice _stakedAmount uint256 is amount of staked token.
+     *  @notice stakedAmount uint256 is amount of staked token.
      */
-    uint256 private _stakedAmount;
+    uint256 public stakedAmount;
 
     /**
-     *  @notice _rewardRate uint256 is rate of token.
+     *  @notice rewardRate uint256 is rate of token.
      */
-    uint256 private _rewardRate;
+    uint256 public rewardRate;
 
     /**
-     *  @notice _poolDuration uint256 is duration of staking pool to end-time.
+     *  @notice poolDuration uint256 is duration of staking pool to end-time.
      */
-    uint256 private _poolDuration;
+    uint256 public poolDuration;
 
     /**
      *  @notice pendingUnstake uint256 is time after request unstake for waiting.
@@ -56,24 +56,24 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     uint256 public pendingUnstake;
 
     /**
-     *  @notice _startTime is timestamp start staking in pool.
+     *  @notice startTime is timestamp start staking in pool.
      */
-    uint256 private _startTime;
+    uint256 public startTime;
 
     /**
-     *  @notice _stakeToken IERC20 is interface of staked token.
+     *  @notice stakeToken IERC20 is interface of staked token.
      */
-    IERC20Upgradeable private _stakeToken;
+    IERC20Upgradeable public stakeToken;
 
     /**
-     *  @notice _rewardToken IERC20 is interfacce of reward token.
+     *  @notice rewardToken IERC20 is interfacce of reward token.
      */
-    IERC20Upgradeable private _rewardToken;
+    IERC20Upgradeable public rewardToken;
 
     /**
-     *  @notice _nftAddress IERC721 is interfacce of nft
+     *  @notice nftAddress IERC721 is interfacce of nft
      */
-    IERC721Upgradeable private _nftAddress;
+    IERC721Upgradeable public nftAddress;
 
     /**
      *  @notice Mapping an address to a information of corresponding user address.
@@ -111,63 +111,30 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function initialize(
         address owner_,
-        IERC20Upgradeable stakeToken_,
-        IERC20Upgradeable rewardToken_,
-        IERC721Upgradeable nftAddress_,
+        address stakeToken_,
+        address rewardToken_,
+        address nftAddress_,
         uint256 rewardRate_,
         uint256 poolDuration_
-    ) public initializer {
+    )
+        public
+        initializer
+        notZeroAddress(owner_)
+        notZeroAddress(stakeToken_)
+        notZeroAddress(rewardToken_)
+        notZeroAddress(nftAddress_)
+        notZeroAmount(rewardRate_)
+        notZeroAmount(poolDuration_)
+    {
         Adminable.__Adminable_init();
         transferOwnership(owner_);
-        _stakeToken = IERC20Upgradeable(stakeToken_);
-        _rewardToken = IERC20Upgradeable(rewardToken_);
-        _rewardRate = rewardRate_;
-        _poolDuration = poolDuration_;
-        _nftAddress = IERC721Upgradeable(nftAddress_);
+        stakeToken = IERC20Upgradeable(stakeToken_);
+        rewardToken = IERC20Upgradeable(rewardToken_);
+        rewardRate = rewardRate_;
+        poolDuration = poolDuration_;
+        nftAddress = IERC721Upgradeable(nftAddress_);
         pendingUnstake = 1 days;
         pause();
-    }
-
-    /**
-     *  @notice Get staked token.
-     */
-    function getStakeToken() external view returns (address) {
-        return address(_stakeToken);
-    }
-
-    /**
-     *  @notice Get nft address.
-     */
-    function getNftAddress() external view returns (address) {
-        return address(_nftAddress);
-    }
-
-    /**
-     *  @notice Get staked amount of staking pool from all user.
-     */
-    function getStakedAmount() external view returns (uint256) {
-        return _stakedAmount;
-    }
-
-    /**
-     *  @notice Get pool duration.
-     */
-    function getPoolDuration() external view returns (uint256) {
-        return _poolDuration;
-    }
-
-    /**
-     *  @notice Get reward rate of staking pool.
-     */
-    function getRewardRate() external view returns (uint256) {
-        return _rewardRate;
-    }
-
-    /**
-     *  @notice Get start time of staking pool.
-     */
-    function getStartTime() external view returns (uint256) {
-        return _startTime;
     }
 
     /**
@@ -188,12 +155,12 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         )
     {
         return (
-            address(_stakeToken),
-            address(_nftAddress),
-            _stakedAmount,
-            _poolDuration,
-            _rewardRate,
-            _startTime,
+            address(stakeToken),
+            address(nftAddress),
+            stakedAmount,
+            poolDuration,
+            rewardRate,
+            startTime,
             pendingUnstake,
             isActivePool()
         );
@@ -203,7 +170,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Get status of pool
      */
     function isActivePool() public view returns (bool) {
-        return (_startTime.add(_poolDuration) >= block.timestamp) && !paused();
+        return (startTime.add(poolDuration) >= block.timestamp) && !paused();
     }
 
     /**
@@ -211,8 +178,8 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setStartTime(uint256 startTime) external onlyOwnerOrAdmin {
-        _startTime = startTime;
+    function setStartTime(uint256 _startTime) external onlyOwnerOrAdmin {
+        startTime = _startTime;
         emit SetStartTime(startTime);
     }
 
@@ -221,8 +188,12 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setRewardRate(uint256 rewardRate) external notZeroAmount(rewardRate) onlyOwnerOrAdmin {
-        _rewardRate = rewardRate;
+    function setRewardRate(uint256 _rewardRate)
+        external
+        notZeroAmount(rewardRate)
+        onlyOwnerOrAdmin
+    {
+        rewardRate = _rewardRate;
         emit SetRewardRate(rewardRate);
     }
 
@@ -245,12 +216,12 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setPoolDuration(uint256 poolDuration)
+    function setPoolDuration(uint256 _poolDuration)
         external
         notZeroAmount(poolDuration)
         onlyOwnerOrAdmin
     {
-        _poolDuration = poolDuration;
+        poolDuration = _poolDuration;
         emit SetDuration(poolDuration);
     }
 
@@ -281,13 +252,13 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @dev    Only user has NFT can call this function.
      */
     function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
-        require(block.timestamp > _startTime, "ERROR: not time for stake !");
+        require(block.timestamp > startTime, "ERROR: not time for stake !");
         require(
-            _startTime.add(_poolDuration) > block.timestamp,
+            startTime.add(poolDuration) > block.timestamp,
             "ERROR: staking pool for NFT had been expired !"
         );
         require(
-            _nftAddress.balanceOf(_msgSender()) > 0,
+            nftAddress.balanceOf(_msgSender()) > 0,
             "ERROR: require own nft for stake MTVS token"
         );
         // calculate pending rewards of staked amount before
@@ -302,10 +273,10 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
 
         // add extra token just deposited
         user.totalAmount = user.totalAmount.add(_amount);
-        _stakedAmount = _stakedAmount.add(_amount);
+        stakedAmount = stakedAmount.add(_amount);
 
         // request transfer token
-        _stakeToken.safeTransferFrom(_msgSender(), address(this), _amount);
+        stakeToken.safeTransferFrom(_msgSender(), address(this), _amount);
 
         emit Staked(_msgSender(), _amount);
     }
@@ -315,7 +286,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function pendingRewards(address _user) public view returns (uint256) {
         UserInfo memory user = users[_user];
-        if (_startTime <= block.timestamp) {
+        if (startTime <= block.timestamp) {
             uint256 amount = calReward(_user);
             amount = amount + user.pendingRewards;
             return amount;
@@ -328,7 +299,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function requestUnstake() external nonReentrant whenNotPaused returns (uint256) {
         require(
-            _startTime.add(_poolDuration) < block.timestamp && _startTime != 0,
+            startTime.add(poolDuration) < block.timestamp && startTime != 0,
             "ERROR: not allow unstake at this time"
         );
         UserInfo storage user = users[_msgSender()];
@@ -344,7 +315,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Request claim before unstake activity
      */
     function requestClaim() external nonReentrant whenNotPaused returns (uint256) {
-        require(_startTime > 0, "ERROR: pool is not start !");
+        require(startTime > 0, "ERROR: pool is not start !");
         UserInfo storage user = users[_msgSender()];
         require(!user.lazyClaim.isRequested, "ERROR: requested !");
 
@@ -361,7 +332,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     function claim() external nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
         require(
-            _startTime.add(_poolDuration) >= block.timestamp,
+            startTime.add(poolDuration) >= block.timestamp,
             "ERROR: staking pool had been expired !"
         );
         require(
@@ -374,7 +345,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             if (pending > 0) {
                 user.pendingRewards = 0;
                 // transfer token
-                _rewardToken.safeTransfer(_msgSender(), pending);
+                rewardToken.safeTransfer(_msgSender(), pending);
                 emit Claimed(_msgSender(), pending);
             }
         }
@@ -389,7 +360,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     function unstake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
         require(
-            _startTime.add(_poolDuration) <= block.timestamp,
+            startTime.add(poolDuration) <= block.timestamp,
             "ERROR: staking pool for NFT has not expired yet !"
         );
         require(
@@ -407,15 +378,15 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         user.lastClaim = block.timestamp;
         // update data before transfer
         user.totalAmount = user.totalAmount.sub(_amount);
-        _stakedAmount = _stakedAmount.sub(_amount);
+        stakedAmount = stakedAmount.sub(_amount);
         // claim token
         if (pending > 0) {
             user.pendingRewards = 0;
-            _rewardToken.safeTransfer(_msgSender(), pending);
+            rewardToken.safeTransfer(_msgSender(), pending);
         }
 
         // transfer token
-        _stakeToken.safeTransfer(_msgSender(), _amount);
+        stakeToken.safeTransfer(_msgSender(), _amount);
 
         emit UnStaked(_msgSender(), _amount);
     }
@@ -426,16 +397,16 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @dev    Only admin can call this function.
      */
     function emergencyWithdraw() external onlyOwner nonReentrant {
-        if (_rewardToken == _stakeToken) {
-            _rewardToken.safeTransfer(
+        if (rewardToken == stakeToken) {
+            rewardToken.safeTransfer(
                 owner(),
-                _rewardToken.balanceOf(address(this)).sub(_stakedAmount)
+                rewardToken.balanceOf(address(this)).sub(stakedAmount)
             );
         } else {
-            _rewardToken.safeTransfer(owner(), _rewardToken.balanceOf(address(this)));
+            rewardToken.safeTransfer(owner(), rewardToken.balanceOf(address(this)));
         }
 
-        emit EmergencyWithdrawed(_msgSender(), address(_rewardToken));
+        emit EmergencyWithdrawed(_msgSender(), address(rewardToken));
     }
 
     /**
@@ -451,11 +422,11 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function calReward(address _user) public view returns (uint256) {
         UserInfo memory user = users[_user];
-        uint256 minTime = min(block.timestamp, _startTime.add(_poolDuration));
+        uint256 minTime = min(block.timestamp, startTime.add(poolDuration));
         if (minTime < user.lastClaim) {
             return 0;
         }
-        uint256 amount = user.totalAmount.mul(minTime.sub(user.lastClaim)).mul(_rewardRate).div(
+        uint256 amount = user.totalAmount.mul(minTime.sub(user.lastClaim)).mul(rewardRate).div(
             1e18
         );
         return amount;

@@ -21,7 +21,7 @@ contract Adminable is OwnableUpgradeable {
     modifier onlyOwnerOrAdmin() {
         require(
             (owner() == _msgSender() || admins[_msgSender()]),
-            "Ownable: caller is not an owner or admin"
+            "Adminable: caller is not an owner or admin"
         );
         _;
     }
@@ -42,8 +42,6 @@ contract Adminable is OwnableUpgradeable {
 
     /**
      *  @notice Check account whether it is the admin role.
-     *
-     *  @dev    All caller can call this function.
      */
     function isAdmin(address account) external view returns (bool) {
         return admins[account];

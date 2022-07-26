@@ -50,7 +50,13 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         string memory _symbol,
         uint256 _totalSupply,
         address _treasury
-    ) public initializer {
+    )
+        public
+        initializer
+        notZeroAddress(_curator)
+        notZeroAddress(_treasury)
+        notZeroAmount(_totalSupply)
+    {
         ERC20Upgradeable.__ERC20_init(_name, _symbol);
         OwnableUpgradeable.__Ownable_init();
         transferOwnership(_curator);
