@@ -101,23 +101,32 @@ contract MarketPlaceManager is
         address indexed seller,
         address indexed buyer,
         uint256 price,
-        uint256 endTime
+        uint256 endTime,
+        uint256 nftType
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event SoldAvailableItem(
         uint256 indexed marketItemId,
-        address indexed seller,
-        uint256 price,
-        uint256 endTime
-    );
-    event CanceledSelling(
-        uint256 indexed marketItemId,
-        address indexed nftContract,
+        address nftContract,
         uint256 tokenId,
         uint256 amount,
         address indexed seller,
-        uint256 price
+        address indexed buyer,
+        uint256 price,
+        uint256 endTime,
+        uint256 nftType
+    );
+    event CanceledSelling(
+        uint256 indexed marketItemId,
+        address nftContract,
+        uint256 tokenId,
+        uint256 amount,
+        address indexed seller,
+        address indexed buyer,
+        uint256 price,
+        uint256 endTime,
+        uint256 nftType
     );
     event Bought(
         uint256 indexed marketItemId,
@@ -325,7 +334,17 @@ contract MarketPlaceManager is
             address(this)
         );
 
-        emit SoldAvailableItem(marketItemId, item.seller, item.price, item.endTime);
+        emit SoldAvailableItem(
+            marketItemId,
+            item.nftContractAddress,
+            item.tokenId,
+            item.amount,
+            item.seller,
+            item.buyer,
+            item.price,
+            item.endTime,
+            item.nftType
+        );
     }
 
     /**
@@ -380,7 +399,8 @@ contract MarketPlaceManager is
             _seller,
             address(0),
             price,
-            time
+            time,
+            uint256(nftType)
         );
     }
 
@@ -463,14 +483,16 @@ contract MarketPlaceManager is
             address(this),
             _msgSender()
         );
-
         emit CanceledSelling(
             marketItemId,
             item.nftContractAddress,
             item.tokenId,
             item.amount,
             item.seller,
-            item.price
+            item.buyer,
+            item.price,
+            item.endTime,
+            item.nftType
         );
     }
 
