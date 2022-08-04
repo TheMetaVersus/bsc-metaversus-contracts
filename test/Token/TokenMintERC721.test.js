@@ -114,7 +114,7 @@ describe("TokenMintERC721:", () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
                 tokenMintERC721.connect(user1).setTreasury(user2.address)
-            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
         it("should revert when price equal to zero: ", async () => {
             await expect(tokenMintERC721.setPrice(0)).to.be.revertedWith(
@@ -133,29 +133,10 @@ describe("TokenMintERC721:", () => {
         });
     });
 
-    describe("buy function:", async () => {
-        it("should buy success: ", async () => {
-            await token.mint(user1.address, TOTAL_SUPPLY);
-            await token
-                .connect(user1)
-                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
-
-            await expect(() =>
-                tokenMintERC721.connect(user1).buy("this_uri.json")
-            ).to.changeTokenBalance(token, user1, -PRICE);
-            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
-
-            expect(await tokenMintERC721.balanceOf(user1.address)).to.equal(1);
-            expect(await tokenMintERC721.tokenURI(1)).to.equal("this_uri" + ".json");
-
-            expect(await token.balanceOf(user1.address)).to.equal(subtract(TOTAL_SUPPLY, PRICE));
-            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
-        });
-    });
     describe("setPrice function:", async () => {
         it("should revert when newPrice equal to zero: ", async () => {
             await expect(tokenMintERC721.connect(user1).setPrice(1000)).to.be.revertedWith(
-                "Ownable: caller is not an owner or admin"
+                "Adminable: caller is not an owner or admin"
             );
         });
         it("should revert when price equal to zero: ", async () => {
@@ -180,7 +161,7 @@ describe("TokenMintERC721:", () => {
         it("should revert when newPrice equal to zero: ", async () => {
             await expect(
                 tokenMintERC721.connect(user1).mint(owner.address, mkpManager.address, "this_uri")
-            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
         it("should revert when seller address equal to zero address: ", async () => {
             await expect(

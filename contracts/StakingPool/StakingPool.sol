@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -51,9 +51,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     uint256 public poolDuration;
 
     /**
-     *  @notice pendingUnstake uint256 is time after request unstake for waiting.
+     *  @notice pendingTime uint256 is time after request unstake for waiting.
      */
-    uint256 public pendingUnstake;
+    uint256 public pendingTime;
 
     /**
      *  @notice startTime is timestamp start staking in pool.
@@ -85,25 +85,23 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     event Claimed(address indexed user, uint256 amount);
     event EmergencyWithdrawed(address indexed owner, address indexed token);
     event SetRewardRate(uint256 indexed rate);
-    event SetUnstakeTime(uint256 indexed pendingTime);
+    event SetPendingTime(uint256 indexed pendingTime);
     event SetStakeTime(uint256 indexed endTime);
     event SetDuration(uint256 indexed poolDuration);
     event SetStartTime(uint256 indexed poolDuration);
     event RequestUnstake(address indexed sender);
     event RequestClaim(address indexed sender);
+    event SetPause(bool isPause);
 
     /**
-     *  @notice Pause action
+     *  @notice Set pause action
      */
-    function pause() public onlyOwner {
-        _pause();
-    }
+    function setPause(bool isPause) public onlyOwnerOrAdmin {
+        if (isPause) {
+            _pause();
+        } else _unpause();
 
-    /**
-     *  @notice Unpause action
-     */
-    function unpause() public onlyOwner {
-        _unpause();
+        emit SetPause(isPause);
     }
 
     /**
@@ -133,8 +131,8 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         rewardRate = rewardRate_;
         poolDuration = poolDuration_;
         nftAddress = IERC721Upgradeable(nftAddress_);
-        pendingUnstake = 1 days;
-        pause();
+        pendingTime = 1 days; // default
+        _pause();
     }
 
     /**
@@ -161,7 +159,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             poolDuration,
             rewardRate,
             startTime,
-            pendingUnstake,
+            pendingTime,
             isActivePool()
         );
     }
@@ -202,13 +200,13 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setPendingUnstake(uint256 pendingTime)
+    function setPendingTime(uint256 _pendingTime)
         external
-        notZeroAmount(pendingTime)
+        notZeroAmount(_pendingTime)
         onlyOwnerOrAdmin
     {
-        pendingUnstake = pendingTime;
-        emit SetUnstakeTime(pendingTime);
+        pendingTime = _pendingTime;
+        emit SetPendingTime(_pendingTime);
     }
 
     /**
@@ -305,7 +303,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         UserInfo storage user = users[_msgSender()];
         require(!user.lazyUnstake.isRequested, "ERROR: requested !");
         user.lazyUnstake.isRequested = true;
-        user.lazyUnstake.unlockedTime = block.timestamp + pendingUnstake;
+        user.lazyUnstake.unlockedTime = block.timestamp + pendingTime;
 
         emit RequestUnstake(_msgSender());
         return user.lazyUnstake.unlockedTime;
@@ -315,12 +313,15 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Request claim before unstake activity
      */
     function requestClaim() external nonReentrant whenNotPaused returns (uint256) {
-        require(startTime > 0, "ERROR: pool is not start !");
+        require(
+            startTime.add(poolDuration) > block.timestamp && startTime != 0,
+            "ERROR: not allow claim at this time"
+        );
         UserInfo storage user = users[_msgSender()];
         require(!user.lazyClaim.isRequested, "ERROR: requested !");
 
         user.lazyClaim.isRequested = true;
-        user.lazyClaim.unlockedTime = block.timestamp + pendingUnstake;
+        user.lazyClaim.unlockedTime = block.timestamp + pendingTime;
 
         emit RequestClaim(_msgSender());
         return user.lazyClaim.unlockedTime;
@@ -339,7 +340,8 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             user.lazyClaim.isRequested && user.lazyClaim.unlockedTime <= block.timestamp,
             "ERROR: please request and can claim after 24 hours"
         );
-
+        // update status of request
+        user.lazyClaim.isRequested = false;
         if (user.totalAmount > 0) {
             uint256 pending = pendingRewards(_msgSender());
             if (pending > 0) {
@@ -349,8 +351,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
                 emit Claimed(_msgSender(), pending);
             }
         }
-        // update status of request
-        user.lazyClaim.isRequested = false;
+        // update timestamp
         user.lastClaim = block.timestamp;
     }
 
@@ -376,9 +377,11 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         user.lazyUnstake.isRequested = false;
         user.lazyClaim.isRequested = false;
         user.lastClaim = block.timestamp;
+
         // update data before transfer
         user.totalAmount = user.totalAmount.sub(_amount);
         stakedAmount = stakedAmount.sub(_amount);
+
         // claim token
         if (pending > 0) {
             user.pendingRewards = 0;
@@ -387,7 +390,6 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
 
         // transfer token
         stakeToken.safeTransfer(_msgSender(), _amount);
-
         emit UnStaked(_msgSender(), _amount);
     }
 

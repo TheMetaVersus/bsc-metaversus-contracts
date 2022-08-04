@@ -78,8 +78,8 @@ describe("Metaversus Manager:", () => {
             350,
         ]);
 
-        await mtvsManager.unpause();
-        await mkpManager.unpause();
+        await mtvsManager.setPause(false);
+        await mkpManager.setPause(false);
     });
 
     describe("Deployment:", async () => {
@@ -123,7 +123,7 @@ describe("Metaversus Manager:", () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
                 mtvsManager.connect(user1).setMarketplace(user2.address)
-            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
         it("should revert when address equal to zero address: ", async () => {
             await expect(mtvsManager.setMarketplace(constants.ZERO_ADDRESS)).to.be.revertedWith(
@@ -142,7 +142,7 @@ describe("Metaversus Manager:", () => {
     describe("setFee function:", async () => {
         it("should revert when caller is not owner or admin: ", async () => {
             await expect(mtvsManager.connect(user1).setFee(100, 0)).to.be.revertedWith(
-                "Ownable: caller is not an owner or admin"
+                "Adminable: caller is not an owner or admin"
             );
         });
         it("should revert when new fee equal to zero amount: ", async () => {
@@ -162,7 +162,7 @@ describe("Metaversus Manager:", () => {
     describe("setTreasury function:", async () => {
         it("should revert when caller is not owner or admin: ", async () => {
             await expect(mtvsManager.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
-                "Ownable: caller is not an owner or admin"
+                "Adminable: caller is not an owner or admin"
             );
         });
         it("should set treasury success: ", async () => {
@@ -268,11 +268,6 @@ describe("Metaversus Manager:", () => {
     });
 
     describe("buyTicketEvent function:", async () => {
-        it("should revert when eventId equal to zero amount: ", async () => {
-            await expect(mtvsManager.connect(user1).buyTicketEvent(0, 100)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
-        });
         it("should revert when amount equal to zero amount: ", async () => {
             await expect(mtvsManager.connect(user1).buyTicketEvent(1, 0)).to.be.revertedWith(
                 "ERROR: amount must be greater than zero !"

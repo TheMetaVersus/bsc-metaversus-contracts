@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -36,7 +36,7 @@ contract Adminable is OwnableUpgradeable {
         _;
     }
 
-    function __Adminable_init() internal initializer {
+    function __Adminable_init() internal onlyInitializing {
         OwnableUpgradeable.__Ownable_init();
     }
 

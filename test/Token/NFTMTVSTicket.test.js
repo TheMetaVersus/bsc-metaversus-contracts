@@ -64,7 +64,7 @@ describe("NFTMTVSTicket:", () => {
     describe("setLocked function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(nftMTVSTicket.connect(user1).setLocked(true)).to.be.revertedWith(
-                "Ownable: caller is not an owner or admin"
+                "Adminable: caller is not an owner or admin"
             );
         });
         it("should set locked success: ", async () => {
@@ -98,7 +98,7 @@ describe("NFTMTVSTicket:", () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
                 nftMTVSTicket.connect(user1).setTreasury(user2.address)
-            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
         it("should revert when address equal to zero address: ", async () => {
             await expect(nftMTVSTicket.setTreasury(constants.ZERO_ADDRESS)).to.be.revertedWith(
@@ -120,7 +120,7 @@ describe("NFTMTVSTicket:", () => {
     describe("setPrice function:", async () => {
         it("should revert when Ownable: caller is not an owner or admin:", async () => {
             await expect(nftMTVSTicket.connect(user1).setPrice(1000)).to.be.revertedWith(
-                "Ownable: caller is not an owner or admin"
+                "Adminable: caller is not an owner or admin"
             );
         });
         it("should revert when price equal to zero: ", async () => {
@@ -192,7 +192,7 @@ describe("NFTMTVSTicket:", () => {
         });
         it("should revert when caller is not owner or admin: ", async () => {
             await expect(nftMTVSTicket.connect(user2).mint(user2.address)).to.be.revertedWith(
-                "Ownable: caller is not an owner or admin"
+                "Adminable: caller is not an owner or admin"
             );
         });
         it("should revert when have a NFT: ", async () => {
