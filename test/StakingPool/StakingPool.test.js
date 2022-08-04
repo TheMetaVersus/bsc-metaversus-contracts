@@ -55,7 +55,7 @@ describe("Staking Pool:", () => {
         await staking.deployed();
         CURRENT = await getCurrentTime();
 
-        await staking.unpause();
+        await staking.setPause(false);
         await staking.setStartTime(CURRENT);
     });
 
@@ -68,22 +68,22 @@ describe("Staking Pool:", () => {
     // GET FUNC
     describe("getStakeToken:", async () => {
         it("should return staked token: ", async () => {
-            expect(await staking.getStakeToken()).to.equal(token.address);
+            expect(await staking.stakeToken()).to.equal(token.address);
         });
     });
     describe("getStakedAmount:", async () => {
         it("should return total staked amount: ", async () => {
-            expect(await staking.getStakedAmount()).to.equal(0);
+            expect(await staking.stakedAmount()).to.equal(0);
         });
     });
     describe("getPoolDuration:", async () => {
         it("should return pool duration: ", async () => {
-            expect(await staking.getPoolDuration()).to.equal(poolDuration);
+            expect(await staking.poolDuration()).to.equal(poolDuration);
         });
     });
     describe("getRewardRate:", async () => {
         it("should return reward rate: ", async () => {
-            expect(await staking.getRewardRate()).to.equal(REWARD_RATE);
+            expect(await staking.rewardRate()).to.equal(REWARD_RATE);
         });
     });
 
@@ -99,7 +99,7 @@ describe("Staking Pool:", () => {
     });
     describe("getStartTime:", async () => {
         it("should return start time of staking pool: ", async () => {
-            expect(await staking.getStartTime()).to.equal(CURRENT.toString());
+            expect(await staking.startTime()).to.equal(CURRENT.toString());
         });
     });
     describe("isActivePool:", async () => {
@@ -118,14 +118,14 @@ describe("Staking Pool:", () => {
         it("should change reward rate: ", async () => {
             const newRate = 1512300005610;
             await staking.setRewardRate(newRate);
-            expect(await staking.getRewardRate()).to.equal(newRate);
+            expect(await staking.rewardRate()).to.equal(newRate);
         });
     });
     describe("setPoolDuration:", async () => {
         it("should change pool duration: ", async () => {
             const newPoolDuration = 3 * 30 * 24 * 60 * 60;
             await staking.setPoolDuration(newPoolDuration);
-            expect(await staking.getPoolDuration()).to.equal(newPoolDuration);
+            expect(await staking.poolDuration()).to.equal(newPoolDuration);
         });
     });
 
@@ -133,15 +133,15 @@ describe("Staking Pool:", () => {
         it("should change start time: ", async () => {
             const time = 1234567;
             await staking.setStartTime(time);
-            expect(await staking.getStartTime()).to.equal(time);
+            expect(await staking.startTime()).to.equal(time);
         });
     });
 
-    describe("setPendingUnstake:", async () => {
-        it("should change pending unstake time: ", async () => {
+    describe("setPendingTime:", async () => {
+        it("should change pending time time: ", async () => {
             const time = 1234567;
-            await staking.setPendingUnstake(time);
-            expect(await staking.pendingUnstake()).to.equal(time);
+            await staking.setPendingTime(time);
+            expect(await staking.pendingTime()).to.equal(time);
         });
     });
 
@@ -250,7 +250,7 @@ describe("Staking Pool:", () => {
             await nftMTVSTicket.mint(user1.address);
             await staking.setStartTime(0);
             await expect(staking.connect(user1).requestClaim()).to.be.revertedWith(
-                "ERROR: pool is not start !"
+                "ERROR: not allow claim at this time"
             );
         });
         it("should revert when more request: ", async () => {
@@ -309,13 +309,13 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
 
             await skipTime(10 * 30 * 24 * 60 * 60);
-
-            await staking.connect(user1).requestClaim();
-            await skipTime(24 * 60 * 60 + 1);
-
-            await expect(staking.connect(user1).claim()).to.be.revertedWith(
-                "ERROR: staking pool had been expired !"
+            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith(
+                "ERROR: not allow claim at this time"
             );
+            // await skipTime(24 * 60 * 60 + 1);
+            // await expect(staking.connect(user1).claim()).to.be.revertedWith(
+            //     "ERROR: staking pool had been expired !"
+            // );
         });
 
         it("should claim success", async () => {
@@ -414,9 +414,7 @@ describe("Staking Pool:", () => {
             await token.connect(owner).transfer(staking.address, 10000);
             expect(await token.balanceOf(owner.address)).to.equal(subtract(ONE_ETHER, 10000));
             await staking.connect(owner).emergencyWithdraw();
-            expect(await staking.getStakedAmount()).to.equal(
-                await token.balanceOf(staking.address)
-            );
+            expect(await staking.stakedAmount()).to.equal(await token.balanceOf(staking.address));
             expect(await token.balanceOf(owner.address)).to.equal(subtract(ONE_ETHER));
         });
     });

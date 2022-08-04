@@ -109,7 +109,7 @@ describe("TokenMintERC1155:", () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
                 tokenMintERC1155.connect(user1).setTreasury(user2.address)
-            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
         it("should revert when address equal to zero address: ", async () => {
             await expect(tokenMintERC1155.setTreasury(constants.ZERO_ADDRESS)).to.be.revertedWith(
@@ -128,38 +128,13 @@ describe("TokenMintERC1155:", () => {
         });
     });
 
-    describe("buy function:", async () => {
-        it("should revert when amount equal to zero address: ", async () => {
-            await expect(tokenMintERC1155.buy(0, "this_uri")).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
-        });
-        it("should buy success: ", async () => {
-            await token.mint(user1.address, ONE_ETHER);
-
-            await token
-                .connect(user1)
-                .approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
-
-            await expect(() =>
-                tokenMintERC1155.connect(user1).buy(100, "this_uri")
-            ).to.changeTokenBalance(token, user1, -PRICE);
-            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
-
-            expect(await tokenMintERC1155.balanceOf(user1.address, 1)).to.equal(100);
-
-            expect(await token.balanceOf(user1.address)).to.equal(subtract(ONE_ETHER, PRICE));
-            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, PRICE));
-        });
-    });
-
     describe("mint function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
                 tokenMintERC1155
                     .connect(user1)
                     .mint(user2.address, mkpManager.address, 100, "this_uri")
-            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
         it("should revert when seller address equal to zero address: ", async () => {
             await expect(

@@ -18,6 +18,7 @@ async function main() {
   const MTVSManager = await ethers.getContractFactory("MetaversusManager");
   const MkpManager = await ethers.getContractFactory("MarketPlaceManager");
   const Staking = await ethers.getContractFactory("StakingPool");
+  const PoolFactory = await ethers.getContractFactory("PoolFactory");
   // Deploy contracts
   console.log(
     "========================================================================================="
@@ -115,16 +116,47 @@ async function main() {
     "========================================================================================="
   );
 
-  const staking = await upgrades.deployProxy(Staking, [
+  const staking30d = await upgrades.deployProxy(Staking, [
     admin,
     mtvs.address,
     mtvs.address,
     nftMTVSTicket.address,
-    process.env.REWARD_RATE,
-    process.env.POOL_DURATION
+    process.env.REWARD_RATE_30_DAY,
+    process.env.POOL_DURATION_30_DAY
   ]);
-  await staking.deployed();
-  console.log("staking deployed in:", staking.address);
+  await staking30d.deployed();
+  console.log("staking30d deployed in:", staking30d.address);
+
+  const staking60d = await upgrades.deployProxy(Staking, [
+    admin,
+    mtvs.address,
+    mtvs.address,
+    nftMTVSTicket.address,
+    process.env.REWARD_RATE_60_DAY,
+    process.env.POOL_DURATION_60_DAY
+  ]);
+  await staking60d.deployed();
+  console.log("staking60d deployed in:", staking60d.address);
+
+  const staking90d = await upgrades.deployProxy(Staking, [
+    admin,
+    mtvs.address,
+    mtvs.address,
+    nftMTVSTicket.address,
+    process.env.REWARD_RATE_90_DAY,
+    process.env.POOL_DURATION_90_DAY
+  ]);
+  await staking90d.deployed();
+  console.log("staking90d deployed in:", staking90d.address);
+
+  // Factory Pool
+  const staking = await Staking.deploy();
+  console.log("staking template deployed in:", staking.address);
+  const poolFactory = await upgrades.deployProxy(PoolFactory, [
+    staking.address
+  ]);
+  await poolFactory.deployed();
+  console.log("PoolFactory deployed in:", poolFactory.address);
 
   console.log(
     "========================================================================================="
@@ -182,10 +214,31 @@ async function main() {
   console.log(
     "========================================================================================="
   );
-  const stakingVerify = await upgrades.erc1967.getImplementationAddress(
-    staking.address
+  const staking30dVerify = await upgrades.erc1967.getImplementationAddress(
+    staking30d.address
   );
-  console.log("stakingVerify deployed in:", stakingVerify);
+  console.log("staking30dVerify deployed in:", staking30dVerify);
+  console.log(
+    "========================================================================================="
+  );
+  const staking60dVerify = await upgrades.erc1967.getImplementationAddress(
+    staking60d.address
+  );
+  console.log("staking60dVerify deployed in:", staking60dVerify);
+  console.log(
+    "========================================================================================="
+  );
+  const staking90dVerify = await upgrades.erc1967.getImplementationAddress(
+    staking90d.address
+  );
+  console.log("staking90dVerify deployed in:", staking90dVerify);
+  console.log(
+    "========================================================================================="
+  );
+  const poolFactoryVerify = await upgrades.erc1967.getImplementationAddress(
+    poolFactory.address
+  );
+  console.log("poolFactoryVerify deployed in:", poolFactoryVerify);
   console.log(
     "========================================================================================="
   );
@@ -198,7 +251,11 @@ async function main() {
     nftMTVSTicket: nftMTVSTicket.address,
     mtvsManager: mtvsManager.address,
     mkpManager: mkpManager.address,
-    staking: staking.address
+    staking30d: staking30d.address,
+    staking60d: staking60d.address,
+    staking90d: staking90d.address,
+    staking: staking.address,
+    poolFactory: poolFactory.address
   };
 
   await fs.writeFileSync("contracts.json", JSON.stringify(contractAddresses));
@@ -212,7 +269,11 @@ async function main() {
     nftMTVSTicket: nftMTVSTicketVerify,
     mtvsManager: mtvsManagerVerify,
     mkpManager: mkpManagerVerify,
-    staking: stakingVerify
+    staking30d: staking30dVerify,
+    staking60d: staking60dVerify,
+    staking90d: staking90dVerify,
+    staking: staking.address,
+    poolFactory: poolFactoryVerify
   };
 
   await fs.writeFileSync(

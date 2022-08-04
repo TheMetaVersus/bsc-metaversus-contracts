@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -139,6 +139,7 @@ contract MarketPlaceManager is
         uint256 endTime,
         uint256 nftType
     );
+    event SetPause(bool isPause);
 
     modifier validateId(uint256 id) {
         require(id <= _marketItemIds.current() && id > 0, "ERROR: market ID is not exist !");
@@ -146,17 +147,14 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Pause action
+     *  @notice Set pause action
      */
-    function pause() public onlyOwner {
-        _pause();
-    }
+    function setPause(bool isPause) public onlyOwnerOrAdmin {
+        if (isPause) {
+            _pause();
+        } else _unpause();
 
-    /**
-     *  @notice Unpause action
-     */
-    function unpause() public onlyOwner {
-        _unpause();
+        emit SetPause(isPause);
     }
 
     /**
@@ -179,7 +177,7 @@ contract MarketPlaceManager is
         transferOwnership(_owner);
         treasury = _treasury;
         listingFee = 25e2; // 2.5%
-        pause();
+        setPause(true);
     }
 
     /**

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -73,24 +73,22 @@ contract MetaversusManager is
     mapping(uint256 => uint256) public fees;
 
     event BoughtTicket(address indexed to);
-    event BoughtTicketEvent(address indexed to, uint256 indexed eventid);
+    event BoughtTicketEvent(address indexed to, string indexed eventid);
     event SetFee(uint256 indexed newFee, uint256 indexed feeType);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event SetMarketplace(address indexed oldTreasury, address indexed newTreasury);
     event Created(uint256 indexed typeMint, address indexed to, uint256 indexed amount);
+    event SetPause(bool isPause);
 
     /**
-     *  @notice Pause action
+     *  @notice Set pause action
      */
-    function pause() public onlyOwner {
-        _pause();
-    }
+    function setPause(bool isPause) public onlyOwnerOrAdmin {
+        if (isPause) {
+            _pause();
+        } else _unpause();
 
-    /**
-     *  @notice Unpause action
-     */
-    function unpause() public onlyOwner {
-        _unpause();
+        emit SetPause(isPause);
     }
 
     /**
@@ -125,7 +123,7 @@ contract MetaversusManager is
         nftTicket = INFTMTVSTicket(_nftTicket);
         fees[uint256(FeeType.FEE_CREATE)] = _feeCreate;
         fees[uint256(FeeType.FEE_STAKING_NFT)] = _feeStakingNFT;
-        pause();
+        setPause(true);
     }
 
     /**
@@ -273,10 +271,9 @@ contract MetaversusManager is
      *
      *  @dev    All caller can call this function.
      */
-    function buyTicketEvent(uint256 eventId, uint256 amount)
+    function buyTicketEvent(string memory eventId, uint256 amount)
         external
         nonReentrant
-        notZeroAmount(eventId)
         notZeroAmount(amount)
         whenNotPaused
     {

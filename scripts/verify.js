@@ -67,8 +67,44 @@ async function main() {
 
   try {
     await hre.run("verify:verify", {
+      address: contracts.staking30d,
+      contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.staking60d,
+      contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.staking90d,
+      contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+
+  try {
+    await hre.run("verify:verify", {
       address: contracts.staking,
       contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.poolFactory,
+      contract: "contracts/StakingPool/PoolFactory.sol:PoolFactory"
     });
   } catch (err) {
     console.log("err :>> ", err);

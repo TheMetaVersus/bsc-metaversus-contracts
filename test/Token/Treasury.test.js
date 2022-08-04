@@ -54,7 +54,7 @@ describe("Treasury:", () => {
         it("should revert when caller not be an owner or admin: ", async () => {
             await expect(
                 treasury.connect(user1).setPermitedPaymentToken(token.address, true)
-            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
         it("should revert when payment token is invalid address: ", async () => {
             await expect(
@@ -74,7 +74,7 @@ describe("Treasury:", () => {
         it("should revert when caller not be an owner or admin: ", async () => {
             await expect(
                 treasury.connect(user1).distribute(token.address, user1.address, 10)
-            ).to.be.revertedWith("Ownable: caller is not an owner or admin");
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
         it("should revert when payment token is not permit: ", async () => {
             await expect(treasury.distribute(token.address, user1.address, 10)).to.be.revertedWith(

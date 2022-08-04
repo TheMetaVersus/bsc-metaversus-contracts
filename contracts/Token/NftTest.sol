@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "../Adminable.sol";
 
 /**
@@ -16,11 +15,11 @@ import "../Adminable.sol";
  *
  *  @author Metaversus Team
  *
- *  @notice This smart contract create the token ERC721 for staking Operation. These tokens initially are minted
- *          by the all user and using for staking in staking pool operation.
+ *  @notice This smart contract create the token ERC721 for Operation. These tokens initially are minted
+ *          by the all user and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
-contract NFTMTVSTicket is
+contract NftTest is
     Initializable,
     ReentrancyGuardUpgradeable,
     Adminable,
@@ -29,12 +28,12 @@ contract NFTMTVSTicket is
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
-    using StringsUpgradeable for uint256;
+
     /**
-     *  @notice tokenCounter uint256 (counter). This is the counter for store
+     *  @notice _tokenCounter uint256 (counter). This is the counter for store
      *          current token ID value in storage.
      */
-    CountersUpgradeable.Counter public tokenCounter;
+    CountersUpgradeable.Counter private _tokenCounter;
 
     /**
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
@@ -52,26 +51,19 @@ contract NFTMTVSTicket is
     address public treasury;
 
     /**
-     *  @notice baseURI is base uri of collection
+     *  @notice uris mapping from token ID to token uri
      */
-    string public baseURI;
-
-    /**
-     *  @notice isLocked is status of lock nft
-     */
-    bool public isLocked;
+    mapping(uint256 => string) public uris;
 
     event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to);
-    event Minted(uint256 indexed tokenId, address indexed to);
-    event SetLocked(bool indexed status);
 
     /**
-     *  @notice Set base URI
+     *  @notice Set new uri for each token ID
      */
-    function setBaseURI(string memory newURI) external onlyOwnerOrAdmin {
-        baseURI = newURI;
+    function setTokenURI(string memory newURI, uint256 tokenId) external onlyOwnerOrAdmin {
+        uris[tokenId] = newURI;
     }
 
     /**
@@ -81,11 +73,7 @@ contract NFTMTVSTicket is
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
-
-        return
-            bytes(baseURI).length > 0
-                ? string(abi.encodePacked(baseURI, "/", tokenId.toString(), ".json"))
-                : ".json";
+        return uris[tokenId];
     }
 
     /**
@@ -99,15 +87,7 @@ contract NFTMTVSTicket is
         address _treasury,
         uint96 _feeNumerator,
         uint256 _price
-    )
-        public
-        initializer
-        notZeroAddress(_owner)
-        notZeroAddress(_paymentToken)
-        notZeroAddress(_treasury)
-        notZeroAmount(_feeNumerator)
-        notZeroAmount(_price)
-    {
+    ) public initializer {
         ERC721Upgradeable.__ERC721_init(_name, _symbol);
         Adminable.__Adminable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
@@ -140,45 +120,19 @@ contract NFTMTVSTicket is
     }
 
     /**
-     *  @notice Set lock NFT
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setLocked(bool status) external onlyOwnerOrAdmin {
-        isLocked = status;
-        emit SetLocked(status);
-    }
-
-    /**
      *  @notice Buy NFT directly
      *
      *  @dev    All users can call this function.
      */
-    function buy() external nonReentrant {
-        require(balanceOf(_msgSender()) == 0, "ERROR: Each account have only one");
-        tokenCounter.increment();
-        uint256 tokenId = tokenCounter.current();
+    function buy(string memory uri) external nonReentrant {
+        _tokenCounter.increment();
+        uint256 tokenId = _tokenCounter.current();
 
+        uris[tokenId] = uri;
+        _mint(_msgSender(), tokenId);
         paymentToken.safeTransferFrom(_msgSender(), treasury, price);
 
-        _mint(_msgSender(), tokenId);
-
         emit Bought(tokenId, _msgSender());
-    }
-
-    /**
-     *  @notice Mint NFT not pay token
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function mint(address receiver) external onlyOwnerOrAdmin notZeroAddress(receiver) {
-        require(balanceOf(receiver) == 0, "ERROR: Each account have only one");
-        tokenCounter.increment();
-        uint256 tokenId = tokenCounter.current();
-
-        _mint(receiver, tokenId);
-
-        emit Minted(tokenId, receiver);
     }
 
     /**
@@ -191,17 +145,5 @@ contract NFTMTVSTicket is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
-    }
-
-    /**
-     * @notice Set up status for transfer
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal virtual override {
-        super._beforeTokenTransfer(from, to, tokenId);
-        require(!isLocked, "ERROR: NFT not allow to transfer");
     }
 }
