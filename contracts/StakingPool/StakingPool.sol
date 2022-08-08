@@ -61,6 +61,11 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     uint256 public startTime;
 
     /**
+     *  @notice acceptableLost is timestamp start staking in pool.
+     */
+    uint256 public acceptableLost;
+
+    /**
      *  @notice stakeToken IERC20 is interface of staked token.
      */
     IERC20Upgradeable public stakeToken;
@@ -92,6 +97,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     event RequestUnstake(address indexed sender);
     event RequestClaim(address indexed sender);
     event SetPause(bool isPause);
+    event SetAcceptableLost(uint256 lost);
 
     /**
      *  @notice Set pause action
@@ -132,6 +138,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         poolDuration = poolDuration_;
         nftAddress = IERC721Upgradeable(nftAddress_);
         pendingTime = 1 days; // default
+        acceptableLost = 50; // 50%
         _pause();
     }
 
@@ -179,6 +186,14 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     function setStartTime(uint256 _startTime) external onlyOwnerOrAdmin {
         startTime = _startTime;
         emit SetStartTime(startTime);
+    }
+
+    /**
+     *  @notice Set acceptableLost of staking pool.
+     */
+    function setAcceptableLost(uint256 lost) external onlyOwnerOrAdmin {
+        acceptableLost = lost;
+        emit SetAcceptableLost(acceptableLost);
     }
 
     /**
@@ -336,16 +351,17 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             startTime.add(poolDuration) >= block.timestamp,
             "ERROR: staking pool had been expired !"
         );
-        require(
-            user.lazyClaim.isRequested && user.lazyClaim.unlockedTime <= block.timestamp,
-            "ERROR: please request and can claim after 24 hours"
-        );
+        require(user.lazyClaim.isRequested, "ERROR: please request before");
+
         // update status of request
         user.lazyClaim.isRequested = false;
         if (user.totalAmount > 0) {
             uint256 pending = pendingRewards(_msgSender());
             if (pending > 0) {
                 user.pendingRewards = 0;
+                if (block.timestamp <= user.lazyClaim.unlockedTime) {
+                    pending -= pending.mul(acceptableLost).div(100);
+                }
                 // transfer token
                 rewardToken.safeTransfer(_msgSender(), pending);
                 emit Claimed(_msgSender(), pending);
