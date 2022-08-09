@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const { upgrades } = require("hardhat");
 const { skipTime, acceptable, getCurrentTime } = require("../utils");
 const { add, multiply, divide, subtract } = require("js-big-decimal");
+// const { constants } = require("@openzeppelin/test-helpers");
 
 describe("Staking Pool:", () => {
     beforeEach(async () => {
@@ -162,11 +163,33 @@ describe("Staking Pool:", () => {
             expect(await token.balanceOf(user1.address)).to.equal(0);
         });
     });
-    describe("calReward:", async () => {
+    describe("callReward:", async () => {
         it("should return zero reward: ", async () => {
             const calReward = await staking.calReward(user1.address);
 
             expect(calReward).to.equal(0);
+        });
+        it.only("should return reward each day: ", async () => {
+            await nftMTVSTicket.mint(user1.address);
+
+            await token.mint(user1.address, ONE_ETHER);
+            await token.connect(user1).approve(staking.address, ONE_ETHER);
+            await staking.connect(user1).stake(ONE_ETHER);
+
+            // await skipTime(86000);
+            let calReward = await staking.calReward(user1.address);
+            console.log(calReward.toString());
+            expect(calReward.toNumber()).to.equal(0);
+
+            await skipTime(86400);
+            calReward = await staking.calReward(user1.address);
+            console.log(calReward.toString());
+            expect(calReward.toNumber()).to.greaterThan(0);
+
+            await skipTime(6000);
+            const newcalReward = await staking.calReward(user1.address);
+            console.log(newcalReward.toString());
+            expect(newcalReward.toNumber()).to.equal(calReward.toNumber());
         });
     });
     describe("pendingRewards:", async () => {
