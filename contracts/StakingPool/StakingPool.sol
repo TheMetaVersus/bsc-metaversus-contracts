@@ -444,9 +444,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         if (minTime < user.lastClaim) {
             return 0;
         }
-        uint256 amount = user.totalAmount.mul(minTime.sub(user.lastClaim)).mul(rewardRate).div(
-            1e18
-        );
+        // reward by each days
+        uint256 time = minTime.sub(user.lastClaim).div(86400).mul(86400);
+        uint256 amount = user.totalAmount.mul(time).mul(rewardRate).div(1e18);
         return amount;
     }
 }

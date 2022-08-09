@@ -33,6 +33,8 @@ require("./tasks/exportPendingReward");
 require("./tasks/checkBalances");
 require("./tasks/multiSend");
 
+// reporter
+require("hardhat-gas-reporter");
 const config = {
   defaultNetwork: "hardhat",
   networks: {
@@ -80,6 +82,11 @@ const config = {
     reporterOptions: {
       configFile: "./mocha-report.json"
     }
+  },
+  gasReporter: {
+    currency: "CHF",
+    gasPrice: 21,
+    enabled: process.env.REPORT_GAS ? true : false
   }
 };
 
