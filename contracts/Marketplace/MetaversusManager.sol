@@ -32,10 +32,6 @@ contract MetaversusManager is
         ERC721,
         ERC1155
     }
-    enum FeeType {
-        FEE_CREATE,
-        FEE_STAKING_NFT
-    }
 
     /**
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
@@ -53,28 +49,23 @@ contract MetaversusManager is
     ITokenMintERC1155 public tokenMintERC1155;
 
     /**
-     *  @notice nftTicket is interface of ticket
-     */
-    INFTMTVSTicket public nftTicket;
-
-    /**
      *  @notice marketplace store the address of the marketplaceManager contract
      */
     IMarketplaceManager public marketplace;
+
+    /**
+     *  @notice feeCreate is fee when create NFT
+     */
+    uint256 public feeCreate;
 
     /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
     address public treasury;
 
-    /**
-     *  @notice fees is fee of each FeeType function mapping uint256(FeeType) to value
-     */
-    mapping(uint256 => uint256) public fees;
-
     event BoughtTicket(address indexed to);
     event BoughtTicketEvent(address indexed to, string indexed eventid);
-    event SetFee(uint256 indexed newFee, uint256 indexed feeType);
+    event SetFeeCreate(uint256 indexed newFee);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event SetMarketplace(address indexed oldTreasury, address indexed newTreasury);
     event Created(uint256 indexed typeMint, address indexed to, uint256 indexed amount);
@@ -98,19 +89,16 @@ contract MetaversusManager is
         address _owner,
         address nft721Addr,
         address nft1155Addr,
-        address _nftTicket,
         address _paymentToken,
         address _treasury,
         address _marketplaceAddr,
-        uint256 _feeCreate,
-        uint256 _feeStakingNFT
+        uint256 _feeCreate
     )
         public
         initializer
         notZeroAddress(_owner)
         notZeroAddress(_treasury)
         notZeroAmount(_feeCreate)
-        notZeroAmount(_feeStakingNFT)
     {
         Adminable.__Adminable_init();
         PausableUpgradeable.__Pausable_init();
@@ -120,9 +108,7 @@ contract MetaversusManager is
         paymentToken = IERC20Upgradeable(_paymentToken);
         tokenMintERC721 = ITokenMintERC721(nft721Addr);
         tokenMintERC1155 = ITokenMintERC1155(nft1155Addr);
-        nftTicket = INFTMTVSTicket(_nftTicket);
-        fees[uint256(FeeType.FEE_CREATE)] = _feeCreate;
-        fees[uint256(FeeType.FEE_STAKING_NFT)] = _feeStakingNFT;
+        feeCreate = _feeCreate;
         setPause(true);
     }
 
@@ -130,14 +116,7 @@ contract MetaversusManager is
      *  @notice Get create fee
      */
     function getCreateFee() external view returns (uint256) {
-        return fees[0];
-    }
-
-    /**
-     *  @notice Get buy ticket fee
-     */
-    function getTicketFee() external view returns (uint256) {
-        return fees[1];
+        return feeCreate;
     }
 
     /**
@@ -152,20 +131,16 @@ contract MetaversusManager is
             address,
             address,
             address,
-            address,
-            uint256,
             uint256
         )
     {
         return (
             treasury,
             address(marketplace),
-            address(nftTicket),
             address(tokenMintERC1155),
             address(tokenMintERC721),
             address(paymentToken),
-            fees[0],
-            fees[1]
+            feeCreate
         );
     }
 
@@ -200,13 +175,9 @@ contract MetaversusManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setFee(uint256 newFee, FeeType feetype)
-        external
-        onlyOwnerOrAdmin
-        notZeroAmount(newFee)
-    {
-        fees[uint256(feetype)] = newFee;
-        emit SetFee(newFee, uint256(feetype));
+    function setFeeCreate(uint256 newFee) external onlyOwnerOrAdmin notZeroAmount(newFee) {
+        feeCreate = newFee;
+        emit SetFeeCreate(newFee);
     }
 
     /**
@@ -219,9 +190,10 @@ contract MetaversusManager is
         uint256 amount,
         string memory uri,
         uint256 price,
-        uint256 time
+        uint256 startTime,
+        uint256 endTime
     ) external nonReentrant notZeroAmount(amount) whenNotPaused {
-        paymentToken.safeTransferFrom(_msgSender(), treasury, fees[uint256(FeeType.FEE_CREATE)]);
+        paymentToken.safeTransferFrom(_msgSender(), treasury, feeCreate);
 
         if (typeNft == TypeNft.ERC721) {
             tokenMintERC721.mint(_msgSender(), address(marketplace), uri);
@@ -232,7 +204,8 @@ contract MetaversusManager is
                 amount,
                 price,
                 _msgSender(),
-                time
+                startTime,
+                endTime
             );
         } else if (typeNft == TypeNft.ERC1155) {
             tokenMintERC1155.mint(_msgSender(), address(marketplace), amount, uri);
@@ -243,27 +216,12 @@ contract MetaversusManager is
                 amount,
                 price,
                 _msgSender(),
-                time
+                startTime,
+                endTime
             );
         }
 
         emit Created(uint256(typeNft), _msgSender(), amount);
-    }
-
-    /**
-     *  @notice Buy NFT Ticket for staking pool
-     *
-     *  @dev    All caller can call this function.
-     */
-    function buyTicket() external nonReentrant whenNotPaused {
-        paymentToken.safeTransferFrom(
-            _msgSender(),
-            treasury,
-            fees[uint256(FeeType.FEE_STAKING_NFT)]
-        );
-        nftTicket.mint(_msgSender());
-
-        emit BoughtTicket(_msgSender());
     }
 
     /**

@@ -6,7 +6,6 @@ describe("TokenMintERC721:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         ONE_ETHER = ethers.utils.parseEther("1");
-        PRICE = 1000;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -33,7 +32,6 @@ describe("TokenMintERC721:", () => {
             token.address,
             treasury.address,
             250,
-            PRICE,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
@@ -50,10 +48,8 @@ describe("TokenMintERC721:", () => {
         it("Check name, symbol and default state: ", async () => {
             const name = await tokenMintERC721.name();
             const symbol = await tokenMintERC721.symbol();
-            const price = await tokenMintERC721.price();
             expect(name).to.equal("NFT Metaversus");
             expect(symbol).to.equal("nMTVS");
-            expect(price).to.equal(PRICE);
 
             let royaltiesInfo = await tokenMintERC721.royaltyInfo(0, 10000);
 
@@ -104,23 +100,13 @@ describe("TokenMintERC721:", () => {
         });
     });
 
-    describe("setPrice function:", async () => {
-        it("should setPrice: ", async () => {
-            await tokenMintERC721.setPrice(1000);
-            expect(await tokenMintERC721.price()).to.equal(1000);
-        });
-    });
     describe("setTreasury function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(
                 tokenMintERC721.connect(user1).setTreasury(user2.address)
             ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
-        it("should revert when price equal to zero: ", async () => {
-            await expect(tokenMintERC721.setPrice(0)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
-        });
+
         it("should set treasury success: ", async () => {
             await tokenMintERC721.setTreasury(treasury.address);
             expect(await tokenMintERC721.treasury()).to.equal(treasury.address);
@@ -130,30 +116,6 @@ describe("TokenMintERC721:", () => {
 
             await tokenMintERC721.setTreasury(treasury.address);
             expect(await tokenMintERC721.treasury()).to.equal(treasury.address);
-        });
-    });
-
-    describe("setPrice function:", async () => {
-        it("should revert when newPrice equal to zero: ", async () => {
-            await expect(tokenMintERC721.connect(user1).setPrice(1000)).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
-            );
-        });
-        it("should revert when price equal to zero: ", async () => {
-            await expect(tokenMintERC721.setPrice(0)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
-        });
-        it("should set treasury success: ", async () => {
-            let newPrice = 1000000;
-            await tokenMintERC721.setPrice(newPrice);
-            expect(await tokenMintERC721.price()).to.equal(newPrice);
-            newPrice = 2000000;
-            await tokenMintERC721.setPrice(newPrice);
-            expect(await tokenMintERC721.price()).to.equal(newPrice);
-            newPrice = 3000000;
-            await tokenMintERC721.setPrice(newPrice);
-            expect(await tokenMintERC721.price()).to.equal(newPrice);
         });
     });
 

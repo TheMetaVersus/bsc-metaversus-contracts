@@ -2,7 +2,7 @@ const { constants } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { multiply, add, subtract } = require("js-big-decimal");
-const { getCurrentTime } = require("../utils");
+const { getCurrentTime, skipTime } = require("../utils");
 describe("Marketplace Manager:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000");
@@ -35,7 +35,6 @@ describe("Marketplace Manager:", () => {
             token.address,
             treasury.address,
             250,
-            PRICE,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
@@ -45,18 +44,6 @@ describe("Marketplace Manager:", () => {
             token.address,
             treasury.address,
             250,
-            PRICE,
-        ]);
-
-        NFTMTVSTicket = await ethers.getContractFactory("NFTMTVSTicket");
-        nftMTVSTicket = await upgrades.deployProxy(NFTMTVSTicket, [
-            owner.address,
-            "NFT Metaversus Ticket",
-            "nftMTVS",
-            token.address,
-            treasury.address,
-            250,
-            PRICE,
         ]);
 
         NftTest = await ethers.getContractFactory("NftTest");
@@ -82,12 +69,10 @@ describe("Marketplace Manager:", () => {
             owner.address,
             tokenMintERC721.address,
             tokenMintERC1155.address,
-            nftMTVSTicket.address,
             token.address,
             treasury.address,
             mkpManager.address,
             250,
-            350,
         ]);
         await tokenMintERC721.setAdmin(mtvsManager.address, true);
         await tokenMintERC1155.setAdmin(mtvsManager.address, true);
@@ -165,9 +150,9 @@ describe("Marketplace Manager:", () => {
 
     describe("sellAvaiableInMarketplace function:", async () => {
         it("should revert when market Item ID invalid: ", async () => {
-            await expect(mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK)).to.be.revertedWith(
-                "ERROR: market ID is not exist !"
-            );
+            await expect(
+                mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK, ONE_WEEK)
+            ).to.be.revertedWith("ERROR: market ID is not exist !");
         });
         it("should revert when price equal to zero: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
@@ -180,10 +165,10 @@ describe("Marketplace Manager:", () => {
 
             // ERC721
 
-            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0);
-            await expect(mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
+            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0, 0);
+            await expect(
+                mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK, ONE_WEEK)
+            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should revert when caller is not owner: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
@@ -195,9 +180,9 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setAdmin(mtvsManager.address, true);
 
             // ERC721
-            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0);
+            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0, 0);
             await expect(
-                mkpManager.sellAvaiableInMarketplace(1, 1000, ONE_WEEK)
+                mkpManager.sellAvaiableInMarketplace(1, 1000, ONE_WEEK, ONE_WEEK)
             ).to.be.revertedWith("ERROR: sender is not owner this NFT");
         });
         it("should sellAvaiableInMarketplace success and return marketItemId: ", async () => {
@@ -210,28 +195,38 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setAdmin(mtvsManager.address, true);
 
             // ERC721
-            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0);
+            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0, 0);
             const latest_1 = await mkpManager.getLatestMarketItemByTokenId(
                 tokenMintERC721.address,
                 1
             );
-
+            const current = await getCurrentTime();
             await mkpManager
                 .connect(user1)
-                .sellAvaiableInMarketplace(latest_1[0].marketItemId.toString(), 10005, ONE_WEEK);
+                .sellAvaiableInMarketplace(
+                    latest_1[0].marketItemId.toString(),
+                    10005,
+                    current,
+                    add(current, ONE_WEEK)
+                );
             const data_ERC721 = await mkpManager.fetchMarketItemsByMarketID(
                 latest_1[0].marketItemId.toString()
             );
             expect(data_ERC721.price).to.equal(10005);
             // ERC1155
-            await mtvsManager.connect(user1).createNFT(1, 100, "this_uri", 0, 0);
+            await mtvsManager.connect(user1).createNFT(1, 100, "this_uri", 0, 0, 0);
             const latest_2 = await mkpManager.getLatestMarketItemByTokenId(
                 tokenMintERC1155.address,
                 1
             );
             await mkpManager
                 .connect(user1)
-                .sellAvaiableInMarketplace(latest_2[0].marketItemId.toString(), 100056, ONE_WEEK);
+                .sellAvaiableInMarketplace(
+                    latest_2[0].marketItemId.toString(),
+                    100056,
+                    current,
+                    add(current, ONE_WEEK)
+                );
             const data_ERC1155 = await mkpManager.fetchMarketItemsByMarketID(
                 latest_2[0].marketItemId.toString()
             );
@@ -244,17 +239,17 @@ describe("Marketplace Manager:", () => {
     describe("sell function:", async () => {
         it("should revert when nft contract equal to zero address: ", async () => {
             await expect(
-                mkpManager.sell(constants.ZERO_ADDRESS, 0, 100, 100, ONE_WEEK)
+                mkpManager.sell(constants.ZERO_ADDRESS, 0, 100, 100, ONE_WEEK, ONE_WEEK)
             ).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should revert when amount equal to zero: ", async () => {
             await expect(
-                mkpManager.sell(tokenMintERC721.address, 0, 0, 100, ONE_WEEK)
+                mkpManager.sell(tokenMintERC721.address, 0, 0, 100, ONE_WEEK, ONE_WEEK)
             ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should revert when gross sale value equal to zero: ", async () => {
             await expect(
-                mkpManager.sell(tokenMintERC721.address, 0, 100, 0, ONE_WEEK)
+                mkpManager.sell(tokenMintERC721.address, 0, 100, 0, ONE_WEEK, ONE_WEEK)
             ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should revert ERROR: NFT address is compatible !", async () => {
@@ -269,7 +264,9 @@ describe("Marketplace Manager:", () => {
             const current = blockAfter.timestamp;
 
             await expect(
-                mkpManager.connect(user1).sell(treasury.address, 1, 1, 1000, current + ONE_WEEK)
+                mkpManager
+                    .connect(user1)
+                    .sell(treasury.address, 1, 1, 1000, current, add(current, ONE_WEEK))
             ).to.be.revertedWith("ERROR: NFT address is compatible !");
         });
         it("should sell success : ", async () => {
@@ -286,7 +283,7 @@ describe("Marketplace Manager:", () => {
 
             const tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1000, current + ONE_WEEK);
+                .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -316,7 +313,7 @@ describe("Marketplace Manager:", () => {
             const curent = await getCurrentTime();
             const tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1000, add(curent, ONE_ETHER));
+                .sell(nftTest.address, 1, 1, 1000, add(curent, 100), add(curent, ONE_ETHER));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -337,7 +334,7 @@ describe("Marketplace Manager:", () => {
             const curent = await getCurrentTime();
             const tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1000, add(curent, ONE_ETHER));
+                .sell(nftTest.address, 1, 1, 1000, add(curent, 100), add(curent, ONE_ETHER));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -368,17 +365,18 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            const blockNumAfter = await ethers.provider.getBlockNumber();
-            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
-            const current = blockAfter.timestamp;
-
+            let current = await getCurrentTime();
+            // console.log("current", current, current + 1000000);
             const tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, current + ONE_WEEK);
+                .sell(nftTest.address, 1, 1, ONE_ETHER, add(current, 100), 1761826881);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
-
+            const data = await mkpManager.fetchMarketItemsByMarketID(1);
+            await skipTime(4800);
+            current = await getCurrentTime();
+            // console.log("current buy", current, data);
             await expect(() => mkpManager.connect(user2).buy(marketId)).to.changeTokenBalance(
                 nftTest,
                 user2,
@@ -419,10 +417,10 @@ describe("Marketplace Manager:", () => {
             await nftTest.connect(user1).buy("this_uri");
 
             await nftTest.connect(user1).approve(mkpManager.address, 1);
-            const curent = await getCurrentTime();
+            const current = await getCurrentTime();
             let tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1234, add(curent, ONE_ETHER));
+                .sell(nftTest.address, 1, 1, 1234, add(current, 100), add(current, ONE_ETHER));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -474,7 +472,7 @@ describe("Marketplace Manager:", () => {
 
             let tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1234, current + ONE_WEEK);
+                .sell(nftTest.address, 1, 1, 1234, add(current, 100), add(current, ONE_WEEK));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -487,7 +485,7 @@ describe("Marketplace Manager:", () => {
             // current = blockAfter.timestamp;
             // tx = await mkpManager
             //     .connect(user2)
-            //     .sell(tokenMintERC1155.address, 1, 100, 4321, current + ONE_WEEK);
+            //     .sell(tokenMintERC1155.address, 1, 100, 4321, add(current , ONE_WEEK));
             // listener = await tx.wait();
             // event = listener.events.find(x => x.event == "MarketItemCreated");
             // marketId = event.args[0].toString();
@@ -549,7 +547,7 @@ describe("Marketplace Manager:", () => {
 
             let tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1234, current + ONE_WEEK);
+                .sell(nftTest.address, 1, 1, 1234, add(current, 100), add(current, ONE_WEEK));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -567,7 +565,7 @@ describe("Marketplace Manager:", () => {
             // current = blockAfter.timestamp;
             // tx = await mkpManager
             //     .connect(user2)
-            //     .sell(tokenMintERC1155.address, 1, 100, 4321, current + ONE_WEEK);
+            //     .sell(tokenMintERC1155.address, 1, 100, 4321, add(current , ONE_WEEK));
             // listener = await tx.wait();
             // event = listener.events.find(x => x.event == "MarketItemCreated");
             // marketId = event.args[0].toString();
@@ -611,7 +609,7 @@ describe("Marketplace Manager:", () => {
 
             let tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1234, current + ONE_WEEK);
+                .sell(nftTest.address, 1, 1, 1234, add(current, 100), add(current, ONE_WEEK));
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
@@ -624,7 +622,7 @@ describe("Marketplace Manager:", () => {
             // current = blockAfter.timestamp;
             // tx = await mkpManager
             //     .connect(user2)
-            //     .sell(tokenMintERC1155.address, 1, 100, 4321, current + ONE_WEEK);
+            //     .sell(tokenMintERC1155.address, 1, 100, 4321, add(current , ONE_WEEK));
             // listener = await tx.wait();
             // event = listener.events.find(x => x.event == "MarketItemCreated");
             // marketId = event.args[0].toString();

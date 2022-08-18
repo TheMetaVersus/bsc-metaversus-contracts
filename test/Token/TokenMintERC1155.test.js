@@ -7,7 +7,6 @@ describe("TokenMintERC1155:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         ONE_ETHER = ethers.utils.parseEther("1");
-        PRICE = 10000;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -33,7 +32,6 @@ describe("TokenMintERC1155:", () => {
             token.address,
             treasury.address,
             250,
-            PRICE,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
@@ -95,13 +93,6 @@ describe("TokenMintERC1155:", () => {
             expect(newURI).to.equal(URI);
             await tokenMintERC1155.setURI("new_uri.json", 1);
             expect(await tokenMintERC1155.uri(1)).to.equal("new_uri.json");
-        });
-    });
-
-    describe("setPrice function:", async () => {
-        it("should setPrice: ", async () => {
-            await tokenMintERC1155.setPrice(1000);
-            expect(await tokenMintERC1155.price()).to.equal(1000);
         });
     });
 
