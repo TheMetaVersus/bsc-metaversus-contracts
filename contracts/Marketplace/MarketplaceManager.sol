@@ -45,6 +45,7 @@ contract MarketPlaceManager is
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
     uint256 public constant DENOMINATOR = 1e5;
+
     enum NftStandard {
         ERC721,
         ERC1155,
@@ -60,12 +61,13 @@ contract MarketPlaceManager is
         address nftContractAddress;
         uint256 tokenId;
         uint256 amount;
+        uint256 price;
+        uint256 nftType;
         address seller;
         address buyer;
-        uint256 price;
-        uint256 endTime;
         MarketItemStatus status;
-        uint256 nftType;
+        uint256 startTime;
+        uint256 endTime;
     }
 
     /**
@@ -99,10 +101,10 @@ contract MarketPlaceManager is
         uint256 tokenId,
         uint256 amount,
         address indexed seller,
-        address indexed buyer,
         uint256 price,
-        uint256 endTime,
-        uint256 nftType
+        uint256 nftType,
+        uint256 startTime,
+        uint256 endTime
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
@@ -112,10 +114,10 @@ contract MarketPlaceManager is
         uint256 tokenId,
         uint256 amount,
         address indexed seller,
-        address indexed buyer,
         uint256 price,
-        uint256 endTime,
-        uint256 nftType
+        uint256 nftType,
+        uint256 startTime,
+        uint256 endTime
     );
     event CanceledSelling(
         uint256 indexed marketItemId,
@@ -123,21 +125,21 @@ contract MarketPlaceManager is
         uint256 tokenId,
         uint256 amount,
         address indexed seller,
-        address indexed buyer,
         uint256 price,
-        uint256 endTime,
-        uint256 nftType
+        uint256 nftType,
+        uint256 startTime,
+        uint256 endTime
     );
     event Bought(
         uint256 indexed marketItemId,
         address nftContract,
         uint256 tokenId,
         uint256 amount,
-        address indexed seller,
         address indexed buyer,
         uint256 price,
-        uint256 endTime,
-        uint256 nftType
+        uint256 nftType,
+        uint256 startTime,
+        uint256 endTime
     );
     event SetPause(bool isPause);
 
@@ -313,7 +315,8 @@ contract MarketPlaceManager is
     function sellAvaiableInMarketplace(
         uint256 marketItemId,
         uint256 price,
-        uint256 time
+        uint256 startTime,
+        uint256 endTime
     ) external nonReentrant validateId(marketItemId) notZeroAmount(price) whenNotPaused {
         MarketItem storage item = marketItemIdToMarketItem[marketItemId];
         require(item.endTime < block.timestamp, "ERROR: market item is not free !");
@@ -321,7 +324,8 @@ contract MarketPlaceManager is
 
         item.price = price;
         item.status = MarketItemStatus.LISTING;
-        item.endTime = time;
+        item.startTime = startTime;
+        item.endTime = endTime;
 
         // self transfer
         _transferNFTCall(
@@ -338,10 +342,10 @@ contract MarketPlaceManager is
             item.tokenId,
             item.amount,
             item.seller,
-            item.buyer,
             item.price,
-            item.endTime,
-            item.nftType
+            item.nftType,
+            item.startTime,
+            item.endTime
         );
     }
 
@@ -356,7 +360,8 @@ contract MarketPlaceManager is
         uint256 _amount,
         uint256 _grossSaleValue,
         address _seller,
-        uint256 _time
+        uint256 _startTime,
+        uint256 _endTime
     ) private {
         NftStandard nftType = _checkNftStandard(_nftAddress);
         require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
@@ -365,26 +370,29 @@ contract MarketPlaceManager is
         uint256 marketItemId = _marketItemIds.current();
 
         uint256 price;
-        uint256 time;
+        uint256 start_time;
+        uint256 end_time;
         uint256 amount = 1;
         if (nftType == NftStandard.ERC1155) {
             amount = _amount;
         }
-        if (_time > block.timestamp && _grossSaleValue > 0) {
+        if (_startTime >= block.timestamp && _endTime > block.timestamp && _grossSaleValue > 0) {
             price = _grossSaleValue;
-            time = _time;
+            end_time = _endTime;
+            start_time = _startTime;
         }
         marketItemIdToMarketItem[marketItemId] = MarketItem(
             marketItemId,
             _nftAddress,
             _tokenId,
             amount,
+            price,
+            uint256(nftType),
             _seller,
             address(0),
-            price,
-            time,
             MarketItemStatus.LISTING,
-            uint256(nftType)
+            start_time,
+            end_time
         );
 
         marketItemOfOwner[_seller].add(marketItemId);
@@ -395,30 +403,31 @@ contract MarketPlaceManager is
             _tokenId,
             amount,
             _seller,
-            address(0),
             price,
-            time,
-            uint256(nftType)
+            uint256(nftType),
+            start_time,
+            end_time
         );
     }
 
     function callAfterMint(
-        address _nftAddress,
-        uint256 _tokenId,
-        uint256 _amount,
-        uint256 _grossSaleValue,
-        address _seller,
-        uint256 _time
+        address nftAddress,
+        uint256 tokenId,
+        uint256 amount,
+        uint256 grossSaleValue,
+        address seller,
+        uint256 startTime,
+        uint256 endTime
     )
         external
         onlyOwnerOrAdmin
-        notZeroAddress(_nftAddress)
-        notZeroAddress(_seller)
-        notZeroAmount(_amount)
+        notZeroAddress(nftAddress)
+        notZeroAddress(seller)
+        notZeroAmount(amount)
     {
         require(_msgSender().isContract(), "ERROR: not allowed !");
         // create market item to store data
-        _createMarketInfo(_nftAddress, _tokenId, _amount, _grossSaleValue, _seller, _time);
+        _createMarketInfo(nftAddress, tokenId, amount, grossSaleValue, seller, startTime, endTime);
     }
 
     /**
@@ -431,6 +440,7 @@ contract MarketPlaceManager is
         uint256 tokenId,
         uint256 amount,
         uint256 grossSaleValue,
+        uint256 startTime,
         uint256 endTime
     )
         external
@@ -438,6 +448,7 @@ contract MarketPlaceManager is
         notZeroAddress(nftContractAddress)
         notZeroAmount(amount)
         notZeroAmount(grossSaleValue)
+        notZeroAmount(startTime)
         notZeroAmount(endTime)
         whenNotPaused
     {
@@ -449,6 +460,7 @@ contract MarketPlaceManager is
             amount,
             grossSaleValue,
             _msgSender(),
+            startTime,
             endTime
         );
         // transfer nft to contract for selling
@@ -487,10 +499,10 @@ contract MarketPlaceManager is
             item.tokenId,
             item.amount,
             item.seller,
-            item.buyer,
             item.price,
-            item.endTime,
-            item.nftType
+            item.nftType,
+            item.startTime,
+            item.endTime
         );
     }
 
@@ -507,7 +519,9 @@ contract MarketPlaceManager is
     {
         MarketItem storage data = marketItemIdToMarketItem[marketItemId];
         require(
-            data.status == MarketItemStatus.LISTING && data.endTime > block.timestamp,
+            data.status == MarketItemStatus.LISTING &&
+                data.startTime < block.timestamp &&
+                block.timestamp < data.endTime,
             "ERROR: NFT is not selling"
         );
 
@@ -538,11 +552,11 @@ contract MarketPlaceManager is
             data.nftContractAddress,
             data.tokenId,
             data.amount,
-            data.seller,
-            data.buyer,
+            _msgSender(),
             data.price,
-            data.endTime,
-            data.nftType
+            data.nftType,
+            data.startTime,
+            data.endTime
         );
     }
 
@@ -668,6 +682,26 @@ contract MarketPlaceManager is
             data[i] = marketItemIdToMarketItem[marketItemOfOwner[account].at(i)];
         }
         return data;
+    }
+
+    /**
+     *  @notice Get current market item id
+     *
+     *  @dev    All caller can call this function.
+     */
+    function getCurentMarketItem() external view returns (uint256) {
+        return _marketItemIds.current();
+    }
+
+    /**
+     *  @notice Check account bought or not
+     */
+    function wasBuyer(address account) external view returns (bool) {
+        for (uint256 i = 0; i < _marketItemIds.current(); i++) {
+            MarketItem memory item = marketItemIdToMarketItem[i + 1];
+            if (account == item.buyer) return true;
+        }
+        return false;
     }
 
     /**

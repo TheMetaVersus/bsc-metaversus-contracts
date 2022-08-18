@@ -12,7 +12,6 @@ describe("Staking Pool:", () => {
         ONE_ETHER = ethers.utils.parseEther("1");
         ONE_YEAR = 31104000;
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-        PRICE = 10000;
 
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -32,15 +31,11 @@ describe("Staking Pool:", () => {
             treasury.address,
         ]);
 
-        NFTMTVSTicket = await ethers.getContractFactory("NFTMTVSTicket");
-        nftMTVSTicket = await upgrades.deployProxy(NFTMTVSTicket, [
+        MkpManager = await ethers.getContractFactory("MarketPlaceManager");
+        mkpManager = await upgrades.deployProxy(MkpManager, [
             owner.address,
-            "NFT Metaversus Ticket",
-            "nftMTVS",
             token.address,
             treasury.address,
-            250,
-            PRICE,
         ]);
 
         Staking = await ethers.getContractFactory("StakingPool");
@@ -48,7 +43,7 @@ describe("Staking Pool:", () => {
             owner.address,
             token.address,
             token.address,
-            nftMTVSTicket.address,
+            mkpManager.address,
             REWARD_RATE,
             poolDuration,
         ]);
@@ -169,7 +164,7 @@ describe("Staking Pool:", () => {
 
             expect(calReward).to.equal(0);
         });
-        it.only("should return reward each day: ", async () => {
+        it("should return reward each day: ", async () => {
             await nftMTVSTicket.mint(user1.address);
 
             await token.mint(user1.address, ONE_ETHER);
@@ -306,7 +301,23 @@ describe("Staking Pool:", () => {
     });
 
     describe("claim:", async () => {
-        it("should revert when NOT request and can claim after 24 hours ", async () => {
+        it("should revert when staking pool had been expired ", async () => {
+            await token.mint(user1.address, ONE_ETHER);
+            await token.connect(user1).approve(staking.address, ONE_ETHER);
+            await nftMTVSTicket.mint(user1.address);
+
+            await staking.connect(user1).stake(ONE_ETHER);
+
+            await skipTime(10 * 24 * 60 * 60);
+            await staking.connect(user1).requestClaim();
+            await skipTime(10 * 30 * 24 * 60 * 60 + 1); // 23h
+
+            await expect(staking.connect(user1).claim()).to.be.revertedWith(
+                "ERROR: staking pool had been expired !"
+            );
+        });
+
+        it("should revert when not rquest claim before ", async () => {
             await token.mint(user1.address, ONE_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             await nftMTVSTicket.mint(user1.address);
@@ -314,11 +325,9 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
 
             await skipTime(30 * 24 * 60 * 60);
-            await staking.connect(user1).requestClaim();
-            await skipTime(23 * 60 * 60 + 1); // 23h
 
             await expect(staking.connect(user1).claim()).to.be.revertedWith(
-                "ERROR: please request and can claim after 24 hours"
+                "ERROR: please request before"
             );
         });
 

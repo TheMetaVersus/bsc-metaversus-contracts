@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "../interfaces/IMarketplaceManager.sol";
 import "../Adminable.sol";
 
 /**
@@ -76,9 +77,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     IERC20Upgradeable public rewardToken;
 
     /**
-     *  @notice nftAddress IERC721 is interfacce of nft
+     *  @notice mkpManager is address of Marketplace Manager
      */
-    IERC721Upgradeable public nftAddress;
+    address public mkpManager;
 
     /**
      *  @notice Mapping an address to a information of corresponding user address.
@@ -117,7 +118,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         address owner_,
         address stakeToken_,
         address rewardToken_,
-        address nftAddress_,
+        address mkpManager_,
         uint256 rewardRate_,
         uint256 poolDuration_
     )
@@ -126,7 +127,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         notZeroAddress(owner_)
         notZeroAddress(stakeToken_)
         notZeroAddress(rewardToken_)
-        notZeroAddress(nftAddress_)
+        notZeroAddress(mkpManager_)
         notZeroAmount(rewardRate_)
         notZeroAmount(poolDuration_)
     {
@@ -136,7 +137,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         rewardToken = IERC20Upgradeable(rewardToken_);
         rewardRate = rewardRate_;
         poolDuration = poolDuration_;
-        nftAddress = IERC721Upgradeable(nftAddress_);
+        mkpManager = mkpManager_;
         pendingTime = 1 days; // default
         acceptableLost = 50; // 50%
         _pause();
@@ -161,7 +162,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     {
         return (
             address(stakeToken),
-            address(nftAddress),
+            address(mkpManager),
             stakedAmount,
             poolDuration,
             rewardRate,
@@ -271,8 +272,8 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             "ERROR: staking pool for NFT had been expired !"
         );
         require(
-            nftAddress.balanceOf(_msgSender()) > 0,
-            "ERROR: require own nft for stake MTVS token"
+            IMarketplaceManager(mkpManager).wasBuyer(_msgSender()),
+            "ERROR: require buy any item in MTVS marketplace before staking !"
         );
         // calculate pending rewards of staked amount before
         UserInfo storage user = users[_msgSender()];
@@ -382,7 +383,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         );
         require(
             user.lazyUnstake.isRequested && user.lazyUnstake.unlockedTime <= block.timestamp,
-            "ERROR: please request and can withdraw after 24 hours"
+            "ERROR: please request and can withdraw after pending time"
         );
         require(user.totalAmount >= _amount, "ERROR: cannot unstake more than staked amount");
 

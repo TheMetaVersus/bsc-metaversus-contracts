@@ -34,7 +34,6 @@ describe("Metaversus Manager:", () => {
             token.address,
             treasury.address,
             250,
-            PRICE,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
@@ -44,18 +43,6 @@ describe("Metaversus Manager:", () => {
             token.address,
             treasury.address,
             250,
-            PRICE,
-        ]);
-
-        NFTMTVSTicket = await ethers.getContractFactory("NFTMTVSTicket");
-        nftMTVSTicket = await upgrades.deployProxy(NFTMTVSTicket, [
-            owner.address,
-            "NFT Metaversus Ticket",
-            "nftMTVS",
-            token.address,
-            treasury.address,
-            250,
-            PRICE,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
@@ -70,12 +57,10 @@ describe("Metaversus Manager:", () => {
             owner.address,
             tokenMintERC721.address,
             tokenMintERC1155.address,
-            nftMTVSTicket.address,
             token.address,
             treasury.address,
             mkpManager.address,
             250,
-            350,
         ]);
 
         await mtvsManager.setPause(false);

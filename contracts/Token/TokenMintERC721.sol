@@ -41,11 +41,6 @@ contract TokenMintERC721 is
     IERC20Upgradeable public paymentToken;
 
     /**
-     *  @notice price is price of each NFT sold
-     */
-    uint256 public price;
-
-    /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
     address public treasury;
@@ -85,8 +80,7 @@ contract TokenMintERC721 is
         string memory _symbol,
         address _paymentToken,
         address _treasury,
-        uint96 _feeNumerator,
-        uint256 _price
+        uint96 _feeNumerator
     )
         public
         initializer
@@ -94,14 +88,12 @@ contract TokenMintERC721 is
         notZeroAddress(_paymentToken)
         notZeroAddress(_treasury)
         notZeroAmount(_feeNumerator)
-        notZeroAmount(_price)
     {
         ERC721Upgradeable.__ERC721_init(_name, _symbol);
         Adminable.__Adminable_init();
         paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;
-        price = _price;
         _setDefaultRoyalty(_treasury, _feeNumerator);
     }
 
@@ -114,17 +106,6 @@ contract TokenMintERC721 is
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
-    }
-
-    /**
-     *  @notice Set price of NFT
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setPrice(uint256 newPrice) external onlyOwnerOrAdmin notZeroAmount(newPrice) {
-        uint256 oldPrice = price;
-        price = newPrice;
-        emit SetPrice(oldPrice, price);
     }
 
     /**

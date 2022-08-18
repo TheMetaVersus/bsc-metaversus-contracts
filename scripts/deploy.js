@@ -14,7 +14,7 @@ async function main() {
   const Treasury = await ethers.getContractFactory("Treasury");
   const TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
   const TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-  const NFTMTVSTicket = await ethers.getContractFactory("NFTMTVSTicket");
+
   const MTVSManager = await ethers.getContractFactory("MetaversusManager");
   const MkpManager = await ethers.getContractFactory("MarketPlaceManager");
   const Staking = await ethers.getContractFactory("StakingPool");
@@ -50,8 +50,7 @@ async function main() {
     "nMTVS",
     mtvs.address,
     treasury.address,
-    250,
-    process.env.CREATE_FEE
+    250
   ]);
   await tokenMintERC721.deployed();
   console.log("tokenMintERC721 deployed in:", tokenMintERC721.address);
@@ -64,26 +63,10 @@ async function main() {
     "uri",
     mtvs.address,
     treasury.address,
-    250,
-    process.env.CREATE_FEE
+    250
   ]);
   await tokenMintERC1155.deployed();
   console.log("tokenMintERC1155 deployed in:", tokenMintERC1155.address);
-  console.log(
-    "========================================================================================="
-  );
-
-  const nftMTVSTicket = await upgrades.deployProxy(NFTMTVSTicket, [
-    admin,
-    "NFT Metaversus Ticket",
-    "nftMTVS",
-    mtvs.address,
-    treasury.address,
-    250,
-    process.env.CREATE_MTVS_NFT_FEE
-  ]);
-  await nftMTVSTicket.deployed();
-  console.log("nftMTVSTicket deployed in:", nftMTVSTicket.address);
   console.log(
     "========================================================================================="
   );
@@ -103,12 +86,10 @@ async function main() {
     admin,
     tokenMintERC721.address,
     tokenMintERC1155.address,
-    nftMTVSTicket.address,
     mtvs.address,
     treasury.address,
     mkpManager.address,
-    process.env.CREATE_FEE,
-    process.env.CREATE_MTVS_NFT_FEE
+    process.env.CREATE_FEE
   ]);
   await mtvsManager.deployed();
   console.log("mtvsManager deployed in:", mtvsManager.address);
@@ -120,7 +101,7 @@ async function main() {
     admin,
     mtvs.address,
     mtvs.address,
-    nftMTVSTicket.address,
+    mkpManager.address,
     process.env.REWARD_RATE_30_DAY,
     process.env.POOL_DURATION_30_DAY
   ]);
@@ -131,7 +112,7 @@ async function main() {
     admin,
     mtvs.address,
     mtvs.address,
-    nftMTVSTicket.address,
+    mkpManager.address,
     process.env.REWARD_RATE_60_DAY,
     process.env.POOL_DURATION_60_DAY
   ]);
@@ -142,7 +123,7 @@ async function main() {
     admin,
     mtvs.address,
     mtvs.address,
-    nftMTVSTicket.address,
+    mkpManager.address,
     process.env.REWARD_RATE_90_DAY,
     process.env.POOL_DURATION_90_DAY
   ]);
@@ -190,13 +171,6 @@ async function main() {
     tokenMintERC1155.address
   );
   console.log("tokenMintERC1155Verify deployed in:", tokenMintERC1155Verify);
-  console.log(
-    "========================================================================================="
-  );
-  const nftMTVSTicketVerify = await upgrades.erc1967.getImplementationAddress(
-    nftMTVSTicket.address
-  );
-  console.log("nftMTVSTicketVerify deployed in:", nftMTVSTicketVerify);
   console.log(
     "========================================================================================="
   );
@@ -248,7 +222,6 @@ async function main() {
     mtvs: mtvs.address,
     tokenMintERC721: tokenMintERC721.address,
     tokenMintERC1155: tokenMintERC1155.address,
-    nftMTVSTicket: nftMTVSTicket.address,
     mtvsManager: mtvsManager.address,
     mkpManager: mkpManager.address,
     staking30d: staking30d.address,
@@ -266,7 +239,6 @@ async function main() {
     mtvs: mtvsVerify,
     tokenMintERC721: tokenMintERC721Verify,
     tokenMintERC1155: tokenMintERC1155Verify,
-    nftMTVSTicket: nftMTVSTicketVerify,
     mtvsManager: mtvsManagerVerify,
     mkpManager: mkpManagerVerify,
     staking30d: staking30dVerify,
