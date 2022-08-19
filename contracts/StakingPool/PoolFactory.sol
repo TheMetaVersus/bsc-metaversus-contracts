@@ -37,7 +37,7 @@ contract PoolFactory is Initializable, Adminable {
         address nftAddress,
         uint256 rewardRate,
         uint256 poolDuration
-    ) public onlyOwnerOrAdmin {
+    ) external onlyOwnerOrAdmin {
         _poolCounter.increment();
         uint256 currentId = _poolCounter.current();
         bytes32 salt = bytes32(currentId);

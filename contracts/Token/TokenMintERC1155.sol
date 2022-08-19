@@ -80,13 +80,6 @@ contract TokenMintERC1155 is
     }
 
     /**
-     *  @notice Return token URI.
-     */
-    function uri(uint256 tokenId) public view override returns (string memory) {
-        return uris[tokenId];
-    }
-
-    /**
      *  @notice Set new uri for each token ID
      */
     function setURI(string memory newuri, uint256 tokenId) external onlyOwnerOrAdmin {
@@ -150,5 +143,12 @@ contract TokenMintERC1155 is
      */
     function getTokenCounter() external view returns (uint256) {
         return _tokenCounter.current();
+    }
+
+    /**
+     *  @notice Return token URI.
+     */
+    function uri(uint256 tokenId) public view override returns (string memory) {
+        return uris[tokenId];
     }
 }

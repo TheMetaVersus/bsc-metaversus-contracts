@@ -9,8 +9,8 @@ interface IRandomVRF {
 
     // Returns the random for the given request ID.
     // Will revert if the random is not ready.
-    function randomForRequestID(bytes32 _requestID) external view returns (uint256);
+    function randomForRequestID(bytes32 requestID) external view returns (uint256);
 
     // Returns if the request ID has been fulfilled yet.
-    function isRequestIDFulfilled(bytes32 _requestID) external view returns (bool);
+    function isRequestIDFulfilled(bytes32 requestID) external view returns (bool);
 }

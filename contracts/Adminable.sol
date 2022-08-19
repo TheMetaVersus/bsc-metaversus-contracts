@@ -41,13 +41,6 @@ contract Adminable is OwnableUpgradeable {
     }
 
     /**
-     *  @notice Check account whether it is the admin role.
-     */
-    function isAdmin(address account) external view returns (bool) {
-        return admins[account];
-    }
-
-    /**
      *  @notice Replace the admin role by another address.
      *
      *  @dev    Only owner can call this function.
@@ -55,5 +48,12 @@ contract Adminable is OwnableUpgradeable {
     function setAdmin(address user, bool allow) external onlyOwner {
         admins[user] = allow;
         emit SetAdmin(user, allow);
+    }
+
+    /**
+     *  @notice Check account whether it is the admin role.
+     */
+    function isAdmin(address account) external view returns (bool) {
+        return admins[account];
     }
 }

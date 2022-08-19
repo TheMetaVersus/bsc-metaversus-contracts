@@ -12,7 +12,6 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "../Adminable.sol";
@@ -37,7 +36,6 @@ contract MarketPlaceManager is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
-    using SafeMathUpgradeable for uint256;
     using AddressUpgradeable for address;
     CountersUpgradeable.Counter private _marketItemIds;
 
@@ -149,17 +147,6 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Set pause action
-     */
-    function setPause(bool isPause) public onlyOwnerOrAdmin {
-        if (isPause) {
-            _pause();
-        } else _unpause();
-
-        emit SetPause(isPause);
-    }
-
-    /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
@@ -183,22 +170,6 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Get all params
-     */
-    function getAllParams()
-        external
-        view
-        returns (
-            address,
-            address,
-            uint256,
-            uint256
-        )
-    {
-        return (treasury, address(paymentToken), listingFee, DENOMINATOR);
-    }
-
-    /**
      *  @notice set treasury to change TreasuryManager address.
      *
      *  @dev    Only owner or admin can call this function.
@@ -207,104 +178,6 @@ contract MarketPlaceManager is
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
-    }
-
-    /**
-     *  @notice get Listing fee
-     *
-     *  @dev    All caller can call this function.
-     */
-    function getListingFee(uint256 amount) public view returns (uint256) {
-        return amount.mul(listingFee).div(DENOMINATOR);
-    }
-
-    /**
-     *  @notice Check standard
-     */
-    function checkStandard(address _contract) public view returns (uint256) {
-        if (IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721)) {
-            return uint256(NftStandard.ERC721);
-        }
-        if (IERC1155Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155)) {
-            return uint256(NftStandard.ERC1155);
-        }
-        return uint256(NftStandard.NONE);
-    }
-
-    /**
-     *  @notice Check standard without error when not support function supportsInterface
-     */
-    function is721(address _contract) private returns (bool) {
-        (bool success, ) = _contract.call(
-            abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC721)
-        );
-
-        return success && IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721);
-    }
-
-    /**
-     *  @notice Check standard without error when not support function supportsInterface
-     */
-    function is1155(address _contract) private returns (bool) {
-        (bool success, ) = _contract.call(
-            abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC1155)
-        );
-
-        return success && IERC1155Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155);
-    }
-
-    /**
-     *  @notice Check ruyalty without error when not support function supportsInterface
-     */
-    function isRoyalty(address _contract) private returns (bool) {
-        (bool success, ) = _contract.call(
-            abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC2981)
-        );
-
-        return success && IERC2981Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
-    }
-
-    /**
-     *  @notice Check standard of nft contract address
-     */
-    function _checkNftStandard(address _contract) private returns (NftStandard) {
-        if (is721(_contract)) {
-            return NftStandard.ERC721;
-        }
-        if (is1155(_contract)) {
-            return NftStandard.ERC1155;
-        }
-
-        return NftStandard.NONE;
-    }
-
-    /**
-     *  @notice Transfers royalties to the rightsowner if applicable
-     */
-    function _deduceRoyalties(
-        address nftContractAddress,
-        uint256 tokenId,
-        uint256 grossSaleValue
-    ) private returns (uint256 netSaleAmount) {
-        // Get amount of royalties to pays and recipient
-        if (isRoyalty(nftContractAddress)) {
-            (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
-                nftContractAddress,
-                tokenId,
-                grossSaleValue
-            );
-
-            // Deduce royalties from sale value
-            uint256 netSaleValue = grossSaleValue - royaltiesAmount;
-            // Transfer royalties to rightholder if not zero
-            if (royaltiesAmount > 0) {
-                paymentToken.safeTransfer(royaltiesReceiver, royaltiesAmount);
-            }
-            // Broadcast royalties payment
-            emit RoyaltiesPaid(tokenId, royaltiesAmount);
-            return netSaleValue;
-        }
-        return grossSaleValue;
     }
 
     /**
@@ -349,72 +222,11 @@ contract MarketPlaceManager is
         );
     }
 
-    /**
-     *  @notice Create market info with data
-     *
-     *  @dev    All caller can call this function.
-     */
-    function _createMarketInfo(
-        address _nftAddress,
-        uint256 _tokenId,
-        uint256 _amount,
-        uint256 _grossSaleValue,
-        address _seller,
-        uint256 _startTime,
-        uint256 _endTime
-    ) private {
-        NftStandard nftType = _checkNftStandard(_nftAddress);
-        require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
-
-        _marketItemIds.increment();
-        uint256 marketItemId = _marketItemIds.current();
-
-        uint256 price;
-        uint256 start_time;
-        uint256 end_time;
-        uint256 amount = 1;
-        if (nftType == NftStandard.ERC1155) {
-            amount = _amount;
-        }
-        if (_startTime >= block.timestamp && _endTime > block.timestamp && _grossSaleValue > 0) {
-            price = _grossSaleValue;
-            end_time = _endTime;
-            start_time = _startTime;
-        }
-        marketItemIdToMarketItem[marketItemId] = MarketItem(
-            marketItemId,
-            _nftAddress,
-            _tokenId,
-            amount,
-            price,
-            uint256(nftType),
-            _seller,
-            address(0),
-            MarketItemStatus.LISTING,
-            start_time,
-            end_time
-        );
-
-        marketItemOfOwner[_seller].add(marketItemId);
-
-        emit MarketItemCreated(
-            marketItemId,
-            _nftAddress,
-            _tokenId,
-            amount,
-            _seller,
-            price,
-            uint256(nftType),
-            start_time,
-            end_time
-        );
-    }
-
     function callAfterMint(
         address nftAddress,
         uint256 tokenId,
         uint256 amount,
-        uint256 grossSaleValue,
+        uint256 price,
         address seller,
         uint256 startTime,
         uint256 endTime
@@ -427,7 +239,7 @@ contract MarketPlaceManager is
     {
         require(_msgSender().isContract(), "ERROR: not allowed !");
         // create market item to store data
-        _createMarketInfo(nftAddress, tokenId, amount, grossSaleValue, seller, startTime, endTime);
+        _createMarketInfo(nftAddress, tokenId, amount, price, seller, startTime, endTime);
     }
 
     /**
@@ -439,7 +251,7 @@ contract MarketPlaceManager is
         address nftContractAddress,
         uint256 tokenId,
         uint256 amount,
-        uint256 grossSaleValue,
+        uint256 price,
         uint256 startTime,
         uint256 endTime
     )
@@ -447,7 +259,7 @@ contract MarketPlaceManager is
         nonReentrant
         notZeroAddress(nftContractAddress)
         notZeroAmount(amount)
-        notZeroAmount(grossSaleValue)
+        notZeroAmount(price)
         notZeroAmount(startTime)
         notZeroAmount(endTime)
         whenNotPaused
@@ -458,7 +270,7 @@ contract MarketPlaceManager is
             nftContractAddress,
             tokenId,
             amount,
-            grossSaleValue,
+            price,
             _msgSender(),
             startTime,
             endTime
@@ -561,6 +373,17 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice Set pause action
+     */
+    function setPause(bool isPause) public onlyOwnerOrAdmin {
+        if (isPause) {
+            _pause();
+        } else _unpause();
+
+        emit SetPause(isPause);
+    }
+
+    /**
      *  @notice Transfer nft call
      */
     function _transferNFTCall(
@@ -581,18 +404,159 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice check and get Royalties information
+     *  @notice Check standard without error when not support function supportsInterface
+     */
+    function is721(address _contract) private returns (bool) {
+        (bool success, ) = _contract.call(
+            abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC721)
+        );
+
+        return success && IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721);
+    }
+
+    /**
+     *  @notice Check standard without error when not support function supportsInterface
+     */
+    function is1155(address _contract) private returns (bool) {
+        (bool success, ) = _contract.call(
+            abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC1155)
+        );
+
+        return success && IERC1155Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155);
+    }
+
+    /**
+     *  @notice Check ruyalty without error when not support function supportsInterface
+     */
+    function isRoyalty(address _contract) private returns (bool) {
+        (bool success, ) = _contract.call(
+            abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC2981)
+        );
+
+        return success && IERC2981Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
+    }
+
+    /**
+     *  @notice Check standard of nft contract address
+     */
+    function _checkNftStandard(address _contract) private returns (NftStandard) {
+        if (is721(_contract)) {
+            return NftStandard.ERC721;
+        }
+        if (is1155(_contract)) {
+            return NftStandard.ERC1155;
+        }
+
+        return NftStandard.NONE;
+    }
+
+    /**
+     *  @notice Transfers royalties to the rightsowner if applicable and return the remaining amount
+     *  @param nftContractAddress is address contract of nft
+     *  @param tokenId is token id of nft
+     *  @param grossSaleValue is price of nft that is listed
+     */
+    function _deduceRoyalties(
+        address nftContractAddress,
+        uint256 tokenId,
+        uint256 grossSaleValue
+    ) private returns (uint256 netSaleAmount) {
+        // Get amount of royalties to pays and recipient
+        if (isRoyalty(nftContractAddress)) {
+            (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
+                nftContractAddress,
+                tokenId,
+                grossSaleValue
+            );
+
+            // Deduce royalties from sale value
+            uint256 netSaleValue = grossSaleValue - royaltiesAmount;
+            // Transfer royalties to rightholder if not zero
+            if (royaltiesAmount > 0) {
+                paymentToken.safeTransfer(royaltiesReceiver, royaltiesAmount);
+            }
+            // Broadcast royalties payment
+            emit RoyaltiesPaid(tokenId, royaltiesAmount);
+            return netSaleValue;
+        }
+        return grossSaleValue;
+    }
+
+    /**
+     *  @notice Create market info with data
      *
      *  @dev    All caller can call this function.
      */
-    function getRoyaltyInfo(
-        address _nftAddr,
+    function _createMarketInfo(
+        address _nftAddress,
         uint256 _tokenId,
-        uint256 _salePrice
-    ) public view returns (address, uint256) {
-        (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981Upgradeable(_nftAddr)
-            .royaltyInfo(_tokenId, _salePrice);
-        return (royaltiesReceiver, royaltiesAmount);
+        uint256 _amount,
+        uint256 _price,
+        address _seller,
+        uint256 _startTime,
+        uint256 _endTime
+    ) private {
+        NftStandard nftType = _checkNftStandard(_nftAddress);
+        require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
+
+        _marketItemIds.increment();
+        uint256 marketItemId = _marketItemIds.current();
+
+        uint256 price;
+        uint256 startTime;
+        uint256 endTime;
+        uint256 amount = 1;
+        if (nftType == NftStandard.ERC1155) {
+            amount = _amount;
+        }
+        if (_startTime >= block.timestamp && _endTime > block.timestamp && _price > 0) {
+            price = _price;
+            endTime = _endTime;
+            startTime = _startTime;
+        }
+        marketItemIdToMarketItem[marketItemId] = MarketItem(
+            marketItemId,
+            _nftAddress,
+            _tokenId,
+            amount,
+            price,
+            uint256(nftType),
+            _seller,
+            address(0),
+            MarketItemStatus.LISTING,
+            startTime,
+            endTime
+        );
+
+        marketItemOfOwner[_seller].add(marketItemId);
+
+        emit MarketItemCreated(
+            marketItemId,
+            _nftAddress,
+            _tokenId,
+            amount,
+            _seller,
+            price,
+            uint256(nftType),
+            startTime,
+            endTime
+        );
+    }
+
+    /**
+     *  @notice Get all params
+     */
+    function getAllParams()
+        external
+        view
+        returns (
+            address,
+            address,
+            uint256,
+            uint256
+        )
+    {
+        return (treasury, address(paymentToken), listingFee, DENOMINATOR);
     }
 
     /**
@@ -636,25 +600,6 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Fetch all nft in marketplace contract
-     *
-     *  @dev    All caller can call this function.
-     */
-    function fetchAvailableMarketItems() external view returns (MarketItem[] memory) {
-        uint256 itemsCount = _marketItemIds.current();
-
-        MarketItem[] memory marketItems = new MarketItem[](itemsCount);
-        uint256 currentIndex = 0;
-        for (uint256 i = 0; i < itemsCount; i++) {
-            MarketItem memory item = marketItemIdToMarketItem[i + 1];
-            marketItems[currentIndex] = item;
-            currentIndex += 1;
-        }
-
-        return marketItems;
-    }
-
-    /**
      *  @notice Fetch information Market Item by Market ID
      *
      *  @dev    All caller can call this function.
@@ -685,16 +630,35 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice Fetch all nft in marketplace contract
+     *
+     *  @dev    All caller can call this function.
+     */
+    function fetchAvailableMarketItems() external view returns (MarketItem[] memory) {
+        uint256 itemsCount = _marketItemIds.current();
+
+        MarketItem[] memory marketItems = new MarketItem[](itemsCount);
+        uint256 currentIndex = 0;
+        for (uint256 i = 0; i < itemsCount; i++) {
+            MarketItem memory item = marketItemIdToMarketItem[i + 1];
+            marketItems[currentIndex] = item;
+            currentIndex += 1;
+        }
+
+        return marketItems;
+    }
+
+    /**
      *  @notice Get current market item id
      *
      *  @dev    All caller can call this function.
      */
-    function getCurentMarketItem() external view returns (uint256) {
+    function getCurrentMarketItem() external view returns (uint256) {
         return _marketItemIds.current();
     }
 
     /**
-     *  @notice Check account bought or not
+     *  @notice Check account bought or not to check in staking pool
      */
     function wasBuyer(address account) external view returns (bool) {
         for (uint256 i = 0; i < _marketItemIds.current(); i++) {
@@ -702,6 +666,43 @@ contract MarketPlaceManager is
             if (account == item.buyer) return true;
         }
         return false;
+    }
+
+    /**
+     *  @notice check and get Royalties information
+     *
+     *  @dev    All caller can call this function.
+     */
+    function getRoyaltyInfo(
+        address _nftAddr,
+        uint256 _tokenId,
+        uint256 _salePrice
+    ) public view returns (address, uint256) {
+        (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981Upgradeable(_nftAddr)
+            .royaltyInfo(_tokenId, _salePrice);
+        return (royaltiesReceiver, royaltiesAmount);
+    }
+
+    /**
+     *  @notice get Listing fee
+     *
+     *  @dev    All caller can call this function.
+     */
+    function getListingFee(uint256 amount) public view returns (uint256) {
+        return (amount * listingFee) / DENOMINATOR;
+    }
+
+    /**
+     *  @notice Check standard
+     */
+    function checkStandard(address _contract) public view returns (uint256) {
+        if (IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721)) {
+            return uint256(NftStandard.ERC721);
+        }
+        if (IERC1155Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155)) {
+            return uint256(NftStandard.ERC1155);
+        }
+        return uint256(NftStandard.NONE);
     }
 
     /**

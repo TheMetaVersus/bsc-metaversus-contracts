@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "../interfaces/IMarketplaceManager.sol";
@@ -21,7 +21,6 @@ import "../Adminable.sol";
  */
 contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using SafeMathUpgradeable for uint256;
 
     struct Lazy {
         uint256 unlockedTime;
@@ -101,17 +100,6 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     event SetAcceptableLost(uint256 lost);
 
     /**
-     *  @notice Set pause action
-     */
-    function setPause(bool isPause) public onlyOwnerOrAdmin {
-        if (isPause) {
-            _pause();
-        } else _unpause();
-
-        emit SetPause(isPause);
-    }
-
-    /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
@@ -144,39 +132,155 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     }
 
     /**
-     *  @notice Get all params
+     *  @notice Request withdraw before unstake activity
      */
-    function getAllParams()
-        external
-        view
-        returns (
-            address,
-            address,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            bool
-        )
-    {
-        return (
-            address(stakeToken),
-            address(mkpManager),
-            stakedAmount,
-            poolDuration,
-            rewardRate,
-            startTime,
-            pendingTime,
-            isActivePool()
+    function requestUnstake() external nonReentrant whenNotPaused returns (uint256) {
+        require(
+            startTime + poolDuration < block.timestamp && startTime != 0,
+            "ERROR: not allow unstake at this time"
         );
+        UserInfo storage user = users[_msgSender()];
+        require(!user.lazyUnstake.isRequested, "ERROR: requested !");
+        user.lazyUnstake.isRequested = true;
+        user.lazyUnstake.unlockedTime = block.timestamp + pendingTime;
+
+        emit RequestUnstake(_msgSender());
+        return user.lazyUnstake.unlockedTime;
     }
 
     /**
-     *  @notice Get status of pool
+     *  @notice Request claim before unstake activity
      */
-    function isActivePool() public view returns (bool) {
-        return (startTime.add(poolDuration) >= block.timestamp) && !paused();
+    function requestClaim() external nonReentrant whenNotPaused returns (uint256) {
+        require(
+            startTime + poolDuration > block.timestamp && startTime != 0,
+            "ERROR: not allow claim at this time"
+        );
+        UserInfo storage user = users[_msgSender()];
+        require(!user.lazyClaim.isRequested, "ERROR: requested !");
+
+        user.lazyClaim.isRequested = true;
+        user.lazyClaim.unlockedTime = block.timestamp + pendingTime;
+
+        emit RequestClaim(_msgSender());
+        return user.lazyClaim.unlockedTime;
+    }
+
+    /**
+     *  @notice Stake amount of token to staking pool.
+     *
+     *  @dev    Only user has NFT can call this function.
+     */
+    function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
+        require(block.timestamp > startTime, "ERROR: not time for stake !");
+        require(
+            startTime + poolDuration > block.timestamp,
+            "ERROR: staking pool for NFT had been expired !"
+        );
+        require(
+            IMarketplaceManager(mkpManager).wasBuyer(_msgSender()),
+            "ERROR: require buy any item in MTVS marketplace before staking !"
+        );
+        // calculate pending rewards of staked amount before
+        UserInfo storage user = users[_msgSender()];
+        if (user.totalAmount > 0) {
+            uint256 pending = calReward(_msgSender());
+            if (pending > 0) {
+                user.pendingRewards = user.pendingRewards + pending;
+            }
+        }
+        user.lastClaim = block.timestamp;
+
+        // add extra token just deposited
+        user.totalAmount += _amount;
+        stakedAmount += _amount;
+
+        // request transfer token
+        stakeToken.safeTransferFrom(_msgSender(), address(this), _amount);
+
+        emit Staked(_msgSender(), _amount);
+    }
+
+    /**
+     *  @notice Claim all reward in pool.
+     */
+    function claim() external nonReentrant whenNotPaused {
+        UserInfo storage user = users[_msgSender()];
+        require(
+            startTime + poolDuration >= block.timestamp,
+            "ERROR: staking pool had been expired !"
+        );
+        require(user.lazyClaim.isRequested, "ERROR: please request before");
+
+        // update status of request
+        user.lazyClaim.isRequested = false;
+        if (user.totalAmount > 0) {
+            uint256 pending = pendingRewards(_msgSender());
+            if (pending > 0) {
+                user.pendingRewards = 0;
+                if (block.timestamp <= user.lazyClaim.unlockedTime) {
+                    pending -= (pending * acceptableLost) / 100;
+                }
+                // transfer token
+                rewardToken.safeTransfer(_msgSender(), pending);
+                emit Claimed(_msgSender(), pending);
+            }
+        }
+        // update timestamp
+        user.lastClaim = block.timestamp;
+    }
+
+    /**
+     *  @notice Unstake amount of rewards caller request.
+     */
+    function unstake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
+        UserInfo storage user = users[_msgSender()];
+        require(
+            startTime + poolDuration <= block.timestamp,
+            "ERROR: staking pool for NFT has not expired yet !"
+        );
+        require(
+            user.lazyUnstake.isRequested && user.lazyUnstake.unlockedTime <= block.timestamp,
+            "ERROR: please request and can withdraw after pending time"
+        );
+        require(user.totalAmount >= _amount, "ERROR: cannot unstake more than staked amount");
+
+        // Auto claim
+        uint256 pending = pendingRewards(_msgSender());
+
+        // update status of request
+        user.lazyUnstake.isRequested = false;
+        user.lazyClaim.isRequested = false;
+        user.lastClaim = block.timestamp;
+
+        // update data before transfer
+        user.totalAmount -= _amount;
+        stakedAmount -= _amount;
+
+        // claim token
+        if (pending > 0) {
+            user.pendingRewards = 0;
+            rewardToken.safeTransfer(_msgSender(), pending);
+        }
+
+        // transfer token
+        stakeToken.safeTransfer(_msgSender(), _amount);
+        emit UnStaked(_msgSender(), _amount);
+    }
+
+    /**
+     *  @notice Admin can withdraw excess cash back.
+     *
+     *  @dev    Only admin can call this function.
+     */
+    function emergencyWithdraw() external onlyOwner nonReentrant {
+        if (rewardToken == stakeToken) {
+            rewardToken.safeTransfer(owner(), rewardToken.balanceOf(address(this)) - stakedAmount);
+        } else {
+            rewardToken.safeTransfer(owner(), rewardToken.balanceOf(address(this)));
+        }
+
+        emit EmergencyWithdrawed(_msgSender(), address(rewardToken));
     }
 
     /**
@@ -193,6 +297,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Set acceptableLost of staking pool.
      */
     function setAcceptableLost(uint256 lost) external onlyOwnerOrAdmin {
+        require(lost <= 100, "ERROR: Over limit !");
         acceptableLost = lost;
         emit SetAcceptableLost(acceptableLost);
     }
@@ -240,6 +345,17 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     }
 
     /**
+     *  @notice Set pause action
+     */
+    function setPause(bool isPause) public onlyOwnerOrAdmin {
+        if (isPause) {
+            _pause();
+        } else _unpause();
+
+        emit SetPause(isPause);
+    }
+
+    /**
      *  @notice Get amount of deposited token of corresponding user address.
      */
     function getUserAmount(address user) external view returns (uint256) {
@@ -261,38 +377,39 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     }
 
     /**
-     *  @notice Stake amount of token to staking pool.
-     *
-     *  @dev    Only user has NFT can call this function.
+     *  @notice Get all params
      */
-    function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
-        require(block.timestamp > startTime, "ERROR: not time for stake !");
-        require(
-            startTime.add(poolDuration) > block.timestamp,
-            "ERROR: staking pool for NFT had been expired !"
+    function getAllParams()
+        external
+        view
+        returns (
+            address,
+            address,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            bool
+        )
+    {
+        return (
+            address(stakeToken),
+            address(mkpManager),
+            stakedAmount,
+            poolDuration,
+            rewardRate,
+            startTime,
+            pendingTime,
+            isActivePool()
         );
-        require(
-            IMarketplaceManager(mkpManager).wasBuyer(_msgSender()),
-            "ERROR: require buy any item in MTVS marketplace before staking !"
-        );
-        // calculate pending rewards of staked amount before
-        UserInfo storage user = users[_msgSender()];
-        if (user.totalAmount > 0) {
-            uint256 pending = calReward(_msgSender());
-            if (pending > 0) {
-                user.pendingRewards = user.pendingRewards + pending;
-            }
-        }
-        user.lastClaim = block.timestamp;
+    }
 
-        // add extra token just deposited
-        user.totalAmount = user.totalAmount.add(_amount);
-        stakedAmount = stakedAmount.add(_amount);
-
-        // request transfer token
-        stakeToken.safeTransferFrom(_msgSender(), address(this), _amount);
-
-        emit Staked(_msgSender(), _amount);
+    /**
+     *  @notice Get status of pool
+     */
+    function isActivePool() public view returns (bool) {
+        return (startTime + poolDuration >= block.timestamp) && !paused();
     }
 
     /**
@@ -309,123 +426,18 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     }
 
     /**
-     *  @notice Request withdraw before unstake activity
+     *  @notice Return a pending amount of reward token.
      */
-    function requestUnstake() external nonReentrant whenNotPaused returns (uint256) {
-        require(
-            startTime.add(poolDuration) < block.timestamp && startTime != 0,
-            "ERROR: not allow unstake at this time"
-        );
-        UserInfo storage user = users[_msgSender()];
-        require(!user.lazyUnstake.isRequested, "ERROR: requested !");
-        user.lazyUnstake.isRequested = true;
-        user.lazyUnstake.unlockedTime = block.timestamp + pendingTime;
-
-        emit RequestUnstake(_msgSender());
-        return user.lazyUnstake.unlockedTime;
-    }
-
-    /**
-     *  @notice Request claim before unstake activity
-     */
-    function requestClaim() external nonReentrant whenNotPaused returns (uint256) {
-        require(
-            startTime.add(poolDuration) > block.timestamp && startTime != 0,
-            "ERROR: not allow claim at this time"
-        );
-        UserInfo storage user = users[_msgSender()];
-        require(!user.lazyClaim.isRequested, "ERROR: requested !");
-
-        user.lazyClaim.isRequested = true;
-        user.lazyClaim.unlockedTime = block.timestamp + pendingTime;
-
-        emit RequestClaim(_msgSender());
-        return user.lazyClaim.unlockedTime;
-    }
-
-    /**
-     *  @notice Claim all reward in pool.
-     */
-    function claim() external nonReentrant whenNotPaused {
-        UserInfo storage user = users[_msgSender()];
-        require(
-            startTime.add(poolDuration) >= block.timestamp,
-            "ERROR: staking pool had been expired !"
-        );
-        require(user.lazyClaim.isRequested, "ERROR: please request before");
-
-        // update status of request
-        user.lazyClaim.isRequested = false;
-        if (user.totalAmount > 0) {
-            uint256 pending = pendingRewards(_msgSender());
-            if (pending > 0) {
-                user.pendingRewards = 0;
-                if (block.timestamp <= user.lazyClaim.unlockedTime) {
-                    pending -= pending.mul(acceptableLost).div(100);
-                }
-                // transfer token
-                rewardToken.safeTransfer(_msgSender(), pending);
-                emit Claimed(_msgSender(), pending);
-            }
+    function calReward(address _user) public view returns (uint256) {
+        UserInfo memory user = users[_user];
+        uint256 minTime = min(block.timestamp, startTime + poolDuration);
+        if (minTime < user.lastClaim) {
+            return 0;
         }
-        // update timestamp
-        user.lastClaim = block.timestamp;
-    }
-
-    /**
-     *  @notice Unstake amount of rewards caller request.
-     */
-    function unstake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
-        UserInfo storage user = users[_msgSender()];
-        require(
-            startTime.add(poolDuration) <= block.timestamp,
-            "ERROR: staking pool for NFT has not expired yet !"
-        );
-        require(
-            user.lazyUnstake.isRequested && user.lazyUnstake.unlockedTime <= block.timestamp,
-            "ERROR: please request and can withdraw after pending time"
-        );
-        require(user.totalAmount >= _amount, "ERROR: cannot unstake more than staked amount");
-
-        // Auto claim
-        uint256 pending = pendingRewards(_msgSender());
-
-        // update status of request
-        user.lazyUnstake.isRequested = false;
-        user.lazyClaim.isRequested = false;
-        user.lastClaim = block.timestamp;
-
-        // update data before transfer
-        user.totalAmount = user.totalAmount.sub(_amount);
-        stakedAmount = stakedAmount.sub(_amount);
-
-        // claim token
-        if (pending > 0) {
-            user.pendingRewards = 0;
-            rewardToken.safeTransfer(_msgSender(), pending);
-        }
-
-        // transfer token
-        stakeToken.safeTransfer(_msgSender(), _amount);
-        emit UnStaked(_msgSender(), _amount);
-    }
-
-    /**
-     *  @notice Admin can withdraw excess cash back.
-     *
-     *  @dev    Only admin can call this function.
-     */
-    function emergencyWithdraw() external onlyOwner nonReentrant {
-        if (rewardToken == stakeToken) {
-            rewardToken.safeTransfer(
-                owner(),
-                rewardToken.balanceOf(address(this)).sub(stakedAmount)
-            );
-        } else {
-            rewardToken.safeTransfer(owner(), rewardToken.balanceOf(address(this)));
-        }
-
-        emit EmergencyWithdrawed(_msgSender(), address(rewardToken));
+        // reward by each days
+        uint256 time = ((minTime - user.lastClaim) / 86400) * 86400;
+        uint256 amount = (user.totalAmount * time * rewardRate) / 1e18;
+        return amount;
     }
 
     /**
@@ -434,20 +446,5 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         if (a < b) return a;
         return b;
-    }
-
-    /**
-     *  @notice Return a pending amount of reward token.
-     */
-    function calReward(address _user) public view returns (uint256) {
-        UserInfo memory user = users[_user];
-        uint256 minTime = min(block.timestamp, startTime.add(poolDuration));
-        if (minTime < user.lastClaim) {
-            return 0;
-        }
-        // reward by each days
-        uint256 time = minTime.sub(user.lastClaim).div(86400).mul(86400);
-        uint256 amount = user.totalAmount.mul(time).mul(rewardRate).div(1e18);
-        return amount;
     }
 }

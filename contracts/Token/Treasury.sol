@@ -40,13 +40,6 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     *  @notice Return permit token status
-     */
-    function isPermitedToken(address _paymentToken) public view returns (bool) {
-        return _permitedTokens.contains(_paymentToken);
-    }
-
-    /**
      *  @notice Distribute reward depend on tokenomic.
      */
     function setPermitedPaymentToken(address _paymentToken, bool allow)
@@ -82,5 +75,12 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
         IERC20Upgradeable(_paymentToken).safeTransfer(_destination, _amount);
 
         emit Distributed(_paymentToken, _destination, _amount);
+    }
+
+    /**
+     *  @notice Return permit token status
+     */
+    function isPermitedToken(address _paymentToken) public view returns (bool) {
+        return _permitedTokens.contains(_paymentToken);
     }
 }
