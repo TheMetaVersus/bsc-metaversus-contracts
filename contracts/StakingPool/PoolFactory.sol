@@ -34,7 +34,7 @@ contract PoolFactory is Initializable, Adminable {
         address owner,
         address stakeToken,
         address rewardToken,
-        address nftAddress,
+        address mkpManagerAddr,
         uint256 rewardRate,
         uint256 poolDuration
     ) external onlyOwnerOrAdmin {
@@ -49,7 +49,7 @@ contract PoolFactory is Initializable, Adminable {
         poolIdToPoolInfos[currentId] = newInfo;
 
         // initialize
-        pool.initialize(owner, stakeToken, rewardToken, nftAddress, rewardRate, poolDuration);
+        pool.initialize(owner, stakeToken, rewardToken, mkpManagerAddr, rewardRate, poolDuration);
 
         emit PoolDeployed(address(pool), _msgSender());
     }

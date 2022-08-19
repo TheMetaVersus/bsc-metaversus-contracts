@@ -330,6 +330,7 @@ contract MarketPlaceManager is
         whenNotPaused
     {
         MarketItem storage data = marketItemIdToMarketItem[marketItemId];
+        require(_msgSender() != data.seller, "ERROR: Not allow to buy yourself");
         require(
             data.status == MarketItemStatus.LISTING &&
                 data.startTime < block.timestamp &&
