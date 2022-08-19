@@ -103,7 +103,9 @@ async function main() {
     mtvs.address,
     mkpManager.address,
     process.env.REWARD_RATE_30_DAY,
-    process.env.POOL_DURATION_30_DAY
+    process.env.POOL_DURATION_30_DAY,
+    process.env.PANCAKE_ROUTER,
+    process.env.BUSD_TOKEN
   ]);
   await staking30d.deployed();
   console.log("staking30d deployed in:", staking30d.address);
@@ -114,7 +116,9 @@ async function main() {
     mtvs.address,
     mkpManager.address,
     process.env.REWARD_RATE_60_DAY,
-    process.env.POOL_DURATION_60_DAY
+    process.env.POOL_DURATION_60_DAY,
+    process.env.PANCAKE_ROUTER,
+    process.env.BUSD_TOKEN
   ]);
   await staking60d.deployed();
   console.log("staking60d deployed in:", staking60d.address);
@@ -125,7 +129,9 @@ async function main() {
     mtvs.address,
     mkpManager.address,
     process.env.REWARD_RATE_90_DAY,
-    process.env.POOL_DURATION_90_DAY
+    process.env.POOL_DURATION_90_DAY,
+    process.env.PANCAKE_ROUTER,
+    process.env.BUSD_TOKEN
   ]);
   await staking90d.deployed();
   console.log("staking90d deployed in:", staking90d.address);

@@ -5,10 +5,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "../interfaces/IMarketplaceManager.sol";
+import "../interfaces/IPancakeRouter.sol";
 import "../Adminable.sol";
 
 /**
@@ -81,6 +81,16 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     address public mkpManager;
 
     /**
+     *  @notice busdToken is address of BUSD token
+     */
+    address public busdToken;
+
+    /**
+     *  @notice pankeRouter is address of Pancake Router
+     */
+    address public pankeRouter;
+
+    /**
      *  @notice Mapping an address to a information of corresponding user address.
      */
     mapping(address => UserInfo) public users;
@@ -108,7 +118,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         address rewardToken_,
         address mkpManager_,
         uint256 rewardRate_,
-        uint256 poolDuration_
+        uint256 poolDuration_,
+        address _pancakeRouter,
+        address _busdToken
     )
         public
         initializer
@@ -128,6 +140,8 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         mkpManager = mkpManager_;
         pendingTime = 1 days; // default
         acceptableLost = 50; // 50%
+        pankeRouter = _pancakeRouter;
+        busdToken = _busdToken;
         _pause();
     }
 
@@ -173,6 +187,10 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
         require(block.timestamp > startTime, "ERROR: not time for stake !");
+        require(
+            getPriceFormatUSD(address(stakeToken), busdToken, _amount) > 5e20,
+            "Must stake more than 500$"
+        );
         require(
             startTime + poolDuration > block.timestamp,
             "ERROR: staking pool for NFT had been expired !"
@@ -374,6 +392,19 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function getPendingUnstakeTime(address user) external view returns (uint256) {
         return users[user].lazyUnstake.unlockedTime;
+    }
+
+    function getPriceFormatUSD(
+        address _tokenIn,
+        address _tokenOut,
+        uint _amountIn
+    ) public view returns (uint) {
+        address[] memory path;
+        path = new address[](2);
+        path[0] = _tokenIn;
+        path[1] = _tokenOut;
+        uint[] memory amountOutMins = IPancakeRouter(pankeRouter).getAmountsOut(_amountIn, path);
+        return amountOutMins[path.length - 1];
     }
 
     /**
