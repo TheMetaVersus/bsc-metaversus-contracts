@@ -1,12 +1,5 @@
 const Big = require("big.js");
-const ethers = require("hardhat");
-const {
-  add,
-  subtract,
-  multiply,
-  divide,
-  compareTo
-} = require("js-big-decimal");
+const { subtract, compareTo } = require("js-big-decimal");
 const skipTime = async seconds => {
   await network.provider.send("evm_increaseTime", [seconds]);
   await network.provider.send("evm_mine");
@@ -54,6 +47,7 @@ const getCurrentTime = async () => {
   const block = await hre.ethers.provider.getBlock(blockNumber);
   return block.timestamp;
 };
+
 module.exports = {
   skipTime,
   setTime,

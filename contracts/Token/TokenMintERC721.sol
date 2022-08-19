@@ -55,23 +55,6 @@ contract TokenMintERC721 is
     event Minted(uint256 indexed tokenId, address indexed to);
 
     /**
-     *  @notice Set new uri for each token ID
-     */
-    function setTokenURI(string memory newURI, uint256 tokenId) external onlyOwnerOrAdmin {
-        uris[tokenId] = newURI;
-    }
-
-    /**
-     *  @notice Mapping token ID to base URI in ipfs storage
-     *
-     *  @dev    All caller can call this function.
-     */
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
-        return uris[tokenId];
-    }
-
-    /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
@@ -126,6 +109,23 @@ contract TokenMintERC721 is
         _mint(receiver, tokenId);
 
         emit Minted(tokenId, receiver);
+    }
+
+    /**
+     *  @notice Set new uri for each token ID
+     */
+    function setTokenURI(string memory newURI, uint256 tokenId) external onlyOwnerOrAdmin {
+        uris[tokenId] = newURI;
+    }
+
+    /**
+     *  @notice Mapping token ID to base URI in ipfs storage
+     *
+     *  @dev    All caller can call this function.
+     */
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
+        return uris[tokenId];
     }
 
     /**

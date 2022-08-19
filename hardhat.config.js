@@ -84,9 +84,9 @@ const config = {
     }
   },
   gasReporter: {
-    currency: "CHF",
+    currency: "BNB",
     gasPrice: 21,
-    enabled: process.env.REPORT_GAS ? true : false
+    enabled: false // process.env.REPORT_GAS ? true :
   }
 };
 

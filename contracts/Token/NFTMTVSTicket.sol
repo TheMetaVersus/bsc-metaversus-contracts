@@ -68,27 +68,6 @@ contract NFTMTVSTicket is
     event SetLocked(bool indexed status);
 
     /**
-     *  @notice Set base URI
-     */
-    function setBaseURI(string memory newURI) external onlyOwnerOrAdmin {
-        baseURI = newURI;
-    }
-
-    /**
-     *  @notice Mapping token ID to base URI in ipfs storage
-     *
-     *  @dev    All caller can call this function.
-     */
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
-
-        return
-            bytes(baseURI).length > 0
-                ? string(abi.encodePacked(baseURI, "/", tokenId.toString(), ".json"))
-                : ".json";
-    }
-
-    /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
@@ -179,6 +158,27 @@ contract NFTMTVSTicket is
         _mint(receiver, tokenId);
 
         emit Minted(tokenId, receiver);
+    }
+
+    /**
+     *  @notice Set base URI
+     */
+    function setBaseURI(string memory newURI) external onlyOwnerOrAdmin {
+        baseURI = newURI;
+    }
+
+    /**
+     *  @notice Mapping token ID to base URI in ipfs storage
+     *
+     *  @dev    All caller can call this function.
+     */
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
+
+        return
+            bytes(baseURI).length > 0
+                ? string(abi.encodePacked(baseURI, "/", tokenId.toString(), ".json"))
+                : ".json";
     }
 
     /**

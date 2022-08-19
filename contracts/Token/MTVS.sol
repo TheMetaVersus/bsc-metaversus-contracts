@@ -65,15 +65,6 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     }
 
     /**
-     *  @notice Check account whether it is the controller role.
-     *
-     *  @dev    All caller can call this function.
-     */
-    function isController(address account) external view returns (bool) {
-        return controllers[account];
-    }
-
-    /**
      *  @notice Set or remove role controllers
      *
      *  @dev    Only owner can call this function.
@@ -106,5 +97,14 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      */
     function burn(uint256 amount) external notZeroAmount(amount) {
         _burn(_msgSender(), amount);
+    }
+
+    /**
+     *  @notice Check account whether it is the controller role.
+     *
+     *  @dev    All caller can call this function.
+     */
+    function isController(address account) external view returns (bool) {
+        return controllers[account];
     }
 }

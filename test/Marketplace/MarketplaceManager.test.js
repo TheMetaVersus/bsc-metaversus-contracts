@@ -2,7 +2,7 @@ const { constants } = require("@openzeppelin/test-helpers");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { multiply, add, subtract } = require("js-big-decimal");
-const { getCurrentTime, skipTime } = require("../utils");
+const { getCurrentTime, skipTime, handleCreateNFT } = require("../utils");
 describe("Marketplace Manager:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000");
@@ -157,17 +157,22 @@ describe("Marketplace Manager:", () => {
         it("should revert when price equal to zero: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
             await token.mint(owner.address, ONE_ETHER);
-            await token.approve(user1.address, ethers.constants.MaxUint256);
             await token.connect(user1).approve(mtvsManager.address, ethers.constants.MaxUint256);
-            await tokenMintERC721.setAdmin(mtvsManager.address, true);
-            await tokenMintERC1155.setAdmin(mtvsManager.address, true);
-            await mkpManager.setAdmin(mtvsManager.address, true);
 
             // ERC721
+            const current = await getCurrentTime();
+            const typeNft = 0; // ERC721
+            const amount = 1;
+            const uri = "this_uri";
+            const price = 0;
+            const startTime = 0;
+            const endTime = 0;
 
-            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0, 0);
+            await mtvsManager
+                .connect(user1)
+                .createNFT(typeNft, amount, uri, price, startTime, endTime);
             await expect(
-                mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK, ONE_WEEK)
+                mkpManager.sellAvaiableInMarketplace(1, 0, current, current + ONE_WEEK)
             ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should revert when caller is not owner: ", async () => {
@@ -180,9 +185,19 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setAdmin(mtvsManager.address, true);
 
             // ERC721
-            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0, 0);
+            const current = await getCurrentTime();
+            const typeNft = 0; // ERC721
+            const amount = 1;
+            const uri = "this_uri";
+            const price = 0;
+            const startTime = 0;
+            const endTime = 0;
+
+            await mtvsManager
+                .connect(user1)
+                .createNFT(typeNft, amount, uri, price, startTime, endTime);
             await expect(
-                mkpManager.sellAvaiableInMarketplace(1, 1000, ONE_WEEK, ONE_WEEK)
+                mkpManager.sellAvaiableInMarketplace(1, price + 1000, current, current + ONE_WEEK)
             ).to.be.revertedWith("ERROR: sender is not owner this NFT");
         });
         it("should sellAvaiableInMarketplace success and return marketItemId: ", async () => {
@@ -195,7 +210,17 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setAdmin(mtvsManager.address, true);
 
             // ERC721
-            await mtvsManager.connect(user1).createNFT(0, 1, "this_uri", 0, 0, 0);
+            let typeNft = 0; // ERC721
+            let amount = 1;
+            let uri = "this_uri";
+            let price = 0;
+            let startTime = 0;
+            let endTime = 0;
+
+            await mtvsManager
+                .connect(user1)
+                .createNFT(typeNft, amount, uri, price, startTime, endTime);
+
             const latest_1 = await mkpManager.getLatestMarketItemByTokenId(
                 tokenMintERC721.address,
                 1
@@ -214,7 +239,16 @@ describe("Marketplace Manager:", () => {
             );
             expect(data_ERC721.price).to.equal(10005);
             // ERC1155
-            await mtvsManager.connect(user1).createNFT(1, 100, "this_uri", 0, 0, 0);
+            typeNft = 1;
+            amount = 100;
+            uri = "this_uri";
+            price = 0;
+            startTime = 0;
+            endTime = 0;
+
+            await mtvsManager
+                .connect(user1)
+                .createNFT(typeNft, amount, uri, price, startTime, endTime);
             const latest_2 = await mkpManager.getLatestMarketItemByTokenId(
                 tokenMintERC1155.address,
                 1
@@ -366,17 +400,17 @@ describe("Marketplace Manager:", () => {
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
             let current = await getCurrentTime();
-            // console.log("current", current, current + 1000000);
+
             const tx = await mkpManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, ONE_ETHER, add(current, 100), 1761826881);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
-            const data = await mkpManager.fetchMarketItemsByMarketID(1);
+
             await skipTime(4800);
             current = await getCurrentTime();
-            // console.log("current buy", current, data);
+
             await expect(() => mkpManager.connect(user2).buy(marketId)).to.changeTokenBalance(
                 nftTest,
                 user2,

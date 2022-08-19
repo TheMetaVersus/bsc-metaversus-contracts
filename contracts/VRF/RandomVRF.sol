@@ -64,6 +64,17 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
     }
 
     /**
+     *  @notice Set a account to become an admin
+     *
+     *  @dev  Only Owner can call this function.
+     */
+    function setAdmin(address admin, bool allow) external onlyOwner {
+        admins[admin] = allow;
+
+        emit SetAdmin(admin, allow);
+    }
+
+    /**
      *  @notice Callback function to handle after get a random number
      */
     function fulfillRandomness(bytes32 _requestId, uint256 _randomness) internal override {
@@ -83,15 +94,6 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
     }
 
     /**
-     *  @notice Get a bool whether handled fullfilled request or not
-     *
-     *  @dev   All caller can call this function.
-     */
-    function isRequestIDFulfilled(bytes32 _requestID) public view override returns (bool) {
-        return requestIdToRandomness[_requestID] != 0;
-    }
-
-    /**
      *  @notice Get a bool whether account is admin or not
      *
      *  @dev   All caller can call this function.
@@ -101,13 +103,11 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
     }
 
     /**
-     *  @notice Set a account to become an admin
+     *  @notice Get a bool whether handled fullfilled request or not
      *
-     *  @dev  Only Owner can call this function.
+     *  @dev   All caller can call this function.
      */
-    function setAdmin(address admin, bool allow) external onlyOwner {
-        admins[admin] = allow;
-
-        emit SetAdmin(admin, allow);
+    function isRequestIDFulfilled(bytes32 _requestID) public view override returns (bool) {
+        return requestIdToRandomness[_requestID] != 0;
     }
 }

@@ -72,17 +72,6 @@ contract MetaversusManager is
     event SetPause(bool isPause);
 
     /**
-     *  @notice Set pause action
-     */
-    function setPause(bool isPause) public onlyOwnerOrAdmin {
-        if (isPause) {
-            _pause();
-        } else _unpause();
-
-        emit SetPause(isPause);
-    }
-
-    /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
@@ -110,38 +99,6 @@ contract MetaversusManager is
         tokenMintERC1155 = ITokenMintERC1155(nft1155Addr);
         feeCreate = _feeCreate;
         setPause(true);
-    }
-
-    /**
-     *  @notice Get create fee
-     */
-    function getCreateFee() external view returns (uint256) {
-        return feeCreate;
-    }
-
-    /**
-     *  @notice Get all params
-     */
-    function getAllParams()
-        external
-        view
-        returns (
-            address,
-            address,
-            address,
-            address,
-            address,
-            uint256
-        )
-    {
-        return (
-            treasury,
-            address(marketplace),
-            address(tokenMintERC1155),
-            address(tokenMintERC721),
-            address(paymentToken),
-            feeCreate
-        );
     }
 
     /**
@@ -238,5 +195,48 @@ contract MetaversusManager is
         paymentToken.safeTransferFrom(_msgSender(), treasury, amount);
 
         emit BoughtTicketEvent(_msgSender(), eventId);
+    }
+
+    /**
+     *  @notice Set pause action
+     */
+    function setPause(bool isPause) public onlyOwnerOrAdmin {
+        if (isPause) {
+            _pause();
+        } else _unpause();
+
+        emit SetPause(isPause);
+    }
+
+    /**
+     *  @notice Get create fee
+     */
+    function getCreateFee() external view returns (uint256) {
+        return feeCreate;
+    }
+
+    /**
+     *  @notice Get all params
+     */
+    function getAllParams()
+        external
+        view
+        returns (
+            address,
+            address,
+            address,
+            address,
+            address,
+            uint256
+        )
+    {
+        return (
+            treasury,
+            address(marketplace),
+            address(tokenMintERC1155),
+            address(tokenMintERC721),
+            address(paymentToken),
+            feeCreate
+        );
     }
 }

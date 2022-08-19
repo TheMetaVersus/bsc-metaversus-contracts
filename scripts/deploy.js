@@ -33,7 +33,7 @@ async function main() {
 
   const mtvs = await upgrades.deployProxy(MTVS, [
     admin,
-    "Vetaversus Token",
+    "Metaversus Token",
     "MTVS",
     process.env.TOTAL_SUPPLY,
     treasury.address
