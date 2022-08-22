@@ -19,14 +19,14 @@ async function main() {
     console.log("err :>> ", err);
   }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.tokenMintERC721,
-      contract: "contracts/Token/TokenMintERC721.sol:TokenMintERC721"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.tokenMintERC721,
+  //     contract: "contracts/Token/TokenMintERC721.sol:TokenMintERC721"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 
   try {
     await hre.run("verify:verify", {
@@ -37,78 +37,78 @@ async function main() {
     console.log("err :>> ", err);
   }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.nftMTVSTicket,
-      contract: "contracts/Token/NFTMTVSTicket.sol:NFTMTVSTicket"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.nftMTVSTicket,
+  //     contract: "contracts/Token/NFTMTVSTicket.sol:NFTMTVSTicket"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.mtvsManager,
-      contract: "contracts/Marketplace/MetaversusManager.sol:MetaversusManager"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.mtvsManager,
+  //     contract: "contracts/Marketplace/MetaversusManager.sol:MetaversusManager"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.mkpManager,
-      contract:
-        "contracts/Marketplace/MarketplaceManager.sol:MarketPlaceManager"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.mkpManager,
+  //     contract:
+  //       "contracts/Marketplace/MarketplaceManager.sol:MarketPlaceManager"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.staking30d,
-      contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.staking30d,
+  //     contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.staking60d,
-      contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.staking60d,
+  //     contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.staking90d,
-      contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.staking90d,
+  //     contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.staking,
-      contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.staking,
+  //     contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.poolFactory,
-      contract: "contracts/StakingPool/PoolFactory.sol:PoolFactory"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.poolFactory,
+  //     contract: "contracts/StakingPool/PoolFactory.sol:PoolFactory"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 }
 
 main()

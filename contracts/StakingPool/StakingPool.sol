@@ -81,9 +81,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     address public mkpManager;
 
     /**
-     *  @notice busdToken is address of BUSD token
+     *  @notice usdToken is address that price of token equal to one USD
      */
-    address public busdToken;
+    address public usdToken;
 
     /**
      *  @notice pankeRouter is address of Pancake Router
@@ -101,7 +101,6 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     event EmergencyWithdrawed(address indexed owner, address indexed token);
     event SetRewardRate(uint256 indexed rate);
     event SetPendingTime(uint256 indexed pendingTime);
-    event SetStakeTime(uint256 indexed endTime);
     event SetDuration(uint256 indexed poolDuration);
     event SetStartTime(uint256 indexed poolDuration);
     event RequestUnstake(address indexed sender);
@@ -113,35 +112,35 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address owner_,
-        address stakeToken_,
-        address rewardToken_,
-        address mkpManager_,
-        uint256 rewardRate_,
-        uint256 poolDuration_,
+        address _owner,
+        address _stakeToken,
+        address _rewardToken,
+        address _mkpManagerAddrress,
+        uint256 _rewardRate,
+        uint256 _poolDuration,
         address _pancakeRouter,
-        address _busdToken
+        address _usdToken
     )
         public
         initializer
-        notZeroAddress(owner_)
-        notZeroAddress(stakeToken_)
-        notZeroAddress(rewardToken_)
-        notZeroAddress(mkpManager_)
-        notZeroAmount(rewardRate_)
-        notZeroAmount(poolDuration_)
+        notZeroAddress(_owner)
+        notZeroAddress(_stakeToken)
+        notZeroAddress(_rewardToken)
+        notZeroAddress(_mkpManagerAddrress)
+        notZeroAmount(_rewardRate)
+        notZeroAmount(_poolDuration)
     {
         Adminable.__Adminable_init();
-        transferOwnership(owner_);
-        stakeToken = IERC20Upgradeable(stakeToken_);
-        rewardToken = IERC20Upgradeable(rewardToken_);
-        rewardRate = rewardRate_;
-        poolDuration = poolDuration_;
-        mkpManager = mkpManager_;
+        transferOwnership(_owner);
+        stakeToken = IERC20Upgradeable(_stakeToken);
+        rewardToken = IERC20Upgradeable(_rewardToken);
+        rewardRate = _rewardRate;
+        poolDuration = _poolDuration;
+        mkpManager = _mkpManagerAddrress;
+        pankeRouter = _pancakeRouter;
+        usdToken = _usdToken;
         pendingTime = 1 days; // default
         acceptableLost = 50; // 50%
-        pankeRouter = _pancakeRouter;
-        busdToken = _busdToken;
         _pause();
     }
 
@@ -188,7 +187,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
         require(block.timestamp > startTime, "ERROR: not time for stake !");
         require(
-            getPriceFormatUSD(address(stakeToken), busdToken, _amount) > 5e20,
+            getPriceFormatUSD(address(stakeToken), usdToken, _amount) > 5e20,
             "Must stake more than 500$"
         );
         require(
