@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 const { upgrades } = require("hardhat");
-const { skipTime, acceptable, getCurrentTime } = require("../utils");
-const { add, multiply, divide, subtract } = require("js-big-decimal");
+const { getCurrentTime } = require("../utils");
 
 describe("Pool Factory:", () => {
     beforeEach(async () => {
@@ -10,7 +9,7 @@ describe("Pool Factory:", () => {
         OVER_AMOUNT = ethers.utils.parseEther("1000000");
         ONE_ETHER = ethers.utils.parseEther("1");
         ONE_YEAR = 31104000;
-          TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
+        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         PRICE = 10000;
         PANCAKE_ROUTER = "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F";
         USD_TOKEN = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
@@ -33,11 +32,7 @@ describe("Pool Factory:", () => {
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [
-            owner.address,
-            token.address,
-            treasury.address,
-        ]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, token.address, treasury.address]);
 
         Staking = await ethers.getContractFactory("StakingPool");
         staking = await Staking.deploy();

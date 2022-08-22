@@ -36,7 +36,7 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     *  @notice Distribute reward depend on tokenomic.
+     *  @notice Set pernit payment token
      */
     function setPermitedPaymentToken(address _paymentToken, bool allow)
         external

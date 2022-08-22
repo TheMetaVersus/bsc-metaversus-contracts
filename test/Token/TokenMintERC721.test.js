@@ -82,6 +82,15 @@ describe("TokenMintERC721:", () => {
             expect(await tokenMintERC721.isAdmin(user2.address)).to.equal(false);
         });
     });
+
+    describe("tokenURI function:", async () => {
+        it("should revert when invalid tokenID params: ", async () => {
+            await expect(tokenMintERC721.tokenURI(2)).to.be.revertedWith(
+                "ERC721Metadata: URI query for nonexistent token."
+            );
+        });
+    });
+
     describe("setTokenURI function:", async () => {
         it("should setTokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
