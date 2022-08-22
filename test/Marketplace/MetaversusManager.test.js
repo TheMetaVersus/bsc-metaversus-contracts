@@ -31,7 +31,6 @@ describe("Metaversus Manager:", () => {
             owner.address,
             "NFT Metaversus",
             "nMTVS",
-            token.address,
             treasury.address,
             250,
         ]);
@@ -39,8 +38,6 @@ describe("Metaversus Manager:", () => {
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [
             owner.address,
-            "uri",
-            token.address,
             treasury.address,
             250,
         ]);
@@ -144,7 +141,7 @@ describe("Metaversus Manager:", () => {
     describe("createNFT function:", async () => {
         it("should revert when amount equal to zero amount: ", async () => {
             await expect(
-                mtvsManager.connect(user1).createNFT(0, 0, "this_uri", 0, 0, 0)
+                mtvsManager.connect(user1).createNFT(1, 0, "this_uri", ONE_ETHER, 0, 0)
             ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should create NFT success: ", async () => {
@@ -200,13 +197,6 @@ describe("Metaversus Manager:", () => {
             const allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
             expect(allItems[0].status).to.equal(0);
             expect(parseInt(allItems[0].endTime)).greaterThan(current);
-
-            // await tokenMintERC1155.setAdmin(mtvsManager.address, true);
-
-            // await expect(() =>
-            //     mtvsManager.connect(user2).createNFT(1, 100, "this_uri", 1200, time)
-            // ).to.changeTokenBalance(token, user2, -250);
-            // expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 500));
         });
     });
 

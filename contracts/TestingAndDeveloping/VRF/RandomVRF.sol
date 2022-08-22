@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IRandomVRF.sol";
+import "../../interfaces/IRandomVRF.sol";
 
 /**
  *  @title  Dev Randomizer VRF Chainlink Contract

@@ -2,7 +2,6 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
 
-const { add, subtract } = require("js-big-decimal");
 describe("TokenMintERC1155:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
@@ -26,20 +25,10 @@ describe("TokenMintERC1155:", () => {
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [
-            owner.address,
-            "uri",
-            token.address,
-            treasury.address,
-            250,
-        ]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [owner.address, treasury.address, 250]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [
-            owner.address,
-            token.address,
-            treasury.address,
-        ]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, token.address, treasury.address]);
 
         await tokenMintERC1155.deployed();
     });
@@ -47,7 +36,7 @@ describe("TokenMintERC1155:", () => {
     describe("Deployment:", async () => {
         it("Check uri: ", async () => {
             const URI = "this_is_uri_1.json";
-            await tokenMintERC1155.mint(user1.address, mkpManager.address, 100, URI);
+            await tokenMintERC1155.mint(mkpManager.address, 100, URI);
 
             const newURI = await tokenMintERC1155.uri(1);
 
@@ -67,9 +56,9 @@ describe("TokenMintERC1155:", () => {
 
     describe("setAdmin function:", async () => {
         it("should revert when caller is not owner: ", async () => {
-            await expect(
-                tokenMintERC1155.connect(user1).setAdmin(user2.address, true)
-            ).to.be.revertedWith("Ownable: caller is not the owner");
+            await expect(tokenMintERC1155.connect(user1).setAdmin(user2.address, true)).to.be.revertedWith(
+                "Ownable: caller is not the owner"
+            );
         });
         it("should set admin success: ", async () => {
             await tokenMintERC1155.setAdmin(user2.address, true);
@@ -86,7 +75,7 @@ describe("TokenMintERC1155:", () => {
     describe("setURI function:", async () => {
         it("should setURI: ", async () => {
             const URI = "this_is_uri_1.json";
-            await tokenMintERC1155.mint(user1.address, mkpManager.address, 100, URI);
+            await tokenMintERC1155.mint(mkpManager.address, 100, URI);
 
             const newURI = await tokenMintERC1155.uri(1);
 
@@ -98,9 +87,9 @@ describe("TokenMintERC1155:", () => {
 
     describe("setTreasury function:", async () => {
         it("should revert when caller is not owner: ", async () => {
-            await expect(
-                tokenMintERC1155.connect(user1).setTreasury(user2.address)
-            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
+            await expect(tokenMintERC1155.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
+                "Adminable: caller is not an owner or admin"
+            );
         });
         it("should revert when address equal to zero address: ", async () => {
             await expect(tokenMintERC1155.setTreasury(constants.ZERO_ADDRESS)).to.be.revertedWith(
@@ -121,35 +110,26 @@ describe("TokenMintERC1155:", () => {
 
     describe("mint function:", async () => {
         it("should revert when caller is not owner: ", async () => {
-            await expect(
-                tokenMintERC1155
-                    .connect(user1)
-                    .mint(user2.address, mkpManager.address, 100, "this_uri")
-            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
-        });
-        it("should revert when seller address equal to zero address: ", async () => {
-            await expect(
-                tokenMintERC1155.mint(constants.ZERO_ADDRESS, mkpManager.address, 100, "this_uri")
-            ).to.be.revertedWith("ERROR: invalid address !");
+            await expect(tokenMintERC1155.connect(user1).mint(mkpManager.address, 100, "this_uri")).to.be.revertedWith(
+                "Adminable: caller is not an owner or admin"
+            );
         });
         it("should revert when receiver address equal to zero address: ", async () => {
-            await expect(
-                tokenMintERC1155.mint(user1.address, constants.ZERO_ADDRESS, 100, "this_uri")
-            ).to.be.revertedWith("ERROR: invalid address !");
+            await expect(tokenMintERC1155.mint(constants.ZERO_ADDRESS, 100, "this_uri")).to.be.revertedWith(
+                "ERROR: invalid address !"
+            );
         });
         it("should revert when amount equal to zero address: ", async () => {
-            await expect(
-                tokenMintERC1155.mint(user2.address, mkpManager.address, 0, "this_uri")
-            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
+            await expect(tokenMintERC1155.mint(mkpManager.address, 0, "this_uri")).to.be.revertedWith(
+                "ERROR: amount must be greater than zero !"
+            );
         });
         it("should mint success: ", async () => {
             await token.mint(owner.address, ONE_ETHER);
 
-            await token
-                .connect(owner)
-                .approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
+            await token.connect(owner).approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
 
-            await tokenMintERC1155.mint(user2.address, mkpManager.address, 100, "this_uri");
+            await tokenMintERC1155.mint(mkpManager.address, 100, "this_uri");
             expect(await tokenMintERC1155.balanceOf(mkpManager.address, 1)).to.equal(100);
         });
     });

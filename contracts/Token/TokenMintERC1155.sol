@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -19,6 +19,7 @@ import "../Adminable.sol";
  *          by the all user and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
+
 contract TokenMintERC1155 is
     Initializable,
     Adminable,
@@ -36,11 +37,6 @@ contract TokenMintERC1155 is
     CountersUpgradeable.Counter private _tokenCounter;
 
     /**
-     *  @notice paymentToken IERC20Upgradeable is interface of payment token
-     */
-    IERC20Upgradeable public paymentToken;
-
-    /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
     address public treasury;
@@ -50,7 +46,6 @@ contract TokenMintERC1155 is
      */
     mapping(uint256 => string) public uris;
 
-    event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
 
@@ -59,19 +54,10 @@ contract TokenMintERC1155 is
      */
     function initialize(
         address _owner,
-        address _paymentToken,
         address _treasury,
         uint96 _feeNumerator
-    )
-        public
-        initializer
-        notZeroAddress(_owner)
-        notZeroAddress(_paymentToken)
-        notZeroAddress(_treasury)
-        notZeroAmount(_feeNumerator)
-    {
+    ) public initializer notZeroAddress(_owner) notZeroAddress(_treasury) notZeroAmount(_feeNumerator) {
         Adminable.__Adminable_init();
-        paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;
         _setDefaultRoyalty(_treasury, _feeNumerator);

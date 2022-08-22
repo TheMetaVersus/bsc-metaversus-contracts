@@ -45,7 +45,6 @@ contract TokenMintERC721 is
      */
     mapping(uint256 => string) public uris;
 
-    event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
 
@@ -58,13 +57,7 @@ contract TokenMintERC721 is
         string memory _symbol,
         address _treasury,
         uint96 _feeNumerator
-    )
-        public
-        initializer
-        notZeroAddress(_owner)
-        notZeroAddress(_treasury)
-        notZeroAmount(_feeNumerator)
-    {
+    ) public initializer notZeroAddress(_owner) notZeroAddress(_treasury) notZeroAmount(_feeNumerator) {
         ERC721Upgradeable.__ERC721_init(_name, _symbol);
         Adminable.__Adminable_init();
         transferOwnership(_owner);
@@ -88,11 +81,7 @@ contract TokenMintERC721 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver, string memory uri)
-        external
-        onlyOwnerOrAdmin
-        notZeroAddress(receiver)
-    {
+    function mint(address receiver, string memory uri) external onlyOwnerOrAdmin notZeroAddress(receiver) {
         _tokenCounter.increment();
         uint256 tokenId = _tokenCounter.current();
 

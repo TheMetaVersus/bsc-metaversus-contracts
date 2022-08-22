@@ -13,7 +13,7 @@ import "../Adminable.sol";
  *
  *  @author Metaversus Team
  *
- *  @notice This smart contract create thetreasury for Operation. This contract initially store
+ *  @notice This smart contract create the treasury for Operation. This contract initially store
  *          all assets and using for purchase in marketplace operation.
  */
 contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
@@ -24,11 +24,7 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
      */
     EnumerableSetUpgradeable.AddressSet private _permitedTokens;
 
-    event Distributed(
-        address indexed paymentToken,
-        address indexed destination,
-        uint256 indexed amount
-    );
+    event Distributed(address indexed paymentToken, address indexed destination, uint256 indexed amount);
     event SetPaymentToken(address indexed paymentToken, bool indexed allow);
 
     /**

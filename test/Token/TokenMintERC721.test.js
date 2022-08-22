@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
-const { add, subtract } = require("js-big-decimal");
+
 describe("TokenMintERC721:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
@@ -29,17 +29,12 @@ describe("TokenMintERC721:", () => {
             owner.address,
             "NFT Metaversus",
             "nMTVS",
-            token.address,
             treasury.address,
             250,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [
-            owner.address,
-            token.address,
-            treasury.address,
-        ]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, token.address, treasury.address]);
 
         await tokenMintERC721.deployed();
     });
@@ -58,7 +53,7 @@ describe("TokenMintERC721:", () => {
         });
         it("Check tokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
-            await tokenMintERC721.mint(user1.address, mkpManager.address, URI);
+            await tokenMintERC721.mint(mkpManager.address, URI);
 
             const newURI = await tokenMintERC721.tokenURI(1);
 
@@ -72,9 +67,9 @@ describe("TokenMintERC721:", () => {
 
     describe("setAdmin function:", async () => {
         it("should revert when caller is not owner: ", async () => {
-            await expect(
-                tokenMintERC721.connect(user1).setAdmin(user2.address, true)
-            ).to.be.revertedWith("Ownable: caller is not the owner");
+            await expect(tokenMintERC721.connect(user1).setAdmin(user2.address, true)).to.be.revertedWith(
+                "Ownable: caller is not the owner"
+            );
         });
         it("should set admin success: ", async () => {
             await tokenMintERC721.setAdmin(user2.address, true);
@@ -90,7 +85,7 @@ describe("TokenMintERC721:", () => {
     describe("setTokenURI function:", async () => {
         it("should setTokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
-            await tokenMintERC721.mint(user1.address, mkpManager.address, URI);
+            await tokenMintERC721.mint(mkpManager.address, URI);
 
             const newURI = await tokenMintERC721.tokenURI(1);
 
@@ -102,9 +97,9 @@ describe("TokenMintERC721:", () => {
 
     describe("setTreasury function:", async () => {
         it("should revert when caller is not owner: ", async () => {
-            await expect(
-                tokenMintERC721.connect(user1).setTreasury(user2.address)
-            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
+            await expect(tokenMintERC721.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
+                "Adminable: caller is not an owner or admin"
+            );
         });
 
         it("should set treasury success: ", async () => {
@@ -121,28 +116,22 @@ describe("TokenMintERC721:", () => {
 
     describe("mint function:", async () => {
         it("should revert when newPrice equal to zero: ", async () => {
-            await expect(
-                tokenMintERC721.connect(user1).mint(owner.address, mkpManager.address, "this_uri")
-            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
+            await expect(tokenMintERC721.connect(user1).mint(mkpManager.address, "this_uri")).to.be.revertedWith(
+                "Adminable: caller is not an owner or admin"
+            );
         });
-        it("should revert when seller address equal to zero address: ", async () => {
-            await expect(
-                tokenMintERC721.mint(constants.ZERO_ADDRESS, mkpManager.address, "this_uri")
-            ).to.be.revertedWith("ERROR: invalid address !");
-        });
+
         it("should revert when receiver address equal to zero address: ", async () => {
-            await expect(
-                tokenMintERC721.mint(owner.address, constants.ZERO_ADDRESS, "this_uri")
-            ).to.be.revertedWith("ERROR: invalid address !");
+            await expect(tokenMintERC721.mint(constants.ZERO_ADDRESS, "this_uri")).to.be.revertedWith(
+                "ERROR: invalid address !"
+            );
         });
         it("should mint success: ", async () => {
             await token.mint(owner.address, ONE_ETHER);
 
-            await token
-                .connect(owner)
-                .approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+            await token.connect(owner).approve(tokenMintERC721.address, ethers.constants.MaxUint256);
 
-            await tokenMintERC721.mint(user2.address, mkpManager.address, "this_uri");
+            await tokenMintERC721.mint(mkpManager.address, "this_uri");
             expect(await tokenMintERC721.balanceOf(mkpManager.address)).to.equal(1);
         });
     });
