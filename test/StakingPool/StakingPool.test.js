@@ -97,6 +97,9 @@ describe("Staking Pool:", () => {
         await mkpManager.setAdmin(mtvsManager.address, true);
         await staking.setPause(false);
         await staking.setStartTime(CURRENT);
+
+        await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
+        await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
     });
 
     describe("Deployment:", async () => {
@@ -161,7 +164,30 @@ describe("Staking Pool:", () => {
             expect(await staking.isActivePool()).to.equal(false);
         });
     });
+    describe("getPendingClaimTime:", async () => {
+        it("should get pending claim time: ", async () => {
+            expect(await staking.getPendingClaimTime(user1.address)).to.equal(0);
+        });
+    });
 
+    describe("getPendingUnstakeTime:", async () => {
+        it("should get pending unstake time: ", async () => {
+            expect(await staking.getPendingUnstakeTime(user1.address)).to.equal(0);
+        });
+    });
+    describe("getAllParams:", async () => {
+        it("should get all params of pool: ", async () => {
+            const params = await staking.getAllParams();
+            expect(await staking.stakeToken()).to.equal(params[0]);
+            expect(await staking.mkpManager()).to.equal(params[1]);
+            expect(await staking.stakedAmount()).to.equal(params[2]);
+            expect(await staking.poolDuration()).to.equal(params[3]);
+            expect(await staking.rewardRate()).to.equal(params[4]);
+            expect(await staking.startTime()).to.equal(params[5]);
+            expect(await staking.pendingTime()).to.equal(params[6]);
+            expect(await staking.isActivePool()).to.equal(params[7]);
+        });
+    });
     // SET FUNC
     describe("setRewardRate:", async () => {
         it("should change reward rate: ", async () => {
@@ -187,10 +213,18 @@ describe("Staking Pool:", () => {
     });
 
     describe("setPendingTime:", async () => {
-        it("should change pending time time: ", async () => {
+        it("should change pending time: ", async () => {
             const time = 1234567;
             await staking.setPendingTime(time);
             expect(await staking.pendingTime()).to.equal(time);
+        });
+    });
+
+    describe("setAcceptableLost:", async () => {
+        it("should change acceptable lost: ", async () => {
+            const lost = 10;
+            await staking.setAcceptableLost(lost);
+            expect(await staking.acceptableLost()).to.equal(lost);
         });
     });
 
@@ -218,6 +252,27 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, amount);
             await staking.connect(user1).stake(amount);
             expect(await staking.getUserAmount(user1.address)).to.equal(amount);
+        });
+        it("should stake success with more times: ", async () => {
+            await token.mint(user2.address, ONE_MILLION_ETHER);
+            await token.mint(user1.address, ONE_MILLION_ETHER);
+            await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
+            await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
+            const current = await getCurrentTime();
+            await expect(() =>
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 1000000)
+            ).to.changeTokenBalance(token, user2, -250);
+            await skipTime(1000);
+            await mkpManager.connect(user1).buy(1);
+
+            const amount = "125000000000000000000000";
+            await token.mint(user1.address, amount);
+            await token.connect(user1).approve(staking.address, multiply(3, amount));
+            await staking.connect(user1).stake(amount);
+            expect(await staking.getUserAmount(user1.address)).to.equal(amount);
+            await staking.connect(user1).stake(amount);
+            await staking.connect(user1).stake(amount);
+            expect(await staking.getUserAmount(user1.address)).to.equal(multiply(3, amount));
         });
     });
     describe("callReward:", async () => {
@@ -539,6 +594,42 @@ describe("Staking Pool:", () => {
                     epsilon
                 )
             ).to.be.true;
+        });
+        it("should claim accept lost 50%", async () => {
+            await token.mint(user2.address, ONE_MILLION_ETHER);
+            await token.mint(user1.address, ONE_MILLION_ETHER);
+            await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
+            await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
+            await token.connect(user1).approve(staking.address, ONE_ETHER);
+            const current = await getCurrentTime();
+            const typeNft = 0; // ERC721
+            const amount = 1;
+            const uri = "this_uri";
+            const price = ONE_ETHER;
+            const startTime = current + 10;
+            const endTime = current + 10000;
+
+            await expect(() =>
+                mtvsManager.connect(user2).createNFT(typeNft, amount, uri, price, startTime, endTime)
+            ).to.changeTokenBalance(token, user2, -250);
+            await skipTime(1000);
+            await mkpManager.connect(user1).buy(1);
+
+            await staking.connect(user1).stake(ONE_ETHER);
+            await skipTime(24 * 60 * 60 + 1);
+
+            await staking.connect(user1).requestClaim();
+            let data = await staking.users(user1.address);
+
+            expect(data.lazyClaim.isRequested).to.equal(true);
+            await skipTime(10 * 60 * 60 + 1);
+            const pendingRewards = await staking.pendingRewards(user1.address);
+            await expect(() =>
+                staking
+                    .connect(user1)
+                    .claim()
+                    .to.changeTokenBalance(token, user1, divide(pendingRewards, 2))
+            );
         });
     });
     describe("unstake:", async () => {
