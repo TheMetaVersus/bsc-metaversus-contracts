@@ -166,7 +166,7 @@ contract MarketPlaceManager is
         transferOwnership(_owner);
         treasury = _treasury;
         listingFee = 25e2; // 2.5%
-        setPause(true);
+        _pause();
     }
 
     /**

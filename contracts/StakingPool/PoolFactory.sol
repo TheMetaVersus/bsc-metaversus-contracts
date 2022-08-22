@@ -4,8 +4,8 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
-import "../Adminable.sol";
 import "../interfaces/IStakingPool.sol";
+import "../Adminable.sol";
 
 contract PoolFactory is Initializable, Adminable {
     using CountersUpgradeable for CountersUpgradeable.Counter;

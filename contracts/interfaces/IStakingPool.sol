@@ -6,7 +6,7 @@ interface IStakingPool {
         address owner,
         address stakeToken,
         address rewardToken,
-        address nftAddress,
+        address mkpManager,
         uint256 rewardRate,
         uint256 poolDuration
     ) external;

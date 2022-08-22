@@ -98,7 +98,7 @@ contract MetaversusManager is
         tokenMintERC721 = ITokenMintERC721(nft721Addr);
         tokenMintERC1155 = ITokenMintERC1155(nft1155Addr);
         feeCreate = _feeCreate;
-        setPause(true);
+        _pause();
     }
 
     /**
@@ -153,7 +153,7 @@ contract MetaversusManager is
         paymentToken.safeTransferFrom(_msgSender(), treasury, feeCreate);
 
         if (typeNft == TypeNft.ERC721) {
-            tokenMintERC721.mint(_msgSender(), address(marketplace), uri);
+            tokenMintERC721.mint(address(marketplace), uri);
             uint256 currentId = tokenMintERC721.getTokenCounter();
             marketplace.callAfterMint(
                 address(tokenMintERC721),
@@ -165,7 +165,7 @@ contract MetaversusManager is
                 endTime
             );
         } else if (typeNft == TypeNft.ERC1155) {
-            tokenMintERC1155.mint(_msgSender(), address(marketplace), amount, uri);
+            tokenMintERC1155.mint(address(marketplace), amount, uri);
             uint256 currentId = tokenMintERC1155.getTokenCounter();
             marketplace.callAfterMint(
                 address(tokenMintERC1155),

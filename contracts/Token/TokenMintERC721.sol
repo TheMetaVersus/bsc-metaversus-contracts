@@ -36,11 +36,6 @@ contract TokenMintERC721 is
     CountersUpgradeable.Counter private _tokenCounter;
 
     /**
-     *  @notice paymentToken IERC20Upgradeable is interface of payment token
-     */
-    IERC20Upgradeable public paymentToken;
-
-    /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
     address public treasury;
@@ -61,20 +56,17 @@ contract TokenMintERC721 is
         address _owner,
         string memory _name,
         string memory _symbol,
-        address _paymentToken,
         address _treasury,
         uint96 _feeNumerator
     )
         public
         initializer
         notZeroAddress(_owner)
-        notZeroAddress(_paymentToken)
         notZeroAddress(_treasury)
         notZeroAmount(_feeNumerator)
     {
         ERC721Upgradeable.__ERC721_init(_name, _symbol);
         Adminable.__Adminable_init();
-        paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;
         _setDefaultRoyalty(_treasury, _feeNumerator);
@@ -96,11 +88,11 @@ contract TokenMintERC721 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(
-        address seller,
-        address receiver,
-        string memory uri
-    ) external onlyOwnerOrAdmin notZeroAddress(seller) notZeroAddress(receiver) {
+    function mint(address receiver, string memory uri)
+        external
+        onlyOwnerOrAdmin
+        notZeroAddress(receiver)
+    {
         _tokenCounter.increment();
         uint256 tokenId = _tokenCounter.current();
 
@@ -116,6 +108,15 @@ contract TokenMintERC721 is
      */
     function setTokenURI(string memory newURI, uint256 tokenId) external onlyOwnerOrAdmin {
         uris[tokenId] = newURI;
+    }
+
+    /**
+     *  @notice Get token counter
+     *
+     *  @dev    All caller can call this function.
+     */
+    function getTokenCounter() external view returns (uint256) {
+        return _tokenCounter.current();
     }
 
     /**
@@ -138,14 +139,5 @@ contract TokenMintERC721 is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
-    }
-
-    /**
-     *  @notice Get token counter
-     *
-     *  @dev    All caller can call this function.
-     */
-    function getTokenCounter() external view returns (uint256) {
-        return _tokenCounter.current();
     }
 }
