@@ -26,13 +26,6 @@ require("solidity-coverage");
 // check size
 require("hardhat-contract-sizer");
 
-// tasl
-require("./tasks/exportProjectStaking");
-require("./tasks/exportProjectUsers");
-require("./tasks/exportPendingReward");
-require("./tasks/checkBalances");
-require("./tasks/multiSend");
-
 // reporter
 require("hardhat-gas-reporter");
 const config = {

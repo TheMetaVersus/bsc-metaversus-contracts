@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 const { upgrades } = require("hardhat");
-const { skipTime, acceptable, getCurrentTime } = require("../utils");
-const { add, multiply, divide, subtract } = require("js-big-decimal");
+const { getCurrentTime } = require("../utils");
 
 describe("Pool Factory:", () => {
     beforeEach(async () => {
@@ -12,7 +11,8 @@ describe("Pool Factory:", () => {
         ONE_YEAR = 31104000;
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         PRICE = 10000;
-
+        PANCAKE_ROUTER = "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F";
+        USD_TOKEN = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -31,16 +31,8 @@ describe("Pool Factory:", () => {
             treasury.address,
         ]);
 
-        NFTMTVSTicket = await ethers.getContractFactory("NFTMTVSTicket");
-        nftMTVSTicket = await upgrades.deployProxy(NFTMTVSTicket, [
-            owner.address,
-            "NFT Metaversus Ticket",
-            "nftMTVS",
-            token.address,
-            treasury.address,
-            250,
-            PRICE,
-        ]);
+        MkpManager = await ethers.getContractFactory("MarketPlaceManager");
+        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, token.address, treasury.address]);
 
         Staking = await ethers.getContractFactory("StakingPool");
         staking = await Staking.deploy();
@@ -65,12 +57,13 @@ describe("Pool Factory:", () => {
                 owner.address,
                 token.address,
                 token.address,
-                nftMTVSTicket.address,
+                mkpManager.address,
                 REWARD_RATE,
-                POOL_DURATION
+                POOL_DURATION,
+                PANCAKE_ROUTER,
+                USD_TOKEN
             );
             const addressPool = await poolFactory.getPool(1);
-            // console.log("addressPool", addressPool);
         });
     });
     describe("getPoolInfo:", async () => {
@@ -79,14 +72,14 @@ describe("Pool Factory:", () => {
                 owner.address,
                 token.address,
                 token.address,
-                nftMTVSTicket.address,
+                mkpManager.address,
                 REWARD_RATE,
-                POOL_DURATION
+                POOL_DURATION,
+                PANCAKE_ROUTER,
+                USD_TOKEN
             );
             const poolInfo = await poolFactory.getPoolInfo(1);
-            // console.log("poolInfo", poolInfo);
             const addressPool = await poolFactory.getPool(1);
-            // console.log("addressPool", addressPool);
             expect(poolInfo.poolAddress).to.equal(addressPool);
         });
     });
@@ -96,20 +89,23 @@ describe("Pool Factory:", () => {
                 user2.address,
                 token.address,
                 token.address,
-                nftMTVSTicket.address,
+                mkpManager.address,
                 REWARD_RATE,
-                POOL_DURATION
+                POOL_DURATION,
+                PANCAKE_ROUTER,
+                USD_TOKEN
             );
             await poolFactory.create(
                 user1.address,
                 token.address,
                 token.address,
-                nftMTVSTicket.address,
+                mkpManager.address,
                 REWARD_RATE,
-                POOL_DURATION
+                POOL_DURATION,
+                PANCAKE_ROUTER,
+                USD_TOKEN
             );
             const allPool = await poolFactory.getAllPool();
-            // console.log("allPool", allPool);
             expect(allPool.length).to.equal(2);
         });
     });
@@ -123,9 +119,11 @@ describe("Pool Factory:", () => {
                         owner.address,
                         token.address,
                         token.address,
-                        nftMTVSTicket.address,
+                        mkpManager.address,
                         REWARD_RATE,
-                        POOL_DURATION
+                        POOL_DURATION,
+                        PANCAKE_ROUTER,
+                        USD_TOKEN
                     )
             ).to.be.revertedWith("Adminable: caller is not an owner or admin");
         });
@@ -134,17 +132,21 @@ describe("Pool Factory:", () => {
                 user2.address,
                 token.address,
                 token.address,
-                nftMTVSTicket.address,
+                mkpManager.address,
                 REWARD_RATE,
-                POOL_DURATION
+                POOL_DURATION,
+                PANCAKE_ROUTER,
+                USD_TOKEN
             );
             await poolFactory.create(
                 user1.address,
                 token.address,
                 token.address,
-                nftMTVSTicket.address,
+                mkpManager.address,
                 REWARD_RATE,
-                POOL_DURATION
+                POOL_DURATION,
+                PANCAKE_ROUTER,
+                USD_TOKEN
             );
             const allPool = await poolFactory.getAllPool();
             expect(allPool.length).to.equal(2);

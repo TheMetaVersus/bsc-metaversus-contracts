@@ -6,9 +6,11 @@ interface IStakingPool {
         address owner,
         address stakeToken,
         address rewardToken,
-        address nftAddress,
+        address mkpManagerAddrress,
         uint256 rewardRate,
-        uint256 poolDuration
+        uint256 poolDuration,
+        address pancakeRouter,
+        address usdToken
     ) external;
 
     function transferOwnership(address newOwner) external;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -19,6 +19,7 @@ import "../Adminable.sol";
  *          by the all user and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
+
 contract TokenMintERC1155 is
     Initializable,
     Adminable,
@@ -36,11 +37,6 @@ contract TokenMintERC1155 is
     CountersUpgradeable.Counter private _tokenCounter;
 
     /**
-     *  @notice paymentToken IERC20Upgradeable is interface of payment token
-     */
-    IERC20Upgradeable public paymentToken;
-
-    /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
     address public treasury;
@@ -50,7 +46,6 @@ contract TokenMintERC1155 is
      */
     mapping(uint256 => string) public uris;
 
-    event SetPrice(uint256 oldPrice, uint256 price);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
 
@@ -59,21 +54,10 @@ contract TokenMintERC1155 is
      */
     function initialize(
         address _owner,
-        string memory __uri,
-        address _paymentToken,
         address _treasury,
         uint96 _feeNumerator
-    )
-        public
-        initializer
-        notZeroAddress(_owner)
-        notZeroAddress(_paymentToken)
-        notZeroAddress(_treasury)
-        notZeroAmount(_feeNumerator)
-    {
-        ERC1155Upgradeable.__ERC1155_init(__uri);
+    ) public initializer notZeroAddress(_owner) notZeroAddress(_treasury) notZeroAmount(_feeNumerator) {
         Adminable.__Adminable_init();
-        paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;
         _setDefaultRoyalty(_treasury, _feeNumerator);
@@ -84,18 +68,6 @@ contract TokenMintERC1155 is
      */
     function setURI(string memory newuri, uint256 tokenId) external onlyOwnerOrAdmin {
         uris[tokenId] = newuri;
-    }
-
-    /**
-     * @dev See {IERC165-supportsInterface} override for ERC2981Upgradeable, ERC1155Upgradeable
-     */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC1155Upgradeable, ERC2981Upgradeable)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
     }
 
     /**
@@ -115,17 +87,10 @@ contract TokenMintERC1155 is
      *  @dev    Only owner or admin can call this function.
      */
     function mint(
-        address seller,
         address receiver,
         uint256 amount,
         string memory newuri
-    )
-        external
-        onlyOwnerOrAdmin
-        notZeroAddress(seller)
-        notZeroAddress(receiver)
-        notZeroAmount(amount)
-    {
+    ) external onlyOwnerOrAdmin notZeroAddress(receiver) notZeroAmount(amount) {
         _tokenCounter.increment();
         uint256 tokenId = _tokenCounter.current();
 
@@ -143,6 +108,18 @@ contract TokenMintERC1155 is
      */
     function getTokenCounter() external view returns (uint256) {
         return _tokenCounter.current();
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface} override for ERC2981Upgradeable, ERC1155Upgradeable
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC1155Upgradeable, ERC2981Upgradeable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 
     /**

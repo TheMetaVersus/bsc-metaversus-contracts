@@ -1,11 +1,25 @@
+const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 const { expect } = require("chai");
 const { upgrades } = require("hardhat");
 const { skipTime, acceptable, getCurrentTime, handleCreateNFT } = require("../utils");
 const { add, multiply, divide, subtract } = require("js-big-decimal");
-// const { constants } = require("@openzeppelin/test-helpers");
 
 describe("Staking Pool:", () => {
     beforeEach(async () => {
+        const abi = [
+            {
+                inputs: [
+                    { internalType: "uint256", name: "amountIn", type: "uint256" },
+                    { internalType: "address[]", name: "path", type: "address[]" },
+                ],
+                name: "getAmountsOut",
+                outputs: [{ internalType: "uint256[]", name: "amounts", type: "uint256[]" }],
+                stateMutability: "view",
+                type: "function",
+            },
+        ];
+        // PANCAKE_ROUTER = "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F";
+        USD_TOKEN = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
         REWARD_RATE = 15854895992; // 50 % APY
         poolDuration = 9 * 30 * 24 * 60 * 60; // 9 months
         OVER_AMOUNT = ethers.utils.parseEther("1000000");
@@ -19,6 +33,10 @@ describe("Staking Pool:", () => {
         user2 = accounts[2];
         user3 = accounts[3];
         treasury = accounts[4];
+
+        PANCAKE_ROUTER = await deployMockContract(owner, abi);
+        await PANCAKE_ROUTER.mock.getAmountsOut.returns([ONE_ETHER, multiply(500, ONE_ETHER)]);
+
         Treasury = await ethers.getContractFactory("Treasury");
         treasury = await upgrades.deployProxy(Treasury, [owner.address]);
 
@@ -36,26 +54,15 @@ describe("Staking Pool:", () => {
             owner.address,
             "NFT Metaversus",
             "nMTVS",
-            token.address,
             treasury.address,
             250,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [
-            owner.address,
-            "uri",
-            token.address,
-            treasury.address,
-            250,
-        ]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [owner.address, treasury.address, 250]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [
-            owner.address,
-            token.address,
-            treasury.address,
-        ]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, token.address, treasury.address]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
@@ -76,6 +83,8 @@ describe("Staking Pool:", () => {
             mkpManager.address,
             REWARD_RATE,
             poolDuration,
+            PANCAKE_ROUTER.address,
+            USD_TOKEN,
         ]);
 
         await staking.deployed();
@@ -88,6 +97,9 @@ describe("Staking Pool:", () => {
         await mkpManager.setAdmin(mtvsManager.address, true);
         await staking.setPause(false);
         await staking.setStartTime(CURRENT);
+
+        await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
+        await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
     });
 
     describe("Deployment:", async () => {
@@ -96,7 +108,6 @@ describe("Staking Pool:", () => {
             expect(ownerAddress).to.equal(owner.address);
         });
     });
-    // GET FUNC
     describe("getStakeToken:", async () => {
         it("should return staked token: ", async () => {
             expect(await staking.stakeToken()).to.equal(token.address);
@@ -127,16 +138,15 @@ describe("Staking Pool:", () => {
 
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 100000000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", ONE_ETHER, current + 10, current + 100000000)
             ).to.changeTokenBalance(token, user2, -250);
 
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
-            await token.connect(user1).approve(staking.address, ONE_MILLION_ETHER);
-            await staking.connect(user1).stake(ONE_ETHER);
-            expect(await staking.getUserAmount(user1.address)).to.equal(ONE_ETHER);
+            await token.connect(user1).approve(staking.address, multiply(500, ONE_ETHER));
+
+            await staking.connect(user1).stake(multiply(500, ONE_ETHER));
+            expect(await staking.getUserAmount(user1.address)).to.equal(multiply(500, ONE_ETHER));
         });
     });
     describe("getStartTime:", async () => {
@@ -154,7 +164,30 @@ describe("Staking Pool:", () => {
             expect(await staking.isActivePool()).to.equal(false);
         });
     });
+    describe("getPendingClaimTime:", async () => {
+        it("should get pending claim time: ", async () => {
+            expect(await staking.getPendingClaimTime(user1.address)).to.equal(0);
+        });
+    });
 
+    describe("getPendingUnstakeTime:", async () => {
+        it("should get pending unstake time: ", async () => {
+            expect(await staking.getPendingUnstakeTime(user1.address)).to.equal(0);
+        });
+    });
+    describe("getAllParams:", async () => {
+        it("should get all params of pool: ", async () => {
+            const params = await staking.getAllParams();
+            expect(await staking.stakeToken()).to.equal(params[0]);
+            expect(await staking.mkpManager()).to.equal(params[1]);
+            expect(await staking.stakedAmount()).to.equal(params[2]);
+            expect(await staking.poolDuration()).to.equal(params[3]);
+            expect(await staking.rewardRate()).to.equal(params[4]);
+            expect(await staking.startTime()).to.equal(params[5]);
+            expect(await staking.pendingTime()).to.equal(params[6]);
+            expect(await staking.isActivePool()).to.equal(params[7]);
+        });
+    });
     // SET FUNC
     describe("setRewardRate:", async () => {
         it("should change reward rate: ", async () => {
@@ -180,10 +213,18 @@ describe("Staking Pool:", () => {
     });
 
     describe("setPendingTime:", async () => {
-        it("should change pending time time: ", async () => {
+        it("should change pending time: ", async () => {
             const time = 1234567;
             await staking.setPendingTime(time);
             expect(await staking.pendingTime()).to.equal(time);
+        });
+    });
+
+    describe("setAcceptableLost:", async () => {
+        it("should change acceptable lost: ", async () => {
+            const lost = 10;
+            await staking.setAcceptableLost(lost);
+            expect(await staking.acceptableLost()).to.equal(lost);
         });
     });
 
@@ -201,9 +242,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 1000000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 1000000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -213,6 +252,27 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, amount);
             await staking.connect(user1).stake(amount);
             expect(await staking.getUserAmount(user1.address)).to.equal(amount);
+        });
+        it("should stake success with more times: ", async () => {
+            await token.mint(user2.address, ONE_MILLION_ETHER);
+            await token.mint(user1.address, ONE_MILLION_ETHER);
+            await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
+            await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
+            const current = await getCurrentTime();
+            await expect(() =>
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 1000000)
+            ).to.changeTokenBalance(token, user2, -250);
+            await skipTime(1000);
+            await mkpManager.connect(user1).buy(1);
+
+            const amount = "125000000000000000000000";
+            await token.mint(user1.address, amount);
+            await token.connect(user1).approve(staking.address, multiply(3, amount));
+            await staking.connect(user1).stake(amount);
+            expect(await staking.getUserAmount(user1.address)).to.equal(amount);
+            await staking.connect(user1).stake(amount);
+            await staking.connect(user1).stake(amount);
+            expect(await staking.getUserAmount(user1.address)).to.equal(multiply(3, amount));
         });
     });
     describe("callReward:", async () => {
@@ -228,9 +288,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -269,9 +327,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -303,9 +359,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -327,9 +381,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -339,9 +391,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime + poolDuration);
             await staking.connect(user1).requestUnstake();
-            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith(
-                "ERROR: requested !"
-            );
+            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith("ERROR: requested !");
         });
 
         it("should request success: ", async () => {
@@ -352,9 +402,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -380,9 +428,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -400,9 +446,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -412,9 +456,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime);
             await staking.connect(user1).requestClaim();
-            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith(
-                "ERROR: requested !"
-            );
+            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("ERROR: requested !");
         });
         it("should request success: ", async () => {
             await token.mint(user2.address, ONE_MILLION_ETHER);
@@ -424,9 +466,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -450,9 +490,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -463,9 +501,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).requestClaim();
             await skipTime(10 * 30 * 24 * 60 * 60 + 1); // 23h
 
-            await expect(staking.connect(user1).claim()).to.be.revertedWith(
-                "ERROR: staking pool had been expired !"
-            );
+            await expect(staking.connect(user1).claim()).to.be.revertedWith("ERROR: staking pool had been expired !");
         });
 
         it("should revert when not rquest claim before ", async () => {
@@ -476,9 +512,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -487,9 +521,7 @@ describe("Staking Pool:", () => {
 
             await skipTime(30 * 24 * 60 * 60);
 
-            await expect(staking.connect(user1).claim()).to.be.revertedWith(
-                "ERROR: please request before"
-            );
+            await expect(staking.connect(user1).claim()).to.be.revertedWith("ERROR: please request before");
         });
 
         it("should revert when amount of ERROR: reward value equal to zero ", async () => {
@@ -501,9 +533,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -535,9 +565,7 @@ describe("Staking Pool:", () => {
             const endTime = current + 10000;
 
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(typeNft, amount, uri, price, startTime, endTime)
+                mtvsManager.connect(user2).createNFT(typeNft, amount, uri, price, startTime, endTime)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -567,6 +595,42 @@ describe("Staking Pool:", () => {
                 )
             ).to.be.true;
         });
+        it("should claim accept lost 50%", async () => {
+            await token.mint(user2.address, ONE_MILLION_ETHER);
+            await token.mint(user1.address, ONE_MILLION_ETHER);
+            await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
+            await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
+            await token.connect(user1).approve(staking.address, ONE_ETHER);
+            const current = await getCurrentTime();
+            const typeNft = 0; // ERC721
+            const amount = 1;
+            const uri = "this_uri";
+            const price = ONE_ETHER;
+            const startTime = current + 10;
+            const endTime = current + 10000;
+
+            await expect(() =>
+                mtvsManager.connect(user2).createNFT(typeNft, amount, uri, price, startTime, endTime)
+            ).to.changeTokenBalance(token, user2, -250);
+            await skipTime(1000);
+            await mkpManager.connect(user1).buy(1);
+
+            await staking.connect(user1).stake(ONE_ETHER);
+            await skipTime(24 * 60 * 60 + 1);
+
+            await staking.connect(user1).requestClaim();
+            let data = await staking.users(user1.address);
+
+            expect(data.lazyClaim.isRequested).to.equal(true);
+            await skipTime(10 * 60 * 60 + 1);
+            const pendingRewards = await staking.pendingRewards(user1.address);
+            await expect(() =>
+                staking
+                    .connect(user1)
+                    .claim()
+                    .to.changeTokenBalance(token, user1, divide(pendingRewards, 2))
+            );
+        });
     });
     describe("unstake:", async () => {
         it("should revert when staking pool for NFT not expired: ", async () => {
@@ -577,9 +641,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -601,9 +663,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -625,9 +685,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
             await mkpManager.connect(user1).buy(1);
@@ -650,9 +708,7 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
             await expect(() =>
-                mtvsManager
-                    .connect(user2)
-                    .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
+                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000)
             ).to.changeTokenBalance(token, user2, -250);
             await skipTime(1000);
 
@@ -667,9 +723,7 @@ describe("Staking Pool:", () => {
             const pendingRewards = await staking.pendingRewards(user1.address);
             await staking.connect(user1).unstake(ONE_ETHER);
 
-            expect(await token.balanceOf(staking.address)).to.equal(
-                subtract(ONE_MILLION_ETHER, pendingRewards)
-            );
+            expect(await token.balanceOf(staking.address)).to.equal(subtract(ONE_MILLION_ETHER, pendingRewards));
 
             expect(await token.balanceOf(user1.address)).to.equal(
                 subtract(add(ONE_MILLION_ETHER, pendingRewards), 1000)

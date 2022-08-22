@@ -81,14 +81,14 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     address public mkpManager;
 
     /**
-     *  @notice busdToken is address of BUSD token
+     *  @notice usdToken is address that price of token equal to one USD
      */
-    address public busdToken;
+    address public usdToken;
 
     /**
-     *  @notice pankeRouter is address of Pancake Router
+     *  @notice pancakeRouter is address of Pancake Router
      */
-    address public pankeRouter;
+    address public pancakeRouter;
 
     /**
      *  @notice Mapping an address to a information of corresponding user address.
@@ -101,7 +101,6 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     event EmergencyWithdrawed(address indexed owner, address indexed token);
     event SetRewardRate(uint256 indexed rate);
     event SetPendingTime(uint256 indexed pendingTime);
-    event SetStakeTime(uint256 indexed endTime);
     event SetDuration(uint256 indexed poolDuration);
     event SetStartTime(uint256 indexed poolDuration);
     event RequestUnstake(address indexed sender);
@@ -113,35 +112,35 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address owner_,
-        address stakeToken_,
-        address rewardToken_,
-        address mkpManager_,
-        uint256 rewardRate_,
-        uint256 poolDuration_,
+        address _owner,
+        address _stakeToken,
+        address _rewardToken,
+        address _mkpManagerAddrress,
+        uint256 _rewardRate,
+        uint256 _poolDuration,
         address _pancakeRouter,
-        address _busdToken
+        address _usdToken
     )
         public
         initializer
-        notZeroAddress(owner_)
-        notZeroAddress(stakeToken_)
-        notZeroAddress(rewardToken_)
-        notZeroAddress(mkpManager_)
-        notZeroAmount(rewardRate_)
-        notZeroAmount(poolDuration_)
+        notZeroAddress(_owner)
+        notZeroAddress(_stakeToken)
+        notZeroAddress(_rewardToken)
+        notZeroAddress(_mkpManagerAddrress)
+        notZeroAmount(_rewardRate)
+        notZeroAmount(_poolDuration)
     {
         Adminable.__Adminable_init();
-        transferOwnership(owner_);
-        stakeToken = IERC20Upgradeable(stakeToken_);
-        rewardToken = IERC20Upgradeable(rewardToken_);
-        rewardRate = rewardRate_;
-        poolDuration = poolDuration_;
-        mkpManager = mkpManager_;
+        transferOwnership(_owner);
+        stakeToken = IERC20Upgradeable(_stakeToken);
+        rewardToken = IERC20Upgradeable(_rewardToken);
+        rewardRate = _rewardRate;
+        poolDuration = _poolDuration;
+        mkpManager = _mkpManagerAddrress;
+        pancakeRouter = _pancakeRouter;
+        usdToken = _usdToken;
         pendingTime = 1 days; // default
         acceptableLost = 50; // 50%
-        pankeRouter = _pancakeRouter;
-        busdToken = _busdToken;
         _pause();
     }
 
@@ -149,10 +148,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Request withdraw before unstake activity
      */
     function requestUnstake() external nonReentrant whenNotPaused returns (uint256) {
-        require(
-            startTime + poolDuration < block.timestamp && startTime != 0,
-            "ERROR: not allow unstake at this time"
-        );
+        require(startTime + poolDuration < block.timestamp && startTime != 0, "ERROR: not allow unstake at this time");
         UserInfo storage user = users[_msgSender()];
         require(!user.lazyUnstake.isRequested, "ERROR: requested !");
         user.lazyUnstake.isRequested = true;
@@ -166,10 +162,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Request claim before unstake activity
      */
     function requestClaim() external nonReentrant whenNotPaused returns (uint256) {
-        require(
-            startTime + poolDuration > block.timestamp && startTime != 0,
-            "ERROR: not allow claim at this time"
-        );
+        require(startTime + poolDuration > block.timestamp && startTime != 0, "ERROR: not allow claim at this time");
         UserInfo storage user = users[_msgSender()];
         require(!user.lazyClaim.isRequested, "ERROR: requested !");
 
@@ -187,14 +180,8 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
         require(block.timestamp > startTime, "ERROR: not time for stake !");
-        require(
-            getPriceFormatUSD(address(stakeToken), busdToken, _amount) > 5e20,
-            "Must stake more than 500$"
-        );
-        require(
-            startTime + poolDuration > block.timestamp,
-            "ERROR: staking pool for NFT had been expired !"
-        );
+        require(getPriceFormatUSD(address(stakeToken), usdToken, _amount) >= 5e20, "Must stake more than 500$");
+        require(startTime + poolDuration > block.timestamp, "ERROR: staking pool for NFT had been expired !");
         require(
             IMarketplaceManager(mkpManager).wasBuyer(_msgSender()),
             "ERROR: require buy any item in MTVS marketplace before staking !"
@@ -224,10 +211,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function claim() external nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
-        require(
-            startTime + poolDuration >= block.timestamp,
-            "ERROR: staking pool had been expired !"
-        );
+        require(startTime + poolDuration >= block.timestamp, "ERROR: staking pool had been expired !");
         require(user.lazyClaim.isRequested, "ERROR: please request before");
 
         // update status of request
@@ -253,10 +237,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function unstake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
-        require(
-            startTime + poolDuration <= block.timestamp,
-            "ERROR: staking pool for NFT has not expired yet !"
-        );
+        require(startTime + poolDuration <= block.timestamp, "ERROR: staking pool for NFT has not expired yet !");
         require(
             user.lazyUnstake.isRequested && user.lazyUnstake.unlockedTime <= block.timestamp,
             "ERROR: please request and can withdraw after pending time"
@@ -312,7 +293,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     }
 
     /**
-     *  @notice Set acceptableLost of staking pool.
+     *  @notice Set acceptable Lost of staking pool.
      */
     function setAcceptableLost(uint256 lost) external onlyOwnerOrAdmin {
         require(lost <= 100, "ERROR: Over limit !");
@@ -325,11 +306,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setRewardRate(uint256 _rewardRate)
-        external
-        notZeroAmount(rewardRate)
-        onlyOwnerOrAdmin
-    {
+    function setRewardRate(uint256 _rewardRate) external notZeroAmount(rewardRate) onlyOwnerOrAdmin {
         rewardRate = _rewardRate;
         emit SetRewardRate(rewardRate);
     }
@@ -339,13 +316,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setPendingTime(uint256 _pendingTime)
-        external
-        notZeroAmount(_pendingTime)
-        onlyOwnerOrAdmin
-    {
+    function setPendingTime(uint256 _pendingTime) external notZeroAmount(_pendingTime) onlyOwnerOrAdmin {
         pendingTime = _pendingTime;
-        emit SetPendingTime(_pendingTime);
+        emit SetPendingTime(pendingTime);
     }
 
     /**
@@ -353,11 +326,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setPoolDuration(uint256 _poolDuration)
-        external
-        notZeroAmount(poolDuration)
-        onlyOwnerOrAdmin
-    {
+    function setPoolDuration(uint256 _poolDuration) external notZeroAmount(poolDuration) onlyOwnerOrAdmin {
         poolDuration = _poolDuration;
         emit SetDuration(poolDuration);
     }
@@ -394,19 +363,6 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         return users[user].lazyUnstake.unlockedTime;
     }
 
-    function getPriceFormatUSD(
-        address _tokenIn,
-        address _tokenOut,
-        uint _amountIn
-    ) public view returns (uint) {
-        address[] memory path;
-        path = new address[](2);
-        path[0] = _tokenIn;
-        path[1] = _tokenOut;
-        uint[] memory amountOutMins = IPancakeRouter(pankeRouter).getAmountsOut(_amountIn, path);
-        return amountOutMins[path.length - 1];
-    }
-
     /**
      *  @notice Get all params
      */
@@ -434,6 +390,22 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             pendingTime,
             isActivePool()
         );
+    }
+
+    /**
+     *  @notice Get price of token
+     */
+    function getPriceFormatUSD(
+        address _tokenIn,
+        address _tokenOut,
+        uint _amountIn
+    ) public view returns (uint) {
+        address[] memory path;
+        path = new address[](2);
+        path[0] = _tokenIn;
+        path[1] = _tokenOut;
+        uint[] memory amountOutMins = IPancakeRouter(pancakeRouter).getAmountsOut(_amountIn, path);
+        return amountOutMins[path.length - 1];
     }
 
     /**

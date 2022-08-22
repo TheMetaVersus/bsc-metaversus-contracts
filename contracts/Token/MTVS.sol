@@ -24,10 +24,7 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
     event Minted(address indexed receiver, uint256 amount);
 
     modifier onlyControllers() {
-        require(
-            (owner() == _msgSender() || controllers[_msgSender()]),
-            "Ownable: caller is not a controller"
-        );
+        require((owner() == _msgSender() || controllers[_msgSender()]), "Ownable: caller is not a controller");
         _;
     }
 
@@ -50,13 +47,7 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         string memory _symbol,
         uint256 _totalSupply,
         address _treasury
-    )
-        public
-        initializer
-        notZeroAddress(_curator)
-        notZeroAddress(_treasury)
-        notZeroAmount(_totalSupply)
-    {
+    ) public initializer notZeroAddress(_curator) notZeroAddress(_treasury) notZeroAmount(_totalSupply) {
         ERC20Upgradeable.__ERC20_init(_name, _symbol);
         OwnableUpgradeable.__Ownable_init();
         transferOwnership(_curator);

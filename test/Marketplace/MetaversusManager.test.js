@@ -1,12 +1,13 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
-const { add, subtract } = require("js-big-decimal");
+const { add } = require("js-big-decimal");
 
 describe("Metaversus Manager:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         AMOUNT = ethers.utils.parseEther("1000000000000");
+        ONE_ETHER = ethers.utils.parseEther("1");
         PRICE = ethers.utils.parseEther("1");
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -31,26 +32,15 @@ describe("Metaversus Manager:", () => {
             owner.address,
             "NFT Metaversus",
             "nMTVS",
-            token.address,
             treasury.address,
             250,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [
-            owner.address,
-            "uri",
-            token.address,
-            treasury.address,
-            250,
-        ]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [owner.address, treasury.address, 250]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [
-            owner.address,
-            token.address,
-            treasury.address,
-        ]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, token.address, treasury.address]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
@@ -65,6 +55,8 @@ describe("Metaversus Manager:", () => {
 
         await mtvsManager.setPause(false);
         await mkpManager.setPause(false);
+        await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
+        await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
     });
 
     describe("Deployment:", async () => {
@@ -87,9 +79,9 @@ describe("Metaversus Manager:", () => {
 
     describe("setAdmin function:", async () => {
         it("should revert when caller is not owner: ", async () => {
-            await expect(
-                mtvsManager.connect(user1).setAdmin(user2.address, true)
-            ).to.be.revertedWith("Ownable: caller is not the owner");
+            await expect(mtvsManager.connect(user1).setAdmin(user2.address, true)).to.be.revertedWith(
+                "Ownable: caller is not the owner"
+            );
         });
         it("should set admin success: ", async () => {
             await mtvsManager.setAdmin(user2.address, true);
@@ -105,9 +97,9 @@ describe("Metaversus Manager:", () => {
 
     describe("setMarketplace function:", async () => {
         it("should revert when caller is not owner: ", async () => {
-            await expect(
-                mtvsManager.connect(user1).setMarketplace(user2.address)
-            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
+            await expect(mtvsManager.connect(user1).setMarketplace(user2.address)).to.be.revertedWith(
+                "Adminable: caller is not an owner or admin"
+            );
         });
         it("should revert when address equal to zero address: ", async () => {
             await expect(mtvsManager.setMarketplace(constants.ZERO_ADDRESS)).to.be.revertedWith(
@@ -143,9 +135,9 @@ describe("Metaversus Manager:", () => {
 
     describe("createNFT function:", async () => {
         it("should revert when amount equal to zero amount: ", async () => {
-            await expect(
-                mtvsManager.connect(user1).createNFT(0, 0, "this_uri", 0, 0, 0)
-            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
+            await expect(mtvsManager.connect(user1).createNFT(1, 0, "this_uri", ONE_ETHER, 0, 0)).to.be.revertedWith(
+                "ERROR: amount must be greater than zero !"
+            );
         });
         it("should create NFT success: ", async () => {
             await token.mint(user2.address, AMOUNT);
@@ -156,9 +148,11 @@ describe("Metaversus Manager:", () => {
 
             await tokenMintERC721.setAdmin(mtvsManager.address, true);
 
-            await expect(() =>
-                mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 0, 0, 0)
-            ).to.changeTokenBalance(token, user2, -250);
+            await expect(() => mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 0, 0, 0)).to.changeTokenBalance(
+                token,
+                user2,
+                -250
+            );
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 250));
             // check owner nft
             expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
@@ -200,13 +194,6 @@ describe("Metaversus Manager:", () => {
             const allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
             expect(allItems[0].status).to.equal(0);
             expect(parseInt(allItems[0].endTime)).greaterThan(current);
-
-            // await tokenMintERC1155.setAdmin(mtvsManager.address, true);
-
-            // await expect(() =>
-            //     mtvsManager.connect(user2).createNFT(1, 100, "this_uri", 1200, time)
-            // ).to.changeTokenBalance(token, user2, -250);
-            // expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, 500));
         });
     });
 
@@ -221,9 +208,11 @@ describe("Metaversus Manager:", () => {
             await token.approve(user2.address, ethers.constants.MaxUint256);
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
             const price = 10000;
-            await expect(() =>
-                mtvsManager.connect(user2).buyTicketEvent(1, price)
-            ).to.changeTokenBalance(token, user2, -price);
+            await expect(() => mtvsManager.connect(user2).buyTicketEvent(1, price)).to.changeTokenBalance(
+                token,
+                user2,
+                -price
+            );
             expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, price));
         });
     });
