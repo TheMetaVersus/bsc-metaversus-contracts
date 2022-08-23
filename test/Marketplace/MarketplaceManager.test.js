@@ -102,6 +102,19 @@ describe("Marketplace Manager:", () => {
         });
     });
 
+    describe("setPermitedNFT function:", async () => {
+        it("should set permited token success: ", async () => {
+            await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
+            expect(await mkpManager.isPermitedNFT(tokenMintERC721.address)).to.equal(true);
+
+            await mkpManager.setPermitedNFT(tokenMintERC1155.address, false);
+            expect(await mkpManager.isPermitedNFT(tokenMintERC1155.address)).to.equal(false);
+
+            await mkpManager.setPermitedNFT(tokenMintERC721.address, false);
+            expect(await mkpManager.isPermitedNFT(tokenMintERC721.address)).to.equal(false);
+        });
+    });
+
     describe("setTreasury function:", async () => {
         it("should revert when caller is not owner or admin: ", async () => {
             await expect(mkpManager.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
@@ -117,6 +130,16 @@ describe("Marketplace Manager:", () => {
 
             await mkpManager.setTreasury(treasury.address);
             expect(await mkpManager.treasury()).to.equal(treasury.address);
+        });
+    });
+
+    describe("getAllParams:", async () => {
+        it("should get all params of pool: ", async () => {
+            const params = await mkpManager.getAllParams();
+            expect(await mkpManager.treasury()).to.equal(params[0]);
+            expect(await mkpManager.paymentToken()).to.equal(params[1]);
+            expect(await mkpManager.listingFee()).to.equal(params[2]);
+            expect(await mkpManager.DENOMINATOR()).to.equal(params[3]);
         });
     });
 
@@ -432,8 +455,18 @@ describe("Marketplace Manager:", () => {
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             let marketId = event.args[0].toString();
             const data721 = await mkpManager.getLatestMarketItemByTokenId(nftTest.address, 1);
-
+            const data = await mkpManager.fetchAvailableMarketItems();
+            expect(data[0].marketItemId).to.equal(data721[0].marketItemId);
             expect(data721[0].marketItemId).to.equal(marketId);
+        });
+    });
+
+    describe("checkStandard function:", async () => {
+        it("should return type of NFT: ", async () => {
+            const data_721 = await mkpManager.checkStandard(tokenMintERC721.address);
+            expect(data_721).to.equal(0);
+            const data_1155 = await mkpManager.checkStandard(tokenMintERC1155.address);
+            expect(data_1155).to.equal(1);
         });
     });
 
