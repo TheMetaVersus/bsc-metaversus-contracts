@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../../interfaces/IRandomVRF.sol";
+import "../interfaces/IRandomVRF.sol";
 
 /**
  *  @title  Dev Randomizer VRF Chainlink Contract
@@ -23,10 +23,7 @@ contract RandomVRF is IRandomVRF, Ownable, VRFConsumerBase {
     event FullFilled(bytes32 indexed requestId, uint256 randomness);
     event RequestId(bytes32 indexed reqId);
     modifier onlyOwnerOrAdmin() {
-        require(
-            _msgSender() == owner() || admins[_msgSender()],
-            "Ownable: only owner or admin can access !"
-        );
+        require(_msgSender() == owner() || admins[_msgSender()], "Ownable: only owner or admin can access !");
         _;
     }
 

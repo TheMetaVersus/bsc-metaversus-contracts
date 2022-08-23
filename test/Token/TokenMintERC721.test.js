@@ -124,7 +124,7 @@ describe("TokenMintERC721:", () => {
     });
 
     describe("mint function:", async () => {
-        it("should revert when newPrice equal to zero: ", async () => {
+        it("should revert when aller is not an owner or admin: ", async () => {
             await expect(tokenMintERC721.connect(user1).mint(mkpManager.address, "this_uri")).to.be.revertedWith(
                 "Adminable: caller is not an owner or admin"
             );

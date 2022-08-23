@@ -484,7 +484,7 @@ contract MarketPlaceManager is
         if (nftType == NftStandard.ERC1155) {
             amount = _amount;
         }
-        if (_startTime >= block.timestamp && _endTime > block.timestamp && _price > 0) {
+        if (_startTime >= block.timestamp && _endTime > _startTime && _price > 0) {
             price = _price;
             endTime = _endTime;
             startTime = _startTime;
@@ -554,27 +554,6 @@ contract MarketPlaceManager is
     }
 
     /**
-     * @dev Get Latest history by the token id
-     */
-    function getHistoryByTokenId(
-        address nftAddress,
-        uint256 tokenId,
-        uint256 limit
-    ) external view returns (MarketItem[] memory) {
-        uint256 itemsCount = _marketItemIds.current();
-        uint256 currentIndex = 0;
-        MarketItem[] memory items = new MarketItem[](limit);
-        for (uint256 i = itemsCount; i > 0; i--) {
-            MarketItem memory item = marketItemIdToMarketItem[i];
-            if (item.tokenId != tokenId || item.nftContractAddress != nftAddress) continue;
-            items[currentIndex] = item;
-            currentIndex += 1;
-            if (currentIndex == limit) break;
-        }
-        return items;
-    }
-
-    /**
      *  @notice Fetch information Market Item by Market ID
      *
      *  @dev    All caller can call this function.
@@ -613,6 +592,18 @@ contract MarketPlaceManager is
         }
 
         return marketItems;
+    }
+
+    /**
+     *  @notice Fetch all permited nft
+     */
+    function fetchAllPermitedNFTs() external view returns (address[] memory) {
+        address[] memory nfts = new address[](_permitedNFTs.length());
+        for (uint256 i = 0; i < _permitedNFTs.length(); i++) {
+            nfts[i] = _permitedNFTs.at(i);
+        }
+
+        return nfts;
     }
 
     /**
