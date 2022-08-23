@@ -143,6 +143,14 @@ describe("Marketplace Manager:", () => {
         });
     });
 
+    describe("fetchAllPermitedNFTs:", async () => {
+        it("should get all params of pool: ", async () => {
+            const nfts = await mkpManager.fetchAllPermitedNFTs();
+            console.log(nfts);
+            expect(nfts.length).to.equal(3);
+        });
+    });
+
     describe("getListingFee function:", async () => {
         it("should return tuple listingFee: ", async () => {
             expect(await mkpManager.getListingFee(100000)).to.equal(2500);

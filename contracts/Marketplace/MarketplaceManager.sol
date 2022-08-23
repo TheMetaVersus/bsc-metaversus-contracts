@@ -484,7 +484,7 @@ contract MarketPlaceManager is
         if (nftType == NftStandard.ERC1155) {
             amount = _amount;
         }
-        if (_startTime >= block.timestamp && _endTime > block.timestamp && _price > 0) {
+        if (_startTime >= block.timestamp && _endTime > _startTime && _price > 0) {
             price = _price;
             endTime = _endTime;
             startTime = _startTime;
@@ -592,6 +592,18 @@ contract MarketPlaceManager is
         }
 
         return marketItems;
+    }
+
+    /**
+     *  @notice Fetch all permited nft
+     */
+    function fetchAllPermitedNFTs() external view returns (address[] memory) {
+        address[] memory nfts = new address[](_permitedNFTs.length());
+        for (uint256 i = 0; i < _permitedNFTs.length(); i++) {
+            nfts[i] = _permitedNFTs.at(i);
+        }
+
+        return nfts;
     }
 
     /**

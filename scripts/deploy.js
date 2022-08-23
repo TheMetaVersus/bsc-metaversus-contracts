@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const fs = require("fs");
 const ethers = hre.ethers;
 const upgrades = hre.upgrades;
-
+const contract = require("../contracts.json");
 async function main() {
   //Loading accounts
   const accounts = await ethers.getSigners();
@@ -10,6 +10,8 @@ async function main() {
   const admin = addresses[0];
 
   // Loading contract factory.
+  const USD = await ethers.getContractFactory("USD");
+
   const MTVS = await ethers.getContractFactory("MTVS");
   const Treasury = await ethers.getContractFactory("Treasury");
   const TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
@@ -28,50 +30,63 @@ async function main() {
     "========================================================================================="
   );
 
-  const treasury = await upgrades.deployProxy(Treasury, [admin]);
-  await treasury.deployed();
+  // const treasury = await upgrades.deployProxy(Treasury, [admin]);
+  // await treasury.deployed();
 
-  const mtvs = await upgrades.deployProxy(MTVS, [
-    admin,
-    "Metaversus Token",
-    "MTVS",
-    process.env.TOTAL_SUPPLY,
-    treasury.address
-  ]);
-  await mtvs.deployed();
-  console.log("mtvs deployed in:", mtvs.address);
-  console.log(
-    "========================================================================================="
-  );
+  // const mtvs = await upgrades.deployProxy(MTVS, [
+  //   admin,
+  //   "Metaversus Token",
+  //   "MTVS",
+  //   process.env.TOTAL_SUPPLY,
+  //   treasury.address
+  // ]);
+  // await mtvs.deployed();
+  // console.log("mtvs deployed in:", mtvs.address);
+  // console.log(
+  //   "========================================================================================="
+  // );
 
-  const tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-    admin,
-    "NFT Metaversus",
-    "nMTVS",
-    treasury.address,
-    250
-  ]);
-  await tokenMintERC721.deployed();
-  console.log("tokenMintERC721 deployed in:", tokenMintERC721.address);
-  console.log(
-    "========================================================================================="
-  );
+  // const usd = await upgrades.deployProxy(USD, [
+  //   admin,
+  //   "USD Token Test",
+  //   "USD",
+  //   process.env.TOTAL_SUPPLY,
+  //   "0x31d7f4c64AEac437B1C1Bb5aa5a2b1C2Ae799f0F" //treasury.address
+  // ]);
+  // await usd.deployed();
+  // console.log("usd deployed in:", usd.address);
+  // console.log(
+  //   "========================================================================================="
+  // );
 
-  const tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [
-    admin,
-    treasury.address,
-    250
-  ]);
-  await tokenMintERC1155.deployed();
-  console.log("tokenMintERC1155 deployed in:", tokenMintERC1155.address);
-  console.log(
-    "========================================================================================="
-  );
+  // const tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
+  //   admin,
+  //   "NFT Metaversus",
+  //   "nMTVS",
+  //   treasury.address,
+  //   250
+  // ]);
+  // await tokenMintERC721.deployed();
+  // console.log("tokenMintERC721 deployed in:", tokenMintERC721.address);
+  // console.log(
+  //   "========================================================================================="
+  // );
+
+  // const tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [
+  //   admin,
+  //   treasury.address,
+  //   250
+  // ]);
+  // await tokenMintERC1155.deployed();
+  // console.log("tokenMintERC1155 deployed in:", tokenMintERC1155.address);
+  // console.log(
+  //   "========================================================================================="
+  // );
 
   const mkpManager = await upgrades.deployProxy(MkpManager, [
     admin,
-    mtvs.address,
-    treasury.address
+    contract.mtvs, //mtvs.address,
+    contract.treasury //treasury.address
   ]);
   await mkpManager.deployed();
   console.log("mkpManager deployed in:", mkpManager.address);
@@ -81,10 +96,10 @@ async function main() {
 
   const mtvsManager = await upgrades.deployProxy(MTVSManager, [
     admin,
-    tokenMintERC721.address,
-    tokenMintERC1155.address,
-    mtvs.address,
-    treasury.address,
+    contract.tokenMintERC721, //tokenMintERC721.address,
+    contract.tokenMintERC1155, //tokenMintERC1155.address,
+    contract.mtvs, //mtvs.address,
+    contract.treasury, //treasury.address,
     mkpManager.address,
     process.env.CREATE_FEE
   ]);
@@ -93,45 +108,6 @@ async function main() {
   console.log(
     "========================================================================================="
   );
-
-  // const staking30d = await upgrades.deployProxy(Staking, [
-  //   admin,
-  //   mtvs.address,
-  //   mtvs.address,
-  //   mkpManager.address,
-  //   process.env.REWARD_RATE_30_DAY,
-  //   process.env.POOL_DURATION_30_DAY,
-  //   process.env.PANCAKE_ROUTER,
-  //   process.env.BUSD_TOKEN
-  // ]);
-  // await staking30d.deployed();
-  // console.log("staking30d deployed in:", staking30d.address);
-
-  // const staking60d = await upgrades.deployProxy(Staking, [
-  //   admin,
-  //   mtvs.address,
-  //   mtvs.address,
-  //   mkpManager.address,
-  //   process.env.REWARD_RATE_60_DAY,
-  //   process.env.POOL_DURATION_60_DAY,
-  //   process.env.PANCAKE_ROUTER,
-  //   process.env.BUSD_TOKEN
-  // ]);
-  // await staking60d.deployed();
-  // console.log("staking60d deployed in:", staking60d.address);
-
-  // const staking90d = await upgrades.deployProxy(Staking, [
-  //   admin,
-  //   mtvs.address,
-  //   mtvs.address,
-  //   mkpManager.address,
-  //   process.env.REWARD_RATE_90_DAY,
-  //   process.env.POOL_DURATION_90_DAY,
-  //   process.env.PANCAKE_ROUTER,
-  //   process.env.BUSD_TOKEN
-  // ]);
-  // await staking90d.deployed();
-  // console.log("staking90d deployed in:", staking90d.address);
 
   // Factory Pool
   const staking = await Staking.deploy();
@@ -144,38 +120,38 @@ async function main() {
 
   const tx_pool30d = await poolFactory.create(
     admin,
-    mtvs.address,
-    mtvs.address,
+    contract.mtvs, //mtvs.address,
+    contract.mtvs, //mtvs.address,
     mkpManager.address,
     process.env.REWARD_RATE_30_DAY,
     process.env.POOL_DURATION_30_DAY,
     process.env.PANCAKE_ROUTER,
-    process.env.BUSD_TOKEN
+    contract.usd //process.env.BUSD_TOKEN,
   );
 
   await tx_pool30d.wait();
 
   const tx_pool60d = await poolFactory.create(
     admin,
-    mtvs.address,
-    mtvs.address,
+    contract.mtvs, //mtvs.address,
+    contract.mtvs, //mtvs.address,
     mkpManager.address,
     process.env.REWARD_RATE_60_DAY,
     process.env.POOL_DURATION_60_DAY,
     process.env.PANCAKE_ROUTER,
-    process.env.BUSD_TOKEN
+    contract.usd //process.env.BUSD_TOKEN,
   );
 
   await tx_pool60d.wait();
   const tx_pool90d = await poolFactory.create(
     admin,
-    mtvs.address,
-    mtvs.address,
+    contract.mtvs, //mtvs.address,
+    contract.mtvs, //mtvs.address,
     mkpManager.address,
     process.env.REWARD_RATE_90_DAY,
     process.env.POOL_DURATION_90_DAY,
     process.env.PANCAKE_ROUTER,
-    process.env.BUSD_TOKEN
+    contract.usd //process.env.BUSD_TOKEN,
   );
 
   await tx_pool90d.wait();
@@ -183,42 +159,49 @@ async function main() {
   const all = await poolFactory.getAllPool();
   console.log(all);
 
-  console.log(
-    "========================================================================================="
-  );
+  // console.log(
+  //   "========================================================================================="
+  // );
 
   console.log("VERIFY ADDRESSES");
   console.log(
     "========================================================================================="
   );
-  const treasuryVerify = await upgrades.erc1967.getImplementationAddress(
-    treasury.address
-  );
-  console.log("treasuryVerify deployed in:", treasuryVerify);
-  console.log(
-    "========================================================================================="
-  );
-  const mtvsVerify = await upgrades.erc1967.getImplementationAddress(
-    mtvs.address
-  );
-  console.log("mtvsVerify deployed in:", mtvsVerify);
-  console.log(
-    "========================================================================================="
-  );
-  const tokenMintERC721Verify = await upgrades.erc1967.getImplementationAddress(
-    tokenMintERC721.address
-  );
-  console.log("tokenMintERC721Verify deployed in:", tokenMintERC721Verify);
-  console.log(
-    "========================================================================================="
-  );
-  const tokenMintERC1155Verify = await upgrades.erc1967.getImplementationAddress(
-    tokenMintERC1155.address
-  );
-  console.log("tokenMintERC1155Verify deployed in:", tokenMintERC1155Verify);
-  console.log(
-    "========================================================================================="
-  );
+  // const treasuryVerify = await upgrades.erc1967.getImplementationAddress(
+  //   treasury.address
+  // );
+  // console.log("treasuryVerify deployed in:", treasuryVerify);
+  // console.log(
+  //   "========================================================================================="
+  // );
+  // const usdVerify = await upgrades.erc1967.getImplementationAddress(
+  //   usd.address
+  // );
+  // console.log("usdVerify deployed in:", usdVerify);
+  // console.log(
+  //   "========================================================================================="
+  // );
+  // const mtvsVerify = await upgrades.erc1967.getImplementationAddress(
+  //   mtvs.address
+  // );
+  // console.log("mtvsVerify deployed in:", mtvsVerify);
+  // console.log(
+  //   "========================================================================================="
+  // );
+  // const tokenMintERC721Verify = await upgrades.erc1967.getImplementationAddress(
+  //   tokenMintERC721.address
+  // );
+  // console.log("tokenMintERC721Verify deployed in:", tokenMintERC721Verify);
+  // console.log(
+  //   "========================================================================================="
+  // );
+  // const tokenMintERC1155Verify = await upgrades.erc1967.getImplementationAddress(
+  //   tokenMintERC1155.address
+  // );
+  // console.log("tokenMintERC1155Verify deployed in:", tokenMintERC1155Verify);
+  // console.log(
+  //   "========================================================================================="
+  // );
   const mtvsManagerVerify = await upgrades.erc1967.getImplementationAddress(
     mtvsManager.address
   );
@@ -251,9 +234,9 @@ async function main() {
   //   staking90d.address
   // );
   // console.log("staking90dVerify deployed in:", staking90dVerify);
-  console.log(
-    "========================================================================================="
-  );
+  // console.log(
+  //   "========================================================================================="
+  // );
   const poolFactoryVerify = await upgrades.erc1967.getImplementationAddress(
     poolFactory.address
   );
@@ -262,11 +245,12 @@ async function main() {
     "========================================================================================="
   );
   const contractAddresses = {
-    admin: admin,
-    treasury: treasury.address,
-    mtvs: mtvs.address,
-    tokenMintERC721: tokenMintERC721.address,
-    tokenMintERC1155: tokenMintERC1155.address,
+    // admin: admin,
+    // treasury: treasury.address,
+    // mtvs: mtvs.address,
+    // tokenMintERC721: tokenMintERC721.address,
+    // tokenMintERC1155: tokenMintERC1155.address,
+    ...contract,
     mtvsManager: mtvsManager.address,
     mkpManager: mkpManager.address,
     staking30d: all[0]["poolAddress"],
@@ -279,11 +263,11 @@ async function main() {
   await fs.writeFileSync("contracts.json", JSON.stringify(contractAddresses));
 
   const contractAddresses_verify = {
-    admin: admin,
-    treasury: treasuryVerify,
-    mtvs: mtvsVerify,
-    tokenMintERC721: tokenMintERC721Verify,
-    tokenMintERC1155: tokenMintERC1155Verify,
+    // admin: admin,
+    // treasury: treasuryVerify,
+    // mtvs: mtvsVerify,
+    // tokenMintERC721: tokenMintERC721Verify,
+    // tokenMintERC1155: tokenMintERC1155Verify,
     mtvsManager: mtvsManagerVerify,
     mkpManager: mkpManagerVerify,
     // staking30d: staking30dVerify,

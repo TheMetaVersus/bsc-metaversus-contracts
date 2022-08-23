@@ -22,9 +22,7 @@ describe("VRF chainlink:", () => {
     describe("setKeyHashAndFee function", async () => {
         it("should revert when caller is not owner or admin", async () => {
             await expect(
-                randomVRF
-                    .connect(user1)
-                    .setKeyHashAndFee(100, ethers.utils.formatBytes32String("1"))
+                randomVRF.connect(user1).setKeyHashAndFee(100, ethers.utils.formatBytes32String("1"))
             ).to.be.revertedWith("Ownable: only owner or admin can access !");
         });
         it("should set success", async () => {
@@ -68,17 +66,15 @@ describe("VRF chainlink:", () => {
 
     describe("randomForRequestID function", async () => {
         it("should revert when not fullfilled", async () => {
-            await expect(
-                randomVRF.randomForRequestID(ethers.utils.formatBytes32String("1"))
-            ).to.be.revertedWith("ERROR: not fullfilled");
+            await expect(randomVRF.randomForRequestID(ethers.utils.formatBytes32String("1"))).to.be.revertedWith(
+                "ERROR: not fullfilled"
+            );
         });
     });
 
     describe("isRequestIDFulfilled function", async () => {
         it("should return bool value", async () => {
-            expect(
-                await randomVRF.isRequestIDFulfilled(ethers.utils.formatBytes32String("1"))
-            ).to.equal(false);
+            expect(await randomVRF.isRequestIDFulfilled(ethers.utils.formatBytes32String("1"))).to.equal(false);
         });
     });
 
