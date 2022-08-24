@@ -524,7 +524,7 @@ describe("Staking Pool:", () => {
             await expect(staking.connect(user1).claim()).to.be.revertedWith("ERROR: please request before");
         });
 
-        it("should revert when amount of ERROR: reward value equal to zero ", async () => {
+        it("should accept lost 50% first ", async () => {
             // emulator balance
             await token.mint(user2.address, ONE_MILLION_ETHER);
             await token.mint(user1.address, ONE_MILLION_ETHER);
@@ -540,14 +540,11 @@ describe("Staking Pool:", () => {
 
             await staking.connect(user1).stake(ONE_ETHER);
 
-            await skipTime(10 * 30 * 24 * 60 * 60);
-            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith(
-                "ERROR: not allow claim at this time"
-            );
-            // await skipTime(24 * 60 * 60 + 1);
-            // await expect(staking.connect(user1).claim()).to.be.revertedWith(
-            //     "ERROR: staking pool had been expired !"
-            // );
+            await skipTime(1 * 24 * 60 * 60);
+            await staking.connect(user1).requestClaim();
+            await skipTime(100);
+            const pendingRewards = await staking.pendingRewards(user1.address);
+            await expect(() => staking.connect(user1).claim()).to.changeTokenBalance(token, user1, +pendingRewards / 2);
         });
 
         it("should claim success", async () => {
@@ -584,7 +581,6 @@ describe("Staking Pool:", () => {
 
             expect(data.lazyClaim.isRequested).to.equal(false);
 
-            const value = await token.balanceOf(user1.address);
             const epsilon = (1 / 100) * ONE_ETHER;
 
             expect(
