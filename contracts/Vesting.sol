@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "./Adminable.sol";
 
 /**
  *  @title  Dev Vesting Contract
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  *  @notice Init info about amount of token percentage to users at initial,
  *          user must claim by themselves
  */
-contract Vesting is Initializable, OwnableUpgradeable {
+contract Vesting is Initializable, Adminable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable public token;
@@ -43,31 +44,14 @@ contract Vesting is Initializable, OwnableUpgradeable {
     event Claim(address indexed account, uint256 indexed tokenClaimable);
 
     function initialize(address owner_, IERC20Upgradeable _token) public initializer {
-        OwnableUpgradeable.__Ownable_init();
+        Adminable.__Adminable_init();
         _transferOwnership(owner_);
         token = _token;
     }
 
-    function getClaimable(address owner_, uint256 nonce) public view virtual returns (uint256) {
-        bytes32 index = getVestId(owner_, nonce);
-        uint256 tokenClaimable;
-        if (
-            block.timestamp >= _vests[index].start + _vests[index].cliff &&
-            block.timestamp <= _vests[index].start + _vests[index].cliff + _vests[index].linear
-        ) {
-            uint256 timePassed = block.timestamp - (_vests[index].start + _vests[index].cliff);
-            tokenClaimable =
-                (((_vests[index].amount - _vests[index].initial) * timePassed) / _vests[index].linear) +
-                _vests[index].initial -
-                _vests[index].claimed;
-        } else if (block.timestamp > _vests[index].start + _vests[index].cliff + _vests[index].linear) {
-            tokenClaimable = _vests[index].amount - _vests[index].claimed;
-        }
-        return tokenClaimable;
-    }
-
-    function claim(address owner_, uint256 nonce) public virtual {
+    function claim(address owner_, uint256 nonce) external {
         uint256 tokenClaimable = getClaimable(owner_, nonce);
+        require(tokenClaimable > 0, "Vesting: No token to claim");
         bytes32 index = getVestId(owner_, nonce);
         _vests[index].claimed = _vests[index].claimed + tokenClaimable;
         token.safeTransfer(owner_, tokenClaimable);
@@ -83,7 +67,7 @@ contract Vesting is Initializable, OwnableUpgradeable {
         uint256 totalAmount,
         uint256 cliff,
         uint256 linear
-    ) public virtual {
+    ) external onlyOwnerOrAdmin {
         require(accounts.length > 0, "Vesting: Bad length");
         require(accounts.length == amounts.length && amounts.length == initials.length, "Vesting: Mismatched inputs");
 
@@ -106,7 +90,7 @@ contract Vesting is Initializable, OwnableUpgradeable {
         uint256 initial,
         uint256 cliff,
         uint256 linear
-    ) public virtual returns (bytes32) {
+    ) public onlyOwnerOrAdmin returns (bytes32) {
         require(initial < amount, "Vesting: initial amount should be less than total amount.");
         bytes32 index = getVestId(owner_, _nonce[owner_]);
         _vests[index] = Vest(owner_, amount, stakeType, block.timestamp, initial, cliff, linear, 0);
@@ -122,11 +106,29 @@ contract Vesting is Initializable, OwnableUpgradeable {
         return _nonce[user];
     }
 
-    function getVest(bytes32 index) public view virtual returns (Vest memory) {
+    function getVest(bytes32 index) public view returns (Vest memory) {
         return _vests[index];
     }
 
-    function getVestType(bytes32 index) public view virtual returns (uint256) {
+    function getVestType(bytes32 index) public view returns (uint256) {
         return _vests[index].stakeType;
+    }
+
+    function getClaimable(address owner_, uint256 nonce) public view returns (uint256) {
+        bytes32 index = getVestId(owner_, nonce);
+        uint256 tokenClaimable;
+        if (
+            block.timestamp >= _vests[index].start + _vests[index].cliff &&
+            block.timestamp <= _vests[index].start + _vests[index].cliff + _vests[index].linear
+        ) {
+            uint256 timePassed = block.timestamp - (_vests[index].start + _vests[index].cliff);
+            tokenClaimable =
+                (((_vests[index].amount - _vests[index].initial) * timePassed) / _vests[index].linear) +
+                _vests[index].initial -
+                _vests[index].claimed;
+        } else if (block.timestamp > _vests[index].start + _vests[index].cliff + _vests[index].linear) {
+            tokenClaimable = _vests[index].amount - _vests[index].claimed;
+        }
+        return tokenClaimable;
     }
 }

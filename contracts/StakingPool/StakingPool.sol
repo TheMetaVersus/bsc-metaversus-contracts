@@ -162,7 +162,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Request claim before unstake activity
      */
     function requestClaim() external nonReentrant whenNotPaused returns (uint256) {
-        require(startTime + poolDuration > block.timestamp && startTime != 0, "ERROR: not allow claim at this time");
+        require((startTime + poolDuration > block.timestamp) && startTime != 0, "ERROR: not allow claim at this time");
         UserInfo storage user = users[_msgSender()];
         require(!user.lazyClaim.isRequested, "ERROR: requested !");
 
