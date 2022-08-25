@@ -20,12 +20,7 @@ import "../Adminable.sol";
  *  @notice This smart contract create the token metaversus manager for Operation. These contract using to control
  *          all action which user call and interact for purchasing in marketplace operation.
  */
-contract MetaversusManager is
-    Initializable,
-    ReentrancyGuardUpgradeable,
-    Adminable,
-    PausableUpgradeable
-{
+contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminable, PausableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     enum TypeNft {
@@ -54,18 +49,12 @@ contract MetaversusManager is
     IMarketplaceManager public marketplace;
 
     /**
-     *  @notice feeCreate is fee when create NFT
-     */
-    uint256 public feeCreate;
-
-    /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
     address public treasury;
 
     event BoughtTicket(address indexed to);
     event BoughtTicketEvent(address indexed to, string indexed eventid);
-    event SetFeeCreate(uint256 indexed newFee);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event SetMarketplace(address indexed oldTreasury, address indexed newTreasury);
     event Created(uint256 indexed typeMint, address indexed to, uint256 indexed amount);
@@ -80,15 +69,8 @@ contract MetaversusManager is
         address nft1155Addr,
         address _paymentToken,
         address _treasury,
-        address _marketplaceAddr,
-        uint256 _feeCreate
-    )
-        public
-        initializer
-        notZeroAddress(_owner)
-        notZeroAddress(_treasury)
-        notZeroAmount(_feeCreate)
-    {
+        address _marketplaceAddr
+    ) public initializer notZeroAddress(_owner) notZeroAddress(_treasury) {
         Adminable.__Adminable_init();
         PausableUpgradeable.__Pausable_init();
         transferOwnership(_owner);
@@ -97,7 +79,6 @@ contract MetaversusManager is
         paymentToken = IERC20Upgradeable(_paymentToken);
         tokenMintERC721 = ITokenMintERC721(nft721Addr);
         tokenMintERC1155 = ITokenMintERC1155(nft1155Addr);
-        feeCreate = _feeCreate;
         _pause();
     }
 
@@ -117,24 +98,10 @@ contract MetaversusManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setMarketplace(address newMarketplace)
-        external
-        onlyOwnerOrAdmin
-        notZeroAddress(newMarketplace)
-    {
+    function setMarketplace(address newMarketplace) external onlyOwnerOrAdmin notZeroAddress(newMarketplace) {
         address oldMarketplace = address(marketplace);
         marketplace = IMarketplaceManager(newMarketplace);
         emit SetMarketplace(oldMarketplace, address(marketplace));
-    }
-
-    /**
-     *  @notice Set fee
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setFeeCreate(uint256 newFee) external onlyOwnerOrAdmin notZeroAmount(newFee) {
-        feeCreate = newFee;
-        emit SetFeeCreate(newFee);
     }
 
     /**
@@ -150,8 +117,6 @@ contract MetaversusManager is
         uint256 startTime,
         uint256 endTime
     ) external nonReentrant notZeroAmount(amount) whenNotPaused {
-        paymentToken.safeTransferFrom(_msgSender(), treasury, feeCreate);
-
         if (typeNft == TypeNft.ERC721) {
             tokenMintERC721.mint(address(marketplace), uri);
             uint256 currentId = tokenMintERC721.getTokenCounter();
@@ -209,13 +174,6 @@ contract MetaversusManager is
     }
 
     /**
-     *  @notice Get create fee
-     */
-    function getCreateFee() external view returns (uint256) {
-        return feeCreate;
-    }
-
-    /**
      *  @notice Get all params
      */
     function getAllParams()
@@ -226,8 +184,7 @@ contract MetaversusManager is
             address,
             address,
             address,
-            address,
-            uint256
+            address
         )
     {
         return (
@@ -235,8 +192,7 @@ contract MetaversusManager is
             address(marketplace),
             address(tokenMintERC1155),
             address(tokenMintERC721),
-            address(paymentToken),
-            feeCreate
+            address(paymentToken)
         );
     }
 }
