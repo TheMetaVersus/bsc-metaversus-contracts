@@ -61,7 +61,6 @@ describe("Marketplace Manager:", () => {
             token.address,
             treasury.address,
             mkpManager.address,
-            250,
         ]);
         await tokenMintERC721.setAdmin(mtvsManager.address, true);
         await tokenMintERC1155.setAdmin(mtvsManager.address, true);

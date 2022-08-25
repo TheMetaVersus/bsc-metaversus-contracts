@@ -100,8 +100,7 @@ async function main() {
     contract.tokenMintERC1155, //tokenMintERC1155.address,
     contract.mtvs, //mtvs.address,
     contract.treasury, //treasury.address,
-    mkpManager.address,
-    process.env.CREATE_FEE
+    mkpManager.address
   ]);
   await mtvsManager.deployed();
   console.log("mtvsManager deployed in:", mtvsManager.address);
