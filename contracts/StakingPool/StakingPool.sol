@@ -91,6 +91,11 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     address public pancakeRouter;
 
     /**
+     *  @notice timeStone is period calculate reward
+     */
+    uint256 public timeStone;
+
+    /**
      *  @notice Mapping an address to a information of corresponding user address.
      */
     mapping(address => UserInfo) public users;
@@ -107,6 +112,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     event RequestClaim(address indexed sender);
     event SetPause(bool isPause);
     event SetAcceptableLost(uint256 lost);
+    event SetTimeStone(uint256 timeStone);
 
     /**
      *  @notice Initialize new logic contract.
@@ -141,6 +147,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         usdToken = _usdToken;
         pendingTime = 1 days; // default
         acceptableLost = 50; // 50%
+        timeStone = 86400;
         _pause();
     }
 
@@ -280,6 +287,16 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         }
 
         emit EmergencyWithdrawed(_msgSender(), address(rewardToken));
+    }
+
+    /**
+     *  @notice Set start time of staking pool.
+     *
+     *  @dev    Only owner can call this function.
+     */
+    function setTimeStone(uint256 _timeStone) external onlyOwnerOrAdmin {
+        timeStone = _timeStone;
+        emit SetTimeStone(timeStone);
     }
 
     /**
@@ -438,8 +455,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
             return 0;
         }
         // reward by each days
-        uint256 time = ((minTime - user.lastClaim) / 86400) * 86400;
+        uint256 time = ((minTime - user.lastClaim) / timeStone) * timeStone;
         uint256 amount = (user.totalAmount * time * rewardRate) / 1e18;
+
         return amount;
     }
 

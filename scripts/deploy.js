@@ -83,30 +83,30 @@ async function main() {
   //   "========================================================================================="
   // );
 
-  const mkpManager = await upgrades.deployProxy(MkpManager, [
-    admin,
-    contract.mtvs, //mtvs.address,
-    contract.treasury //treasury.address
-  ]);
-  await mkpManager.deployed();
-  console.log("mkpManager deployed in:", mkpManager.address);
-  console.log(
-    "========================================================================================="
-  );
+  // const mkpManager = await upgrades.deployProxy(MkpManager, [
+  //   admin,
+  //   contract.mtvs, //mtvs.address,
+  //   contract.treasury //treasury.address
+  // ]);
+  // await mkpManager.deployed();
+  // console.log("mkpManager deployed in:", mkpManager.address);
+  // console.log(
+  //   "========================================================================================="
+  // );
 
-  const mtvsManager = await upgrades.deployProxy(MTVSManager, [
-    admin,
-    contract.tokenMintERC721, //tokenMintERC721.address,
-    contract.tokenMintERC1155, //tokenMintERC1155.address,
-    contract.mtvs, //mtvs.address,
-    contract.treasury, //treasury.address,
-    mkpManager.address
-  ]);
-  await mtvsManager.deployed();
-  console.log("mtvsManager deployed in:", mtvsManager.address);
-  console.log(
-    "========================================================================================="
-  );
+  // const mtvsManager = await upgrades.deployProxy(MTVSManager, [
+  //   admin,
+  //   contract.tokenMintERC721, //tokenMintERC721.address,
+  //   contract.tokenMintERC1155, //tokenMintERC1155.address,
+  //   contract.mtvs, //mtvs.address,
+  //   contract.treasury, //treasury.address,
+  //   mkpManager.address
+  // ]);
+  // await mtvsManager.deployed();
+  // console.log("mtvsManager deployed in:", mtvsManager.address);
+  // console.log(
+  //   "========================================================================================="
+  // );
 
   // Factory Pool
   const staking = await Staking.deploy();
@@ -121,7 +121,7 @@ async function main() {
     admin,
     contract.mtvs, //mtvs.address,
     contract.mtvs, //mtvs.address,
-    mkpManager.address,
+    contract.mkpManager, //mkpManager.address,
     process.env.REWARD_RATE_30_DAY,
     process.env.POOL_DURATION_30_DAY,
     process.env.PANCAKE_ROUTER,
@@ -134,7 +134,7 @@ async function main() {
     admin,
     contract.mtvs, //mtvs.address,
     contract.mtvs, //mtvs.address,
-    mkpManager.address,
+    contract.mkpManager, //mkpManager.address,
     process.env.REWARD_RATE_60_DAY,
     process.env.POOL_DURATION_60_DAY,
     process.env.PANCAKE_ROUTER,
@@ -146,7 +146,7 @@ async function main() {
     admin,
     contract.mtvs, //mtvs.address,
     contract.mtvs, //mtvs.address,
-    mkpManager.address,
+    contract.mkpManager, //mkpManager.address,
     process.env.REWARD_RATE_90_DAY,
     process.env.POOL_DURATION_90_DAY,
     process.env.PANCAKE_ROUTER,
@@ -201,20 +201,20 @@ async function main() {
   // console.log(
   //   "========================================================================================="
   // );
-  const mtvsManagerVerify = await upgrades.erc1967.getImplementationAddress(
-    mtvsManager.address
-  );
-  console.log("mtvsManagerVerify deployed in:", mtvsManagerVerify);
-  console.log(
-    "========================================================================================="
-  );
-  const mkpManagerVerify = await upgrades.erc1967.getImplementationAddress(
-    mkpManager.address
-  );
-  console.log("mkpManagerVerify deployed in:", mkpManagerVerify);
-  console.log(
-    "========================================================================================="
-  );
+  // const mtvsManagerVerify = await upgrades.erc1967.getImplementationAddress(
+  //   mtvsManager.address
+  // );
+  // console.log("mtvsManagerVerify deployed in:", mtvsManagerVerify);
+  // console.log(
+  //   "========================================================================================="
+  // );
+  // const mkpManagerVerify = await upgrades.erc1967.getImplementationAddress(
+  //   mkpManager.address
+  // );
+  // console.log("mkpManagerVerify deployed in:", mkpManagerVerify);
+  // console.log(
+  //   "========================================================================================="
+  // );
   // const staking30dVerify = await upgrades.erc1967.getImplementationAddress(
   //   staking30d.address
   // );
@@ -250,8 +250,8 @@ async function main() {
     // tokenMintERC721: tokenMintERC721.address,
     // tokenMintERC1155: tokenMintERC1155.address,
     ...contract,
-    mtvsManager: mtvsManager.address,
-    mkpManager: mkpManager.address,
+    // mtvsManager: mtvsManager.address,
+    // mkpManager: mkpManager.address,
     staking30d: all[0]["poolAddress"],
     staking60d: all[1]["poolAddress"],
     staking90d: all[2]["poolAddress"],
@@ -267,8 +267,8 @@ async function main() {
     // mtvs: mtvsVerify,
     // tokenMintERC721: tokenMintERC721Verify,
     // tokenMintERC1155: tokenMintERC1155Verify,
-    mtvsManager: mtvsManagerVerify,
-    mkpManager: mkpManagerVerify,
+    // mtvsManager: mtvsManagerVerify,
+    // mkpManager: mkpManagerVerify,
     // staking30d: staking30dVerify,
     // staking60d: staking60dVerify,
     // staking90d: staking90dVerify,
