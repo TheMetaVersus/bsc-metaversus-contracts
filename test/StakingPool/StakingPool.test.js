@@ -276,7 +276,7 @@ describe("Staking Pool:", () => {
 
             expect(calReward).to.equal(0);
         });
-        it("should return reward each day: ", async () => {
+        it.only("should return reward each day: ", async () => {
             await token.mint(user2.address, ONE_MILLION_ETHER);
             await token.mint(user1.address, ONE_MILLION_ETHER);
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
@@ -298,13 +298,22 @@ describe("Staking Pool:", () => {
 
             await skipTime(86400);
             calReward = await staking.calReward(user1.address);
-
+            console.log("calReward", calReward.toString());
             expect(calReward.toNumber()).to.greaterThan(0);
 
-            await skipTime(6000);
-            const newcalReward = await staking.calReward(user1.address);
+            await staking.connect(user1).requestClaim();
+            let data = await staking.users(user1.address);
 
-            expect(newcalReward.toNumber()).to.equal(calReward.toNumber());
+            expect(data.lazyClaim.isRequested).to.equal(true);
+            await skipTime(24 * 60 * 60 + 1);
+            // const pendingRewards = await staking.pendingRewards(user1.address);
+            await staking.connect(user1).claim();
+            // data = await staking.users(user1.address);
+
+            await skipTime(86400);
+            const newcalReward = await staking.calReward(user1.address);
+            console.log("newcalReward", newcalReward.toString());
+            expect(newcalReward.toNumber()).to.equal(newcalReward.toNumber());
         });
     });
     describe("pendingRewards:", async () => {
