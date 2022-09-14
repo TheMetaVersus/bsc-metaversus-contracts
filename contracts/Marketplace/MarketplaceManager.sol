@@ -327,6 +327,28 @@ contract MarketPlaceManager is
         require(endTime > block.timestamp, "ERROR: Only sell");
         // create market item to store data selling
         _createMarketInfo(nftContractAddress, tokenId, amount, price, _msgSender(), startTime, endTime);
+        // check and update offer
+        NftStandard nftType = _checkNftStandard(nftContractAddress);
+        // 1. check sell all
+        if (
+            nftType == NftStandard.ERC1155 ||
+            (nftType == NftStandard.ERC1155 &&
+                IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) != amount)
+        ) {
+            for (uint256 i = 0; i < _orderId.length; i++) {
+                // 2. find Offer[] need to update
+                if (
+                    assetIdToWalletAssetInfo[i].owner == _msgSender() &&
+                    assetIdToWalletAssetInfo[i].nftAddress == nftContractAddress &&
+                    assetIdToWalletAssetInfo[i].tokenId == tokenId
+                ) {
+                    // 3. update Offer[]
+                    BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
+                    validAuction.marketItemId = _marketItemIds.current();
+                }
+            }
+        }
+
         // transfer nft to contract for selling
         _transferNFTCall(nftContractAddress, tokenId, amount, _msgSender(), address(this));
     }
@@ -343,6 +365,28 @@ contract MarketPlaceManager is
         // update market item
         item.status = MarketItemStatus.CANCELED;
         marketItemOfOwner[_msgSender()].remove(marketItemId);
+
+        // check and update offer
+
+        // 1. check sell all
+        if (
+            item.nftType == NftStandard.ERC1155 ||
+            (item.nftType == NftStandard.ERC1155 &&
+                IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) != amount)
+        ) {
+            for (uint256 i = 0; i < _orderId.length; i++) {
+                // 2. find Offer[] need to update
+                if (
+                    assetIdToWalletAssetInfo[i].owner == _msgSender() &&
+                    assetIdToWalletAssetInfo[i].nftAddress == nftContractAddress &&
+                    assetIdToWalletAssetInfo[i].tokenId == tokenId
+                ) {
+                    // 3. update Offer[]
+                    BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
+                    validAuction.marketItemId = _marketItemIds.current();
+                }
+            }
+        }
 
         // transfer nft back seller
         _transferNFTCall(item.nftContractAddress, item.tokenId, item.amount, address(this), _msgSender());
