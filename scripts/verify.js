@@ -2,22 +2,22 @@ const hre = require("hardhat");
 const contracts = require("../contracts-verify.json");
 
 async function main() {
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.treasury,
-      contract: "contracts/Token/Treasury.sol:Treasury"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.mtvs,
-      contract: "contracts/Token/MTVS.sol:MTVS"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.treasury,
+  //     contract: "contracts/Token/Treasury.sol:Treasury"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.mtvs,
+  //     contract: "contracts/Token/MTVS.sol:MTVS"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
 
   try {
     await hre.run("verify:verify", {
