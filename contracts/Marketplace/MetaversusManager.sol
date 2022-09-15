@@ -115,7 +115,8 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
         string memory uri,
         uint256 price,
         uint256 startTime,
-        uint256 endTime
+        uint256 endTime,
+        address payment
     ) external nonReentrant notZeroAmount(amount) whenNotPaused {
         if (typeNft == TypeNft.ERC721) {
             tokenMintERC721.mint(address(marketplace), uri);
@@ -127,7 +128,8 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
                 price,
                 _msgSender(),
                 startTime,
-                endTime
+                endTime,
+                payment
             );
         } else if (typeNft == TypeNft.ERC1155) {
             tokenMintERC1155.mint(address(marketplace), amount, uri);
@@ -139,7 +141,8 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
                 price,
                 _msgSender(),
                 startTime,
-                endTime
+                endTime,
+                payment
             );
         }
 

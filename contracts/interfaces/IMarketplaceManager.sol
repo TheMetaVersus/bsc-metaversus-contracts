@@ -6,10 +6,11 @@ interface IMarketplaceManager {
         address nftAddress,
         uint256 tokenId,
         uint256 amount,
-        uint256 grossSaleValue,
+        uint256 price,
         address seller,
         uint256 startTime,
-        uint256 endTime
+        uint256 endTime,
+        address paymentToken
     ) external;
 
     function wasBuyer(address account) external view returns (bool);

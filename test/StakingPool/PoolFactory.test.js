@@ -32,7 +32,7 @@ describe("Pool Factory:", () => {
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, token.address, treasury.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, treasury.address]);
 
         Staking = await ethers.getContractFactory("StakingPool");
         staking = await Staking.deploy();

@@ -40,7 +40,7 @@ describe("Metaversus Manager:", () => {
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [owner.address, treasury.address, 250]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, token.address, treasury.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, treasury.address]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
@@ -132,9 +132,10 @@ describe("Metaversus Manager:", () => {
 
     describe("createNFT function:", async () => {
         it("should revert when amount equal to zero amount: ", async () => {
-            await expect(mtvsManager.connect(user1).createNFT(1, 0, "this_uri", ONE_ETHER, 0, 0)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
+            await expect(
+                mtvsManager.connect(user1).createNFT(1, 0, "this_uri", ONE_ETHER, 0, 0, token.address),
+                token.address
+            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should create NFT success: ", async () => {
             await token.mint(user2.address, AMOUNT);
@@ -145,7 +146,7 @@ describe("Metaversus Manager:", () => {
 
             await tokenMintERC721.setAdmin(mtvsManager.address, true);
 
-            await mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 0, 0, 0);
+            await mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 0, 0, 0, token.address);
 
             // check owner nft
             expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
@@ -158,7 +159,7 @@ describe("Metaversus Manager:", () => {
             const blockAfter = await ethers.provider.getBlock(blockNumAfter);
             const current = blockAfter.timestamp;
             const time = current + 30 * 24 * 60 * 60; // sale 30 ngay
-            await mtvsManager.connect(user2).createNFT(1, 100, "this_uri", 0, time, time + 10000);
+            await mtvsManager.connect(user2).createNFT(1, 100, "this_uri", 0, time, time + 10000, token.address);
 
             allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
             expect(allItems[1].status).to.equal(0);
@@ -176,7 +177,7 @@ describe("Metaversus Manager:", () => {
             const blockAfter = await ethers.provider.getBlock(blockNumAfter);
             const current = blockAfter.timestamp;
             const time = current + 30 * 24 * 60 * 60; // sale 30 ngay
-            await mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, time, time + 10000);
+            await mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 1000, time, time + 10000, token.address);
 
             // check owner nft
             expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
