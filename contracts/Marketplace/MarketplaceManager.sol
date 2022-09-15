@@ -73,6 +73,7 @@ contract MarketPlaceManager is
         MarketItemStatus status;
         uint256 startTime;
         uint256 endTime;
+        address paymentToken;
     }
 
     struct WalletAsset {
@@ -104,11 +105,6 @@ contract MarketPlaceManager is
      *  @notice _permitedPaymentToken mapping from token address to payment
      */
     EnumerableSetUpgradeable.AddressSet private _permitedPaymentToken;
-
-    /**
-     *  @notice paymentToken IERC20Upgradeable is interface of payment token
-     */
-    IERC20Upgradeable public paymentToken;
 
     /**
      *  @notice treasury store the address of the TreasuryManager contract
@@ -200,14 +196,14 @@ contract MarketPlaceManager is
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(
-        address _owner,
-        address _paymentToken,
-        address _treasury
-    ) public initializer notZeroAddress(_owner) notZeroAddress(_paymentToken) notZeroAddress(_treasury) {
+    function initialize(address _owner, address _treasury)
+        public
+        initializer
+        notZeroAddress(_owner)
+        notZeroAddress(_treasury)
+    {
         Adminable.__Adminable_init();
         PausableUpgradeable.__Pausable_init();
-        paymentToken = IERC20Upgradeable(_paymentToken);
         transferOwnership(_owner);
         treasury = _treasury;
         listingFee = 25e2; // 2.5%
@@ -230,7 +226,7 @@ contract MarketPlaceManager is
     function setPermitedPaymentToken(address _paymentToken, bool allow)
         external
         onlyOwnerOrAdmin
-        notZeroAddress(_paymentToken)
+    // notZeroAddress(_paymentToken)
     {
         if (allow) {
             _permitedPaymentToken.add(_paymentToken);
@@ -295,11 +291,19 @@ contract MarketPlaceManager is
         uint256 price,
         address seller,
         uint256 startTime,
-        uint256 endTime
-    ) external onlyOwnerOrAdmin notZeroAddress(nftAddress) notZeroAddress(seller) notZeroAmount(amount) {
+        uint256 endTime,
+        address paymentToken
+    )
+        external
+        onlyOwnerOrAdmin
+        notZeroAddress(nftAddress)
+        notZeroAddress(seller)
+        notZeroAmount(amount)
+    // notZeroAddress(paymentToken)
+    {
         require(_msgSender().isContract(), "ERROR: only allow contract call !");
         // create market item to store data
-        _createMarketInfo(nftAddress, tokenId, amount, price, seller, startTime, endTime);
+        _createMarketInfo(nftAddress, tokenId, amount, price, seller, startTime, endTime, paymentToken);
     }
 
     /**
@@ -313,7 +317,8 @@ contract MarketPlaceManager is
         uint256 amount,
         uint256 price,
         uint256 startTime,
-        uint256 endTime
+        uint256 endTime,
+        address paymentToken
     )
         external
         nonReentrant
@@ -322,20 +327,21 @@ contract MarketPlaceManager is
         notZeroAmount(price)
         notZeroAmount(startTime)
         notZeroAmount(endTime)
+        // notZeroAddress(paymentToken)
         whenNotPaused
     {
         require(endTime > block.timestamp, "ERROR: Only sell");
         // create market item to store data selling
-        _createMarketInfo(nftContractAddress, tokenId, amount, price, _msgSender(), startTime, endTime);
+        _createMarketInfo(nftContractAddress, tokenId, amount, price, _msgSender(), startTime, endTime, paymentToken);
         // check and update offer
-        NftStandard nftType = _checkNftStandard(nftContractAddress);
+        // NftStandard nftType = _checkNftStandard(nftContractAddress);
         // 1. check sell all
         if (
-            nftType == NftStandard.ERC1155 ||
-            (nftType == NftStandard.ERC1155 &&
-                IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) != amount)
+            _checkNftStandard(nftContractAddress) == NftStandard.ERC721 ||
+            (_checkNftStandard(nftContractAddress) == NftStandard.ERC1155 &&
+                IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) == amount)
         ) {
-            for (uint256 i = 0; i < _orderId.length; i++) {
+            for (uint256 i = 0; i < _orderId.current(); i++) {
                 // 2. find Offer[] need to update
                 if (
                     assetIdToWalletAssetInfo[i].owner == _msgSender() &&
@@ -367,24 +373,21 @@ contract MarketPlaceManager is
         marketItemOfOwner[_msgSender()].remove(marketItemId);
 
         // check and update offer
-
-        // 1. check sell all
-        if (
-            item.nftType == NftStandard.ERC1155 ||
-            (item.nftType == NftStandard.ERC1155 &&
-                IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) != amount)
-        ) {
-            for (uint256 i = 0; i < _orderId.length; i++) {
-                // 2. find Offer[] need to update
-                if (
-                    assetIdToWalletAssetInfo[i].owner == _msgSender() &&
-                    assetIdToWalletAssetInfo[i].nftAddress == nftContractAddress &&
-                    assetIdToWalletAssetInfo[i].tokenId == tokenId
-                ) {
-                    // 3. update Offer[]
-                    BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
-                    validAuction.marketItemId = _marketItemIds.current();
-                }
+        for (uint256 i = 0; i < _orderId.current(); i++) {
+            // 1. find Offer[] need to update
+            if (
+                assetIdToWalletAssetInfo[i].owner == _msgSender() &&
+                assetIdToWalletAssetInfo[i].nftAddress == item.nftContractAddress &&
+                assetIdToWalletAssetInfo[i].tokenId == item.tokenId
+            ) {
+                // 2. update Offer[]
+                BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
+                validAuction.marketItemId = 0;
+                WalletAsset storage validWalletAsset = assetIdToWalletAssetInfo[validAuction.walletAssetId];
+                validWalletAsset.walletAssetId = validAuction.auctionId;
+                validWalletAsset.owner = _msgSender();
+                validWalletAsset.nftAddress = item.nftContractAddress;
+                validWalletAsset.tokenId = item.tokenId;
             }
         }
 
@@ -408,7 +411,7 @@ contract MarketPlaceManager is
      *
      *  @dev    All caller can call this function.
      */
-    function buy(uint256 marketItemId) external nonReentrant validateId(marketItemId) whenNotPaused {
+    function buy(uint256 marketItemId) external payable nonReentrant validateId(marketItemId) whenNotPaused {
         MarketItem storage data = marketItemIdToMarketItem[marketItemId];
         require(_msgSender() != data.seller, "ERROR: Not allow to buy yourself");
         require(
@@ -423,14 +426,16 @@ contract MarketPlaceManager is
         data.status = MarketItemStatus.SOLD;
         marketItemOfOwner[_msgSender()].remove(marketItemId);
         // request token
-        paymentToken.safeTransferFrom(_msgSender(), address(this), data.price);
+        _transferCall(data.paymentToken, data.price, _msgSender(), address(this));
+        // IERC20Upgradeable(data.paymentToken).safeTransferFrom(_msgSender(), address(this), data.price);
         // pay listing fee
         uint256 netSaleValue = data.price - getListingFee(data.price);
         // pay 2.5% royalties from the amount actually received
-        netSaleValue = _deduceRoyalties(data.nftContractAddress, data.tokenId, netSaleValue);
+        netSaleValue = _deduceRoyalties(data.nftContractAddress, data.tokenId, netSaleValue, data.paymentToken);
 
         // pay 97.5% of the amount actually received to seller
-        paymentToken.safeTransfer(data.seller, netSaleValue);
+        _transferCall(data.paymentToken, netSaleValue, address(this), data.seller);
+        // IERC20Upgradeable(data.paymentToken).safeTransfer(data.seller, netSaleValue);
         // transfer nft to buyer
         _transferNFTCall(data.nftContractAddress, data.tokenId, data.amount, address(this), _msgSender());
 
@@ -475,6 +480,36 @@ contract MarketPlaceManager is
             IERC721Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId);
         } else {
             IERC1155Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId, amount, "");
+        }
+    }
+
+    receive() external payable {}
+
+    fallback() external payable {}
+
+    /**
+     *  @notice Transfer  call
+     */
+    function _transferCall(
+        address paymentToken,
+        uint256 amount,
+        address from,
+        address to
+    ) internal {
+        if (paymentToken == address(0)) {
+            if (to == address(this)) {
+                require(msg.value == amount, "Failed to send into contract");
+            } else {
+                // payable(to).transfer(amount);
+                (bool sent, ) = to.call{ value: amount }("");
+                require(sent, "Failed to send native");
+            }
+        } else {
+            if (to == address(this)) {
+                IERC20Upgradeable(paymentToken).safeTransferFrom(from, to, amount);
+            } else {
+                IERC20Upgradeable(paymentToken).transfer(to, amount);
+            }
         }
     }
 
@@ -535,7 +570,8 @@ contract MarketPlaceManager is
     function _deduceRoyalties(
         address nftContractAddress,
         uint256 tokenId,
-        uint256 grossSaleValue
+        uint256 grossSaleValue,
+        address paymentToken
     ) private returns (uint256 netSaleAmount) {
         // Get amount of royalties to pays and recipient
         if (isRoyalty(nftContractAddress)) {
@@ -549,7 +585,8 @@ contract MarketPlaceManager is
             uint256 netSaleValue = grossSaleValue - royaltiesAmount;
             // Transfer royalties to rightholder if not zero
             if (royaltiesAmount > 0) {
-                paymentToken.safeTransfer(royaltiesReceiver, royaltiesAmount);
+                _transferCall(paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
+                // IERC20Upgradeable(paymentToken).safeTransfer(royaltiesReceiver, royaltiesAmount);
             }
             // Broadcast royalties payment
             emit RoyaltiesPaid(tokenId, royaltiesAmount);
@@ -570,7 +607,8 @@ contract MarketPlaceManager is
         uint256 _price,
         address _seller,
         uint256 _startTime,
-        uint256 _endTime
+        uint256 _endTime,
+        address _paymentToken
     ) private {
         require(isPermitedNFT(_nftAddress), "ERROR: NFT not allow to sell on marketplace !");
         NftStandard nftType = _checkNftStandard(_nftAddress);
@@ -582,10 +620,11 @@ contract MarketPlaceManager is
         uint256 price;
         uint256 startTime;
         uint256 endTime;
-        uint256 amount = 1;
-        if (nftType == NftStandard.ERC1155) {
-            amount = _amount;
-        }
+        // uint256 amount = 1;
+        // if (nftType == NftStandard.ERC1155) {
+        //     amount = _amount;
+        // }
+
         if (_startTime >= block.timestamp && _endTime > _startTime && _price > 0) {
             price = _price;
             endTime = _endTime;
@@ -595,14 +634,15 @@ contract MarketPlaceManager is
             marketItemId,
             _nftAddress,
             _tokenId,
-            amount,
+            nftType == NftStandard.ERC1155 ? _amount : 1,
             price,
             uint256(nftType),
             _seller,
             address(0),
             MarketItemStatus.LISTING,
             startTime,
-            endTime
+            endTime,
+            _permitedPaymentToken.contains(_paymentToken) ? _paymentToken : address(0)
         );
 
         marketItemOfOwner[_seller].add(marketItemId);
@@ -611,7 +651,7 @@ contract MarketPlaceManager is
             marketItemId,
             _nftAddress,
             _tokenId,
-            amount,
+            nftType == NftStandard.ERC1155 ? _amount : 1,
             _seller,
             price,
             uint256(nftType),
@@ -628,12 +668,11 @@ contract MarketPlaceManager is
         view
         returns (
             address,
-            address,
             uint256,
             uint256
         )
     {
-        return (treasury, address(paymentToken), listingFee, DENOMINATOR);
+        return (treasury, listingFee, DENOMINATOR);
     }
 
     /**
@@ -806,10 +845,10 @@ contract MarketPlaceManager is
         uint256 amount,
         uint256 time
     ) public {
+        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         // Create Order
         _orderId.increment();
         uint256 orderId = _orderId.current();
-        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         WalletAsset memory newWalletAsset;
         newWalletAsset.walletAssetId = orderId;
         newWalletAsset.owner = owner;
@@ -828,6 +867,7 @@ contract MarketPlaceManager is
         newBid.amount = amount;
         newBid.expiredBidAuction = block.timestamp + time;
         newBid.status = OfferStatus.AVAILABLE;
+
         auctionIdToBidAuctionInfo[orderId] = newBid;
 
         bidAuctionOfOwner[_msgSender()].add(orderId);
@@ -840,16 +880,13 @@ contract MarketPlaceManager is
         uint256 marketItemId,
         address paymentToken,
         uint256 bidPrice,
-        address owner,
-        address nftAddress,
-        uint256 tokenId,
         uint256 amount,
         uint256 time
     ) public {
+        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         // Create Order
         _orderId.increment();
         uint256 orderId = _orderId.current();
-
         BidAuction memory newBid;
         newBid.auctionId = orderId;
         newBid.bidder = _msgSender();
@@ -874,9 +911,7 @@ contract MarketPlaceManager is
         require(_msgSender() == walletAsset.owner, "ERROR: Invalid owner of asset !");
         // update data
         auctionInfo.status = OfferStatus.ACCEPTED;
-
         // send nft to buyer
-        NftStandard nftType = _checkNftStandard(walletAsset.nftAddress);
         _transferNFTCall(
             walletAsset.nftAddress,
             walletAsset.tokenId,
@@ -885,10 +920,16 @@ contract MarketPlaceManager is
             auctionInfo.bidder
         );
         // deduce royalty
-        uint256 netSaleValue = _deduceRoyalties(walletAsset.nftAddress, walletAsset.tokenId, auctionInfo.bidPrice);
+        uint256 netSaleValue = _deduceRoyalties(
+            walletAsset.nftAddress,
+            walletAsset.tokenId,
+            auctionInfo.bidPrice,
+            auctionInfo.paymentToken
+        );
         // receive token payment
         // handle payment with native token
-        IERC20Upgradeable(auctionInfo.paymentToken).safeTransfer(walletAsset.owner, netSaleValue);
+        _transferCall(auctionInfo.paymentToken, netSaleValue, address(this), walletAsset.owner);
+        // IERC20Upgradeable(auctionInfo.paymentToken).safeTransfer(walletAsset.owner, netSaleValue);
     }
 
     function acceptOffer(uint256 auctionId) public {
@@ -898,9 +939,7 @@ contract MarketPlaceManager is
         require(_msgSender() == marketItem.seller, "ERROR: Invalid seller of asset !");
         // update data
         auctionInfo.status = OfferStatus.ACCEPTED;
-
         // send nft to buyer
-        NftStandard nftType = _checkNftStandard(marketItem.nftContractAddress);
         _transferNFTCall(
             marketItem.nftContractAddress,
             marketItem.tokenId,
@@ -908,24 +947,25 @@ contract MarketPlaceManager is
             _msgSender(),
             auctionInfo.bidder
         );
-
         // deduce royalty
         uint256 netSaleValue = _deduceRoyalties(
             marketItem.nftContractAddress,
             marketItem.tokenId,
-            auctionInfo.bidPrice
+            auctionInfo.bidPrice,
+            auctionInfo.paymentToken
         );
         // receive token payment
         // handle payment with native token
-        IERC20Upgradeable(auctionInfo.paymentToken).safeTransfer(marketItem.seller, netSaleValue);
+        _transferCall(auctionInfo.paymentToken, netSaleValue, address(this), marketItem.seller);
+        // IERC20Upgradeable(auctionInfo.paymentToken).safeTransfer(marketItem.seller, netSaleValue);
     }
 
     function refundBidAmount(uint256 auctionId) public {
         BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
         require(auctionInfo.bidder == _msgSender(), "ERROR: Invalid bidder !");
-
         // refund all amount
-        IERC20Upgradeable(auctionInfo.paymentToken).safeTransfer(_msgSender(), auctionInfo.bidPrice);
+        _transferCall(auctionInfo.paymentToken, auctionInfo.bidPrice, address(this), _msgSender());
+        // IERC20Upgradeable(auctionInfo.paymentToken).safeTransfer(_msgSender(), auctionInfo.bidPrice);
         // remove record
         auctionInfo.status = OfferStatus.CLAIMED;
         bidAuctionOfOwner[_msgSender()].remove(auctionId);

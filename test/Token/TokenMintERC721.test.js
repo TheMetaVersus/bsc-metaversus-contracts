@@ -34,7 +34,7 @@ describe("TokenMintERC721:", () => {
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, token.address, treasury.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, treasury.address]);
 
         await tokenMintERC721.deployed();
     });

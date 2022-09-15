@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 
 const constants = require("@openzeppelin/test-helpers/src/constants");
-describe("MTVS Token:", () => {
+describe("USD Token:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         const accounts = await ethers.getSigners();
