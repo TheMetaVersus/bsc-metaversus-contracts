@@ -15,6 +15,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "../Adminable.sol";
+import "hardhat/console.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -126,8 +127,14 @@ contract MarketPlaceManager is
      */
     mapping(uint256 => MarketItem) public marketItemIdToMarketItem;
 
+    /**
+     *  @notice assetIdToWalletAssetInfo is mapping asset ID to asset info
+     */
     mapping(uint256 => WalletAsset) public assetIdToWalletAssetInfo;
 
+    /**
+     *  @notice auctionIdToBidAuctionInfo is mapping auction ID to auction info
+     */
     mapping(uint256 => BidAuction) public auctionIdToBidAuctionInfo;
 
     /**
@@ -135,6 +142,9 @@ contract MarketPlaceManager is
      */
     mapping(address => EnumerableSetUpgradeable.UintSet) private marketItemOfOwner;
 
+    /**
+     *  @notice bidAuctionOfOwner is mapping owner address to auction ID
+     */
     mapping(address => EnumerableSetUpgradeable.UintSet) private bidAuctionOfOwner;
 
     event MarketItemCreated(
@@ -210,6 +220,8 @@ contract MarketPlaceManager is
         _pause();
     }
 
+    receive() external payable {}
+
     /**
      *  @notice Set permit NFT
      */
@@ -223,14 +235,13 @@ contract MarketPlaceManager is
         emit SetPermitedNFT(_nftAddress, allow);
     }
 
-    function setPermitedPaymentToken(address _paymentToken, bool allow)
-        external
-        onlyOwnerOrAdmin
-    // notZeroAddress(_paymentToken)
-    {
+    /**
+     *  @notice Set permit payment token
+     */
+    function setPermitedPaymentToken(address _paymentToken, bool allow) external onlyOwnerOrAdmin {
         if (allow) {
             _permitedPaymentToken.add(_paymentToken);
-        } else if (isPermitedNFT(_paymentToken)) {
+        } else if (isPermitedPaymentToken(_paymentToken)) {
             _permitedPaymentToken.remove(_paymentToken);
         }
 
@@ -293,14 +304,7 @@ contract MarketPlaceManager is
         uint256 startTime,
         uint256 endTime,
         address paymentToken
-    )
-        external
-        onlyOwnerOrAdmin
-        notZeroAddress(nftAddress)
-        notZeroAddress(seller)
-        notZeroAmount(amount)
-    // notZeroAddress(paymentToken)
-    {
+    ) external onlyOwnerOrAdmin notZeroAddress(nftAddress) notZeroAddress(seller) notZeroAmount(amount) {
         require(_msgSender().isContract(), "ERROR: only allow contract call !");
         // create market item to store data
         _createMarketInfo(nftAddress, tokenId, amount, price, seller, startTime, endTime, paymentToken);
@@ -327,7 +331,6 @@ contract MarketPlaceManager is
         notZeroAmount(price)
         notZeroAmount(startTime)
         notZeroAmount(endTime)
-        // notZeroAddress(paymentToken)
         whenNotPaused
     {
         require(endTime > block.timestamp, "ERROR: Only sell");
@@ -341,7 +344,7 @@ contract MarketPlaceManager is
             (_checkNftStandard(nftContractAddress) == NftStandard.ERC1155 &&
                 IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) == amount)
         ) {
-            for (uint256 i = 0; i < _orderId.current(); i++) {
+            for (uint256 i = 1; i <= _orderId.current(); i++) {
                 // 2. find Offer[] need to update
                 if (
                     assetIdToWalletAssetInfo[i].owner == _msgSender() &&
@@ -373,7 +376,7 @@ contract MarketPlaceManager is
         marketItemOfOwner[_msgSender()].remove(marketItemId);
 
         // check and update offer
-        for (uint256 i = 0; i < _orderId.current(); i++) {
+        for (uint256 i = 1; i <= _orderId.current(); i++) {
             // 1. find Offer[] need to update
             if (
                 assetIdToWalletAssetInfo[i].owner == _msgSender() &&
@@ -427,15 +430,16 @@ contract MarketPlaceManager is
         marketItemOfOwner[_msgSender()].remove(marketItemId);
         // request token
         _transferCall(data.paymentToken, data.price, _msgSender(), address(this));
-        // IERC20Upgradeable(data.paymentToken).safeTransferFrom(_msgSender(), address(this), data.price);
+
         // pay listing fee
         uint256 netSaleValue = data.price - getListingFee(data.price);
+
         // pay 2.5% royalties from the amount actually received
         netSaleValue = _deduceRoyalties(data.nftContractAddress, data.tokenId, netSaleValue, data.paymentToken);
 
         // pay 97.5% of the amount actually received to seller
         _transferCall(data.paymentToken, netSaleValue, address(this), data.seller);
-        // IERC20Upgradeable(data.paymentToken).safeTransfer(data.seller, netSaleValue);
+
         // transfer nft to buyer
         _transferNFTCall(data.nftContractAddress, data.tokenId, data.amount, address(this), _msgSender());
 
@@ -450,6 +454,161 @@ contract MarketPlaceManager is
             data.startTime,
             data.endTime
         );
+    }
+
+    /**
+     * @dev make Offer with any NFT in wallet
+     */
+    function makeOfferWalletAsset(
+        string memory objectId,
+        address paymentToken,
+        uint256 bidPrice,
+        address owner,
+        address nftAddress,
+        uint256 tokenId,
+        uint256 amount,
+        uint256 time
+    ) external nonReentrant {
+        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
+
+        // Create Order
+        _orderId.increment();
+        uint256 orderId = _orderId.current();
+        WalletAsset memory newWalletAsset;
+        newWalletAsset.walletAssetId = orderId;
+        newWalletAsset.owner = owner;
+        newWalletAsset.nftAddress = nftAddress;
+        newWalletAsset.tokenId = tokenId;
+        newWalletAsset.objectId = objectId;
+
+        assetIdToWalletAssetInfo[orderId] = newWalletAsset;
+
+        BidAuction memory newBid;
+        newBid.auctionId = orderId;
+        newBid.bidder = _msgSender();
+        newBid.paymentToken = paymentToken;
+        newBid.bidPrice = bidPrice;
+        newBid.walletAssetId = orderId;
+        newBid.amount = amount;
+        newBid.expiredBidAuction = block.timestamp + time;
+        newBid.status = OfferStatus.AVAILABLE;
+
+        auctionIdToBidAuctionInfo[orderId] = newBid;
+
+        bidAuctionOfOwner[_msgSender()].add(orderId);
+        totalBidAuction += bidPrice;
+        // send offer money
+        _transferCall(paymentToken, bidPrice, _msgSender(), address(this));
+        emit MadeOfferWalletAsset(orderId, newWalletAsset, newBid);
+    }
+
+    /**
+     *  @notice make Offer Order any NFT in marketplace
+     */
+    function makeOffer(
+        uint256 marketItemId,
+        address paymentToken,
+        uint256 bidPrice,
+        // uint256 amount,
+        uint256 time
+    ) external nonReentrant validateId(marketItemId) {
+        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
+        // require(
+        //     marketItemIdToMarketItem[marketItemId].status == MarketItemStatus.LISTING,
+        //     "ERROR: Item is not listed !"
+        // );
+        // Create Order
+        _orderId.increment();
+        uint256 orderId = _orderId.current();
+        BidAuction memory newBid;
+        newBid.auctionId = orderId;
+        newBid.bidder = _msgSender();
+        newBid.paymentToken = paymentToken;
+        newBid.bidPrice = bidPrice;
+        newBid.marketItemId = marketItemId;
+        // newBid.amount = amount;
+        newBid.expiredBidAuction = block.timestamp + time;
+        newBid.status = OfferStatus.AVAILABLE;
+        auctionIdToBidAuctionInfo[orderId] = newBid;
+
+        bidAuctionOfOwner[_msgSender()].add(orderId);
+        totalBidAuction += bidPrice;
+        // send offer money
+        _transferCall(paymentToken, bidPrice, _msgSender(), address(this));
+        emit MadeOffer(orderId, marketItemId, newBid);
+    }
+
+    /**
+     *  @notice accept Offer in Wallet Asset
+     */
+    function acceptOfferWalletAsset(uint256 auctionId) external nonReentrant {
+        BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
+        WalletAsset memory walletAsset = assetIdToWalletAssetInfo[auctionInfo.walletAssetId];
+        console.log("console:", auctionInfo.expiredBidAuction);
+        require(auctionInfo.expiredBidAuction >= block.timestamp, "ERROR: Overtime !");
+        require(_msgSender() == walletAsset.owner, "ERROR: Invalid owner of asset !");
+        // update data
+        auctionInfo.status = OfferStatus.ACCEPTED;
+        // send nft to buyer
+        _transferNFTCall(
+            walletAsset.nftAddress,
+            walletAsset.tokenId,
+            auctionInfo.amount,
+            _msgSender(),
+            auctionInfo.bidder
+        );
+        // deduce royalty
+        uint256 netSaleValue = _deduceRoyalties(
+            walletAsset.nftAddress,
+            walletAsset.tokenId,
+            auctionInfo.bidPrice,
+            auctionInfo.paymentToken
+        );
+        // receive token payment
+        _transferCall(auctionInfo.paymentToken, netSaleValue, address(this), walletAsset.owner);
+    }
+
+    /**
+     *  @notice accept Offer in marketplace
+     */
+    function acceptOffer(uint256 auctionId) external nonReentrant {
+        BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
+        MarketItem memory marketItem = marketItemIdToMarketItem[auctionInfo.marketItemId];
+        require(auctionInfo.expiredBidAuction >= block.timestamp, "ERROR: Overtime !");
+        require(_msgSender() == marketItem.seller, "ERROR: Invalid seller of asset !");
+        // update data
+        auctionInfo.status = OfferStatus.ACCEPTED;
+        // send nft to buyer
+        _transferNFTCall(
+            marketItem.nftContractAddress,
+            marketItem.tokenId,
+            marketItem.amount,
+            address(this),
+            auctionInfo.bidder
+        );
+        // deduce royalty
+        uint256 netSaleValue = _deduceRoyalties(
+            marketItem.nftContractAddress,
+            marketItem.tokenId,
+            auctionInfo.bidPrice,
+            auctionInfo.paymentToken
+        );
+        // receive token payment
+        _transferCall(auctionInfo.paymentToken, netSaleValue, address(this), marketItem.seller);
+    }
+
+    /**
+     *  @notice Refund amount token for Bid
+     */
+    function refundBidAmount(uint256 auctionId) external {
+        BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
+        require(auctionInfo.bidder == _msgSender(), "ERROR: Invalid bidder !");
+        // refund all amount
+        _transferCall(auctionInfo.paymentToken, auctionInfo.bidPrice, address(this), _msgSender());
+        // remove record
+        auctionInfo.status = OfferStatus.CLAIMED;
+        // bidAuctionOfOwner[_msgSender()].remove(auctionId);
+        // delete auctionIdToBidAuctionInfo[auctionId];
     }
 
     /**
@@ -483,12 +642,8 @@ contract MarketPlaceManager is
         }
     }
 
-    receive() external payable {}
-
-    fallback() external payable {}
-
     /**
-     *  @notice Transfer  call
+     *  @notice Transfer call
      */
     function _transferCall(
         address paymentToken,
@@ -500,7 +655,6 @@ contract MarketPlaceManager is
             if (to == address(this)) {
                 require(msg.value == amount, "Failed to send into contract");
             } else {
-                // payable(to).transfer(amount);
                 (bool sent, ) = to.call{ value: amount }("");
                 require(sent, "Failed to send native");
             }
@@ -511,13 +665,6 @@ contract MarketPlaceManager is
                 IERC20Upgradeable(paymentToken).transfer(to, amount);
             }
         }
-    }
-
-    /**
-     *  @notice Return permit token status
-     */
-    function isPermitedNFT(address _nftAddress) public view returns (bool) {
-        return _permitedNFTs.contains(_nftAddress);
     }
 
     /**
@@ -566,6 +713,7 @@ contract MarketPlaceManager is
      *  @param nftContractAddress is address contract of nft
      *  @param tokenId is token id of nft
      *  @param grossSaleValue is price of nft that is listed
+     *  @param paymentToken is token for payment
      */
     function _deduceRoyalties(
         address nftContractAddress,
@@ -586,7 +734,6 @@ contract MarketPlaceManager is
             // Transfer royalties to rightholder if not zero
             if (royaltiesAmount > 0) {
                 _transferCall(paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
-                // IERC20Upgradeable(paymentToken).safeTransfer(royaltiesReceiver, royaltiesAmount);
             }
             // Broadcast royalties payment
             emit RoyaltiesPaid(tokenId, royaltiesAmount);
@@ -620,10 +767,6 @@ contract MarketPlaceManager is
         uint256 price;
         uint256 startTime;
         uint256 endTime;
-        // uint256 amount = 1;
-        // if (nftType == NftStandard.ERC1155) {
-        //     amount = _amount;
-        // }
 
         if (_startTime >= block.timestamp && _endTime > _startTime && _price > 0) {
             price = _price;
@@ -785,6 +928,20 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice Return permit token status
+     */
+    function isPermitedNFT(address _nftAddress) public view returns (bool) {
+        return _permitedNFTs.contains(_nftAddress);
+    }
+
+    /**
+     *  @notice Return permit token payment
+     */
+    function isPermitedPaymentToken(address token) public view returns (bool) {
+        return _permitedPaymentToken.contains(token);
+    }
+
+    /**
      *  @notice get Listing fee
      *
      *  @dev    All caller can call this function.
@@ -804,6 +961,17 @@ contract MarketPlaceManager is
             return uint256(NftStandard.ERC1155);
         }
         return uint256(NftStandard.NONE);
+    }
+
+    /**
+     *  @notice get data of offer order of bidder
+     */
+    function getOfferOrderOfBidder(address bidder) public view returns (BidAuction[] memory) {
+        BidAuction[] memory data = new BidAuction[](bidAuctionOfOwner[bidder].length());
+        for (uint256 i = 0; i < bidAuctionOfOwner[bidder].length(); i++) {
+            data[i] = auctionIdToBidAuctionInfo[bidAuctionOfOwner[bidder].at(i)];
+        }
+        return data;
     }
 
     /**
@@ -833,150 +1001,5 @@ contract MarketPlaceManager is
         bytes memory
     ) public pure override returns (bytes4) {
         return this.onERC1155Received.selector;
-    }
-
-    function makeOfferWalletAsset(
-        string memory objectId,
-        address paymentToken,
-        uint256 bidPrice,
-        address owner,
-        address nftAddress,
-        uint256 tokenId,
-        uint256 amount,
-        uint256 time
-    ) public {
-        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
-        // Create Order
-        _orderId.increment();
-        uint256 orderId = _orderId.current();
-        WalletAsset memory newWalletAsset;
-        newWalletAsset.walletAssetId = orderId;
-        newWalletAsset.owner = owner;
-        newWalletAsset.nftAddress = nftAddress;
-        newWalletAsset.tokenId = tokenId;
-        newWalletAsset.objectId = objectId;
-
-        assetIdToWalletAssetInfo[orderId] = newWalletAsset;
-
-        BidAuction memory newBid;
-        newBid.auctionId = orderId;
-        newBid.bidder = _msgSender();
-        newBid.paymentToken = paymentToken;
-        newBid.bidPrice = bidPrice;
-        newBid.walletAssetId = orderId;
-        newBid.amount = amount;
-        newBid.expiredBidAuction = block.timestamp + time;
-        newBid.status = OfferStatus.AVAILABLE;
-
-        auctionIdToBidAuctionInfo[orderId] = newBid;
-
-        bidAuctionOfOwner[_msgSender()].add(orderId);
-        totalBidAuction += bidPrice;
-        // send offer money
-        emit MadeOfferWalletAsset(orderId, newWalletAsset, newBid);
-    }
-
-    function makeOffer(
-        uint256 marketItemId,
-        address paymentToken,
-        uint256 bidPrice,
-        uint256 amount,
-        uint256 time
-    ) public {
-        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
-        // Create Order
-        _orderId.increment();
-        uint256 orderId = _orderId.current();
-        BidAuction memory newBid;
-        newBid.auctionId = orderId;
-        newBid.bidder = _msgSender();
-        newBid.paymentToken = paymentToken;
-        newBid.bidPrice = bidPrice;
-        newBid.marketItemId = marketItemId;
-        newBid.amount = amount;
-        newBid.expiredBidAuction = block.timestamp + time;
-        newBid.status = OfferStatus.AVAILABLE;
-        auctionIdToBidAuctionInfo[orderId] = newBid;
-
-        bidAuctionOfOwner[_msgSender()].add(orderId);
-        totalBidAuction += bidPrice;
-        // send offer money
-        emit MadeOffer(orderId, marketItemId, newBid);
-    }
-
-    function acceptOfferWalletAsset(uint256 auctionId) public {
-        BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
-        WalletAsset memory walletAsset = assetIdToWalletAssetInfo[auctionInfo.walletAssetId];
-        require(auctionInfo.expiredBidAuction <= block.timestamp, "ERROR: Overtime !");
-        require(_msgSender() == walletAsset.owner, "ERROR: Invalid owner of asset !");
-        // update data
-        auctionInfo.status = OfferStatus.ACCEPTED;
-        // send nft to buyer
-        _transferNFTCall(
-            walletAsset.nftAddress,
-            walletAsset.tokenId,
-            auctionInfo.amount,
-            _msgSender(),
-            auctionInfo.bidder
-        );
-        // deduce royalty
-        uint256 netSaleValue = _deduceRoyalties(
-            walletAsset.nftAddress,
-            walletAsset.tokenId,
-            auctionInfo.bidPrice,
-            auctionInfo.paymentToken
-        );
-        // receive token payment
-        // handle payment with native token
-        _transferCall(auctionInfo.paymentToken, netSaleValue, address(this), walletAsset.owner);
-        // IERC20Upgradeable(auctionInfo.paymentToken).safeTransfer(walletAsset.owner, netSaleValue);
-    }
-
-    function acceptOffer(uint256 auctionId) public {
-        BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
-        MarketItem memory marketItem = marketItemIdToMarketItem[auctionInfo.marketItemId];
-        require(auctionInfo.expiredBidAuction <= block.timestamp, "ERROR: Overtime !");
-        require(_msgSender() == marketItem.seller, "ERROR: Invalid seller of asset !");
-        // update data
-        auctionInfo.status = OfferStatus.ACCEPTED;
-        // send nft to buyer
-        _transferNFTCall(
-            marketItem.nftContractAddress,
-            marketItem.tokenId,
-            marketItem.amount,
-            _msgSender(),
-            auctionInfo.bidder
-        );
-        // deduce royalty
-        uint256 netSaleValue = _deduceRoyalties(
-            marketItem.nftContractAddress,
-            marketItem.tokenId,
-            auctionInfo.bidPrice,
-            auctionInfo.paymentToken
-        );
-        // receive token payment
-        // handle payment with native token
-        _transferCall(auctionInfo.paymentToken, netSaleValue, address(this), marketItem.seller);
-        // IERC20Upgradeable(auctionInfo.paymentToken).safeTransfer(marketItem.seller, netSaleValue);
-    }
-
-    function refundBidAmount(uint256 auctionId) public {
-        BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
-        require(auctionInfo.bidder == _msgSender(), "ERROR: Invalid bidder !");
-        // refund all amount
-        _transferCall(auctionInfo.paymentToken, auctionInfo.bidPrice, address(this), _msgSender());
-        // IERC20Upgradeable(auctionInfo.paymentToken).safeTransfer(_msgSender(), auctionInfo.bidPrice);
-        // remove record
-        auctionInfo.status = OfferStatus.CLAIMED;
-        bidAuctionOfOwner[_msgSender()].remove(auctionId);
-        delete auctionIdToBidAuctionInfo[auctionId];
-    }
-
-    function getOfferOrderOfBidder(address bidder) public view returns (BidAuction[] memory) {
-        BidAuction[] memory data = new BidAuction[](bidAuctionOfOwner[bidder].length());
-        for (uint256 i = 0; i < bidAuctionOfOwner[bidder].length(); i++) {
-            data[i] = auctionIdToBidAuctionInfo[bidAuctionOfOwner[bidder].at(i)];
-        }
-        return data;
     }
 }
