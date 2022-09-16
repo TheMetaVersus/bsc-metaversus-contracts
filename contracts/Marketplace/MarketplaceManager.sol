@@ -40,7 +40,7 @@ contract MarketPlaceManager is
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     using AddressUpgradeable for address;
     CountersUpgradeable.Counter private _marketItemIds;
-    CountersUpgradeable.Counter private _orderId;
+    CountersUpgradeable.Counter private _auctionCounter;
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = type(IERC2981Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
@@ -195,9 +195,10 @@ contract MarketPlaceManager is
     );
     event SetPause(bool isPause);
     event SetPermitedNFT(address nftAddress, bool allow);
-    event MadeOfferWalletAsset(uint256 indexed orderId, WalletAsset newWalletAsset, BidAuction newBidAuction);
-    event MadeOffer(uint256 indexed orderId, uint256 marketItemId, BidAuction newBid);
-
+    event MadeOfferWalletAsset(uint256 indexed auctionId, WalletAsset newWalletAsset, BidAuction newBidAuction);
+    event MadeOffer(uint256 indexed auctionId, uint256 marketItemId, BidAuction newBid);
+    event Claimed(uint256 indexed auctionId);
+    event AcceptedOffer(uint256 indexed auctionId);
     modifier validateId(uint256 id) {
         require(id <= _marketItemIds.current() && id > 0, "ERROR: market ID is not exist !");
         _;
@@ -268,7 +269,8 @@ contract MarketPlaceManager is
         uint256 marketItemId,
         uint256 price,
         uint256 startTime,
-        uint256 endTime
+        uint256 endTime,
+        address paymentToken
     ) external nonReentrant validateId(marketItemId) notZeroAmount(price) whenNotPaused {
         MarketItem storage item = marketItemIdToMarketItem[marketItemId];
         require(item.endTime < block.timestamp, "ERROR: market item is not free !");
@@ -278,8 +280,8 @@ contract MarketPlaceManager is
         item.status = MarketItemStatus.LISTING;
         item.startTime = startTime;
         item.endTime = endTime;
-
-        // self transfer
+        item.paymentToken = paymentToken;
+        // self transfer fer get event logs
         _transferNFTCall(item.nftContractAddress, item.tokenId, item.amount, address(this), address(this));
 
         emit SoldAvailableItem(
@@ -344,7 +346,7 @@ contract MarketPlaceManager is
             (_checkNftStandard(nftContractAddress) == NftStandard.ERC1155 &&
                 IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) == amount)
         ) {
-            for (uint256 i = 1; i <= _orderId.current(); i++) {
+            for (uint256 i = 1; i <= _auctionCounter.current(); i++) {
                 // 2. find Offer[] need to update
                 if (
                     assetIdToWalletAssetInfo[i].owner == _msgSender() &&
@@ -376,7 +378,7 @@ contract MarketPlaceManager is
         marketItemOfOwner[_msgSender()].remove(marketItemId);
 
         // check and update offer
-        for (uint256 i = 1; i <= _orderId.current(); i++) {
+        for (uint256 i = 1; i <= _auctionCounter.current(); i++) {
             // 1. find Offer[] need to update
             if (
                 assetIdToWalletAssetInfo[i].owner == _msgSender() &&
@@ -472,34 +474,34 @@ contract MarketPlaceManager is
         require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
 
         // Create Order
-        _orderId.increment();
-        uint256 orderId = _orderId.current();
+        _auctionCounter.increment();
+        uint256 auctionId = _auctionCounter.current();
         WalletAsset memory newWalletAsset;
-        newWalletAsset.walletAssetId = orderId;
+        newWalletAsset.walletAssetId = auctionId;
         newWalletAsset.owner = owner;
         newWalletAsset.nftAddress = nftAddress;
         newWalletAsset.tokenId = tokenId;
         newWalletAsset.objectId = objectId;
 
-        assetIdToWalletAssetInfo[orderId] = newWalletAsset;
+        assetIdToWalletAssetInfo[auctionId] = newWalletAsset;
 
         BidAuction memory newBid;
-        newBid.auctionId = orderId;
+        newBid.auctionId = auctionId;
         newBid.bidder = _msgSender();
         newBid.paymentToken = paymentToken;
         newBid.bidPrice = bidPrice;
-        newBid.walletAssetId = orderId;
+        newBid.walletAssetId = auctionId;
         newBid.amount = amount;
         newBid.expiredBidAuction = block.timestamp + time;
         newBid.status = OfferStatus.AVAILABLE;
 
-        auctionIdToBidAuctionInfo[orderId] = newBid;
+        auctionIdToBidAuctionInfo[auctionId] = newBid;
 
-        bidAuctionOfOwner[_msgSender()].add(orderId);
+        bidAuctionOfOwner[_msgSender()].add(auctionId);
         totalBidAuction += bidPrice;
         // send offer money
         _transferCall(paymentToken, bidPrice, _msgSender(), address(this));
-        emit MadeOfferWalletAsset(orderId, newWalletAsset, newBid);
+        emit MadeOfferWalletAsset(auctionId, newWalletAsset, newBid);
     }
 
     /**
@@ -518,10 +520,10 @@ contract MarketPlaceManager is
         //     "ERROR: Item is not listed !"
         // );
         // Create Order
-        _orderId.increment();
-        uint256 orderId = _orderId.current();
+        _auctionCounter.increment();
+        uint256 auctionId = _auctionCounter.current();
         BidAuction memory newBid;
-        newBid.auctionId = orderId;
+        newBid.auctionId = auctionId;
         newBid.bidder = _msgSender();
         newBid.paymentToken = paymentToken;
         newBid.bidPrice = bidPrice;
@@ -529,13 +531,13 @@ contract MarketPlaceManager is
         // newBid.amount = amount;
         newBid.expiredBidAuction = block.timestamp + time;
         newBid.status = OfferStatus.AVAILABLE;
-        auctionIdToBidAuctionInfo[orderId] = newBid;
+        auctionIdToBidAuctionInfo[auctionId] = newBid;
 
-        bidAuctionOfOwner[_msgSender()].add(orderId);
+        bidAuctionOfOwner[_msgSender()].add(auctionId);
         totalBidAuction += bidPrice;
         // send offer money
         _transferCall(paymentToken, bidPrice, _msgSender(), address(this));
-        emit MadeOffer(orderId, marketItemId, newBid);
+        emit MadeOffer(auctionId, marketItemId, newBid);
     }
 
     /**
@@ -566,6 +568,8 @@ contract MarketPlaceManager is
         );
         // receive token payment
         _transferCall(auctionInfo.paymentToken, netSaleValue, address(this), walletAsset.owner);
+
+        emit AcceptedOffer(auctionInfo.auctionId);
     }
 
     /**
@@ -573,6 +577,7 @@ contract MarketPlaceManager is
      */
     function acceptOffer(uint256 auctionId) external payable nonReentrant {
         BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
+
         MarketItem memory marketItem = marketItemIdToMarketItem[auctionInfo.marketItemId];
         require(auctionInfo.expiredBidAuction >= block.timestamp, "ERROR: Overtime !");
         require(_msgSender() == marketItem.seller, "ERROR: Invalid seller of asset !");
@@ -595,6 +600,8 @@ contract MarketPlaceManager is
         );
         // receive token payment
         _transferCall(auctionInfo.paymentToken, netSaleValue, address(this), marketItem.seller);
+
+        emit AcceptedOffer(auctionInfo.auctionId);
     }
 
     /**
@@ -609,6 +616,7 @@ contract MarketPlaceManager is
         auctionInfo.status = OfferStatus.CLAIMED;
         // bidAuctionOfOwner[_msgSender()].remove(auctionId);
         // delete auctionIdToBidAuctionInfo[auctionId];
+        emit Claimed(auctionId);
     }
 
     /**
