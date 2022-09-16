@@ -35,6 +35,8 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
         transferOwnership(_owner);
     }
 
+    receive() external payable {}
+
     /**
      *  @notice Set pernit payment token
      */

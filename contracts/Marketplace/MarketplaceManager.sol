@@ -468,7 +468,7 @@ contract MarketPlaceManager is
         uint256 tokenId,
         uint256 amount,
         uint256 time
-    ) external nonReentrant {
+    ) external payable nonReentrant {
         require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
 
         // Create Order
@@ -511,7 +511,7 @@ contract MarketPlaceManager is
         uint256 bidPrice,
         // uint256 amount,
         uint256 time
-    ) external nonReentrant validateId(marketItemId) {
+    ) external payable nonReentrant validateId(marketItemId) {
         require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         // require(
         //     marketItemIdToMarketItem[marketItemId].status == MarketItemStatus.LISTING,
@@ -541,10 +541,10 @@ contract MarketPlaceManager is
     /**
      *  @notice accept Offer in Wallet Asset
      */
-    function acceptOfferWalletAsset(uint256 auctionId) external nonReentrant {
+    function acceptOfferWalletAsset(uint256 auctionId) external payable nonReentrant {
         BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
         WalletAsset memory walletAsset = assetIdToWalletAssetInfo[auctionInfo.walletAssetId];
-        console.log("console:", auctionInfo.expiredBidAuction);
+
         require(auctionInfo.expiredBidAuction >= block.timestamp, "ERROR: Overtime !");
         require(_msgSender() == walletAsset.owner, "ERROR: Invalid owner of asset !");
         // update data
@@ -571,7 +571,7 @@ contract MarketPlaceManager is
     /**
      *  @notice accept Offer in marketplace
      */
-    function acceptOffer(uint256 auctionId) external nonReentrant {
+    function acceptOffer(uint256 auctionId) external payable nonReentrant {
         BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
         MarketItem memory marketItem = marketItemIdToMarketItem[auctionInfo.marketItemId];
         require(auctionInfo.expiredBidAuction >= block.timestamp, "ERROR: Overtime !");
@@ -655,7 +655,7 @@ contract MarketPlaceManager is
             if (to == address(this)) {
                 require(msg.value == amount, "Failed to send into contract");
             } else {
-                (bool sent, ) = to.call{ value: amount }("");
+                (bool sent, ) = payable(to).call{ value: amount }("");
                 require(sent, "Failed to send native");
             }
         } else {
