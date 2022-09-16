@@ -170,9 +170,9 @@ describe("Marketplace Manager:", () => {
 
     describe("sellAvaiableInMarketplace function:", async () => {
         it("should revert when market Item ID invalid: ", async () => {
-            await expect(mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK, ONE_WEEK)).to.be.revertedWith(
-                "ERROR: market ID is not exist !"
-            );
+            await expect(
+                mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK, ONE_WEEK, token.address)
+            ).to.be.revertedWith("ERROR: market ID is not exist !");
         });
         it("should revert when price equal to zero: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
@@ -188,9 +188,9 @@ describe("Marketplace Manager:", () => {
             const endTime = 0;
 
             await mtvsManager.connect(user1).createNFT(typeNft, amount, uri, price, startTime, endTime, token.address);
-            await expect(mkpManager.sellAvaiableInMarketplace(1, 0, current, current + ONE_WEEK)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
+            await expect(
+                mkpManager.sellAvaiableInMarketplace(1, 0, current, current + ONE_WEEK, token.address)
+            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should revert when caller is not owner: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
@@ -211,7 +211,7 @@ describe("Marketplace Manager:", () => {
 
             await mtvsManager.connect(user1).createNFT(typeNft, amount, uri, price, startTime, endTime, token.address);
             await expect(
-                mkpManager.sellAvaiableInMarketplace(1, price + 1000, current, current + ONE_WEEK)
+                mkpManager.sellAvaiableInMarketplace(1, price + 1000, current, current + ONE_WEEK, token.address)
             ).to.be.revertedWith("ERROR: sender is not owner this NFT");
         });
         it("should sellAvaiableInMarketplace success and return marketItemId: ", async () => {
@@ -236,7 +236,13 @@ describe("Marketplace Manager:", () => {
             const current = await getCurrentTime();
             await mkpManager
                 .connect(user1)
-                .sellAvaiableInMarketplace(latest_1[0].marketItemId.toString(), 10005, current, add(current, ONE_WEEK));
+                .sellAvaiableInMarketplace(
+                    latest_1[0].marketItemId.toString(),
+                    10005,
+                    current,
+                    add(current, ONE_WEEK),
+                    token.address
+                );
             const data_ERC721 = await mkpManager.fetchMarketItemsByMarketID(latest_1[0].marketItemId.toString());
             expect(data_ERC721.price).to.equal(10005);
             // ERC1155
@@ -255,7 +261,8 @@ describe("Marketplace Manager:", () => {
                     latest_2[0].marketItemId.toString(),
                     100056,
                     current,
-                    add(current, ONE_WEEK)
+                    add(current, ONE_WEEK),
+                    token.address
                 );
             const data_ERC1155 = await mkpManager.fetchMarketItemsByMarketID(latest_2[0].marketItemId.toString());
 
