@@ -1,10 +1,8 @@
 const { constants } = require("@openzeppelin/test-helpers");
-const { default: Big } = require("big.js");
 const { expect } = require("chai");
-const { BigNumber } = require("ethers");
 const { upgrades, ethers } = require("hardhat");
 const { multiply, add, subtract } = require("js-big-decimal");
-const { getCurrentTime, skipTime, handleCreateNFT } = require("../utils");
+const { getCurrentTime, skipTime } = require("../utils");
 describe("Marketplace Manager:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000");
@@ -674,7 +672,7 @@ describe("Marketplace Manager:", () => {
             // const current = await getCurrentTime();
             // const list = await mkpManager.getOfferOrderOfBidder(user1.address);
             // console.log("list", list, current);
-            await expect(mkpManager.acceptOfferWalletAsset(1)).to.be.revertedWith("ERROR: Invalid owner of asset !");
+            await expect(mkpManager.acceptOffer(1)).to.be.revertedWith("ERROR: Invalid owner of asset !");
         });
         it("should accept offer success", async () => {
             await token.mint(user2.address, multiply(1000, ONE_ETHER));
@@ -700,7 +698,7 @@ describe("Marketplace Manager:", () => {
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
             await nftTest.connect(user2).approve(mkpManager.address, 1);
-            await mkpManager.connect(user2).acceptOfferWalletAsset(1);
+            await mkpManager.connect(user2).acceptOffer(1);
 
             const list = await mkpManager.getOfferOrderOfBidder(user1.address);
             expect(list[0].status).to.equal(1);
