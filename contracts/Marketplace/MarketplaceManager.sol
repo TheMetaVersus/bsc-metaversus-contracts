@@ -91,7 +91,7 @@ contract MarketPlaceManager is
         address paymentToken;
         uint256 bidPrice;
         uint256 marketItemId;
-        uint256 walletAssetId;
+        WalletAsset walletAsset;
         uint256 amount;
         uint256 expiredBidAuction;
         OfferStatus status;
@@ -347,13 +347,13 @@ contract MarketPlaceManager is
         ) {
             for (uint256 i = 1; i <= _auctionCounter.current(); i++) {
                 // 2. find Offer[] need to update
+                BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
                 if (
-                    assetIdToWalletAssetInfo[i].owner == _msgSender() &&
-                    assetIdToWalletAssetInfo[i].nftAddress == nftContractAddress &&
-                    assetIdToWalletAssetInfo[i].tokenId == tokenId
+                    validAuction.walletAsset.owner == _msgSender() &&
+                    validAuction.walletAsset.nftAddress == nftContractAddress &&
+                    validAuction.walletAsset.tokenId == tokenId
                 ) {
                     // 3. update Offer[]
-                    BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
                     validAuction.marketItemId = _marketItemIds.current();
                 }
             }
@@ -379,19 +379,18 @@ contract MarketPlaceManager is
         // check and update offer
         for (uint256 i = 1; i <= _auctionCounter.current(); i++) {
             // 1. find Offer[] need to update
+            BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
             if (
-                assetIdToWalletAssetInfo[i].owner == _msgSender() &&
-                assetIdToWalletAssetInfo[i].nftAddress == item.nftContractAddress &&
-                assetIdToWalletAssetInfo[i].tokenId == item.tokenId
+                validAuction.walletAsset.owner == _msgSender() &&
+                validAuction.walletAsset.nftAddress == item.nftContractAddress &&
+                validAuction.walletAsset.tokenId == item.tokenId
             ) {
                 // 2. update Offer[]
-                BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
                 validAuction.marketItemId = 0;
-                WalletAsset storage validWalletAsset = assetIdToWalletAssetInfo[validAuction.walletAssetId];
-                validWalletAsset.walletAssetId = validAuction.auctionId;
-                validWalletAsset.owner = _msgSender();
-                validWalletAsset.nftAddress = item.nftContractAddress;
-                validWalletAsset.tokenId = item.tokenId;
+                validAuction.walletAsset.walletAssetId = validAuction.auctionId;
+                validAuction.walletAsset.owner = _msgSender();
+                validAuction.walletAsset.nftAddress = item.nftContractAddress;
+                validAuction.walletAsset.tokenId = item.tokenId;
             }
         }
 
@@ -470,8 +469,6 @@ contract MarketPlaceManager is
         uint256 amount,
         uint256 time
     ) external payable nonReentrant {
-        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
-
         // Create Order
         _auctionCounter.increment();
         uint256 auctionId = _auctionCounter.current();
@@ -479,7 +476,7 @@ contract MarketPlaceManager is
         WalletAsset memory newWalletAsset = WalletAsset(auctionId, owner, nftAddress, tokenId, objectId);
         assetIdToWalletAssetInfo[auctionId] = newWalletAsset;
 
-        _internalMakeOffer(paymentToken, bidPrice, time, amount, 0);
+        _internalMakeOffer(paymentToken, bidPrice, time, amount, 0, newWalletAsset);
     }
 
     /**
@@ -489,18 +486,17 @@ contract MarketPlaceManager is
         uint256 marketItemId,
         address paymentToken,
         uint256 bidPrice,
-        // uint256 amount,
         uint256 time
     ) external payable nonReentrant validateId(marketItemId) {
-        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         // require(
         //     marketItemIdToMarketItem[marketItemId].status == MarketItemStatus.LISTING,
         //     "ERROR: Item is not listed !"
         // );
         // Create Order
         _auctionCounter.increment();
-        // uint256 auctionId = _auctionCounter.current();
-        _internalMakeOffer(paymentToken, bidPrice, time, 0, marketItemId);
+
+        WalletAsset memory newWalletAsset;
+        _internalMakeOffer(paymentToken, bidPrice, time, 0, marketItemId, newWalletAsset);
     }
 
     /**
@@ -509,11 +505,10 @@ contract MarketPlaceManager is
     function acceptOffer(uint256 auctionId) external payable nonReentrant {
         BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
         MarketItem memory marketItem = marketItemIdToMarketItem[auctionInfo.marketItemId];
-        WalletAsset memory walletAsset = assetIdToWalletAssetInfo[auctionInfo.walletAssetId];
 
         require(auctionInfo.expiredBidAuction >= block.timestamp, "ERROR: Overtime !");
         if (auctionInfo.marketItemId == 0) {
-            require(_msgSender() == walletAsset.owner, "ERROR: Invalid owner of asset !");
+            require(_msgSender() == auctionInfo.walletAsset.owner, "ERROR: Invalid owner of asset !");
         } else {
             require(_msgSender() == marketItem.seller, "ERROR: Invalid seller of asset !");
         }
@@ -523,8 +518,8 @@ contract MarketPlaceManager is
         // send nft to buyer
         if (auctionInfo.marketItemId == 0) {
             _transferNFTCall(
-                walletAsset.nftAddress,
-                walletAsset.tokenId,
+                auctionInfo.walletAsset.nftAddress,
+                auctionInfo.walletAsset.tokenId,
                 auctionInfo.amount,
                 _msgSender(),
                 auctionInfo.bidder
@@ -542,8 +537,8 @@ contract MarketPlaceManager is
         // deduce royalty
         uint256 netSaleValue = (auctionInfo.marketItemId == 0)
             ? _deduceRoyalties(
-                walletAsset.nftAddress,
-                walletAsset.tokenId,
+                auctionInfo.walletAsset.nftAddress,
+                auctionInfo.walletAsset.tokenId,
                 auctionInfo.bidPrice,
                 auctionInfo.paymentToken
             )
@@ -559,7 +554,7 @@ contract MarketPlaceManager is
             auctionInfo.paymentToken,
             netSaleValue,
             address(this),
-            auctionInfo.marketItemId == 0 ? walletAsset.owner : marketItem.seller
+            auctionInfo.marketItemId == 0 ? auctionInfo.walletAsset.owner : marketItem.seller
         );
 
         emit AcceptedOffer(auctionInfo.auctionId);
@@ -583,7 +578,7 @@ contract MarketPlaceManager is
     /**
      *  @notice Set pause action
      */
-    function setPause(bool isPause) public onlyOwnerOrAdmin {
+    function setPause(bool isPause) external onlyOwnerOrAdmin {
         if (isPause) {
             _pause();
         } else _unpause();
@@ -599,7 +594,8 @@ contract MarketPlaceManager is
         uint256 bidPrice,
         uint256 time,
         uint256 amount,
-        uint256 marketItemId
+        uint256 marketItemId,
+        WalletAsset memory walletAsset
     ) internal {
         require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         uint256 auctionId = _auctionCounter.current();
@@ -610,7 +606,7 @@ contract MarketPlaceManager is
             paymentToken,
             bidPrice,
             marketItemId,
-            marketItemId == 0 ? auctionId : 0,
+            walletAsset,
             amount,
             block.timestamp + time,
             OfferStatus.AVAILABLE
