@@ -6,7 +6,7 @@ let provider = new ethers.providers.JsonRpcProvider(
   "https://data-seed-prebsc-1-s1.binance.org:8545/"
 );
 
-let walletPK = `b7cd559ad9762a7930399023a28e8ec11a10b71e0264a23082334fe29a7d0ced`;
+let walletPK = `${process.env.DEPLOY_ACCOUNT}`;
 
 const wallet = new Wallet(walletPK, provider);
 
@@ -49,7 +49,7 @@ const main = async () => {
   const tokenOut = "0xeD24FC36d5Ee211Ea25A80239Fb8C4Cfd80f12Ee"; // BUSD
 
   const price = await getTokenPriceFromPancakeRouter(tokenIn, tokenOut);
-  console.log("Price MTVS tokekn is", ethers.utils.formatEther(price));
+  console.log("Price MTVS token is", ethers.utils.formatEther(price));
 };
 
 // Run the arbitrage and output the result or error

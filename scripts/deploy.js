@@ -85,7 +85,6 @@ async function main() {
 
   const mkpManager = await upgrades.deployProxy(MkpManager, [
     admin,
-    contract.mtvs, //mtvs.address,
     contract.treasury //treasury.address
   ]);
   await mkpManager.deployed();
@@ -158,9 +157,9 @@ async function main() {
   const all = await poolFactory.getAllPool();
   console.log(all);
 
-  // console.log(
-  //   "========================================================================================="
-  // );
+  console.log(
+    "========================================================================================="
+  );
 
   console.log("VERIFY ADDRESSES");
   console.log(
@@ -215,27 +214,6 @@ async function main() {
   console.log(
     "========================================================================================="
   );
-  // const staking30dVerify = await upgrades.erc1967.getImplementationAddress(
-  //   staking30d.address
-  // );
-  // console.log("staking30dVerify deployed in:", staking30dVerify);
-  // console.log(
-  //   "========================================================================================="
-  // );
-  // const staking60dVerify = await upgrades.erc1967.getImplementationAddress(
-  //   staking60d.address
-  // );
-  // console.log("staking60dVerify deployed in:", staking60dVerify);
-  // console.log(
-  //   "========================================================================================="
-  // );
-  // const staking90dVerify = await upgrades.erc1967.getImplementationAddress(
-  //   staking90d.address
-  // );
-  // console.log("staking90dVerify deployed in:", staking90dVerify);
-  // console.log(
-  //   "========================================================================================="
-  // );
   const poolFactoryVerify = await upgrades.erc1967.getImplementationAddress(
     poolFactory.address
   );
@@ -269,9 +247,6 @@ async function main() {
     tokenMintERC1155: tokenMintERC1155Verify,
     mtvsManager: mtvsManagerVerify,
     mkpManager: mkpManagerVerify,
-    // staking30d: staking30dVerify,
-    // staking60d: staking60dVerify,
-    // staking90d: staking90dVerify,
     staking: staking.address,
     poolFactory: poolFactoryVerify
   };
