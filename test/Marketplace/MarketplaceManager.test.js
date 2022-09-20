@@ -810,8 +810,8 @@ describe("Marketplace Manager:", () => {
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
             await mkpManager.connect(user1).refundBidAmount(1);
-            const list = await mkpManager.getOfferOrderOfBidder(user1.address);
-            expect(list[0].status).to.equal(2); // Claimed
+            const auctionInfo = await mkpManager.auctionIdToBidAuctionInfo(1);
+            expect(auctionInfo.status).to.equal(2); // Claimed
         });
     });
     describe("getOfferOrderOfBidder function", async () => {

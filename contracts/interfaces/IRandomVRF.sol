@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 interface IRandomVRF {
     // Returns a request ID for the random number. This should be kept and mapped to whatever the contract

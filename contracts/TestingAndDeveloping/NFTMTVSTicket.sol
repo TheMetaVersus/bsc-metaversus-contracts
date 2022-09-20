@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -176,9 +176,7 @@ contract NFTMTVSTicket is
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
 
         return
-            bytes(baseURI).length > 0
-                ? string(abi.encodePacked(baseURI, "/", tokenId.toString(), ".json"))
-                : ".json";
+            bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, "/", tokenId.toString(), ".json")) : ".json";
     }
 
     /**

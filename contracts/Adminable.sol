@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -19,10 +19,7 @@ contract Adminable is OwnableUpgradeable {
     event SetAdmin(address indexed user, bool allow);
 
     modifier onlyOwnerOrAdmin() {
-        require(
-            (owner() == _msgSender() || admins[_msgSender()]),
-            "Adminable: caller is not an owner or admin"
-        );
+        require((owner() == _msgSender() || admins[_msgSender()]), "Adminable: caller is not an owner or admin");
         _;
     }
 
