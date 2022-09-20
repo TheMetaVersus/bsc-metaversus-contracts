@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -510,7 +510,10 @@ contract MarketPlaceManager is
         if (auctionInfo.marketItemId == 0) {
             require(_msgSender() == auctionInfo.walletAsset.owner, "ERROR: Invalid owner of asset !");
         } else {
-            require(_msgSender() == marketItem.seller, "ERROR: Invalid seller of asset !");
+            require(
+                _msgSender() == marketItem.seller && marketItem.status == MarketItemStatus.LISTING,
+                "ERROR: Invalid seller of asset !"
+            );
         }
 
         // update data
@@ -570,7 +573,7 @@ contract MarketPlaceManager is
         _transferCall(auctionInfo.paymentToken, auctionInfo.bidPrice, address(this), _msgSender());
         // remove record
         auctionInfo.status = OfferStatus.CLAIMED;
-        // bidAuctionOfOwner[_msgSender()].remove(auctionId);
+        bidAuctionOfOwner[_msgSender()].remove(auctionId);
         // delete auctionIdToBidAuctionInfo[auctionId];
         emit Claimed(auctionId);
     }

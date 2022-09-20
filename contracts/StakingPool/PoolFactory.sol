@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -40,7 +40,6 @@ contract PoolFactory is Initializable, Adminable {
         uint256 poolDuration,
         address pancakeRouter,
         address usdToken
-
     ) external onlyOwnerOrAdmin {
         _poolCounter.increment();
         uint256 currentId = _poolCounter.current();
@@ -53,7 +52,16 @@ contract PoolFactory is Initializable, Adminable {
         poolIdToPoolInfos[currentId] = newInfo;
 
         // initialize
-        pool.initialize(owner, stakeToken, rewardToken, mkpManagerAddrress, rewardRate, poolDuration, pancakeRouter, usdToken);
+        pool.initialize(
+            owner,
+            stakeToken,
+            rewardToken,
+            mkpManagerAddrress,
+            rewardRate,
+            poolDuration,
+            pancakeRouter,
+            usdToken
+        );
 
         emit PoolDeployed(address(pool), _msgSender());
     }
