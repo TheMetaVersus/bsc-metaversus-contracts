@@ -647,7 +647,7 @@ describe("Marketplace Manager:", () => {
             await mkpManager.connect(user1).acceptOffer(1);
             const offerOrder = await mkpManager.getOfferOrderOfBidder(user2.address);
 
-            expect(offerOrder[0].status).to.equal(1);
+            expect(offerOrder.length).to.equal(0);
         });
     });
     describe("acceptOfferWalletAsset function", async () => {
@@ -671,7 +671,7 @@ describe("Marketplace Manager:", () => {
 
             // const current = await getCurrentTime();
             // const list = await mkpManager.getOfferOrderOfBidder(user1.address);
-            // console.log("list", list, current);
+
             await expect(mkpManager.acceptOffer(1)).to.be.revertedWith("ERROR: Invalid owner of asset !");
         });
         it("should accept offer success", async () => {
@@ -701,7 +701,7 @@ describe("Marketplace Manager:", () => {
             await mkpManager.connect(user2).acceptOffer(1);
 
             const list = await mkpManager.getOfferOrderOfBidder(user1.address);
-            expect(list[0].status).to.equal(1);
+            expect(list.length).to.equal(0);
         });
     });
     describe("acceptOffer function", async () => {
@@ -729,7 +729,7 @@ describe("Marketplace Manager:", () => {
 
             // const current = await getCurrentTime();
             // const list = await mkpManager.getOfferOrderOfBidder(user1.address);
-            // console.log("list", list, current);
+
             await expect(mkpManager.acceptOffer(1)).to.be.revertedWith("ERROR: Invalid seller of asset !");
         });
         it("should accept offer in marketplace success ", async () => {
@@ -757,7 +757,7 @@ describe("Marketplace Manager:", () => {
             await mkpManager.connect(user2).acceptOffer(1);
 
             const list = await mkpManager.getOfferOrderOfBidder(user1.address);
-            expect(list[0].status).to.equal(1);
+            expect(list.length).to.equal(0);
         });
     });
     describe("refundBidAmount function", async () => {
@@ -810,8 +810,9 @@ describe("Marketplace Manager:", () => {
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
             await mkpManager.connect(user1).refundBidAmount(1);
-            const auctionInfo = await mkpManager.auctionIdToBidAuctionInfo(1);
-            expect(auctionInfo.status).to.equal(2); // Claimed
+            const list = await mkpManager.getOfferOrderOfBidder(user1.address);
+            console.log("auctionInfo", list);
+            expect(list.length).to.equal(0); // Claimed
         });
     });
     describe("getOfferOrderOfBidder function", async () => {

@@ -15,7 +15,6 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "../Adminable.sol";
-import "hardhat/console.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -138,14 +137,19 @@ contract MarketPlaceManager is
     mapping(uint256 => BidAuction) public auctionIdToBidAuctionInfo;
 
     /**
-     *  @notice marketItemOfOwner is mapping owner address to Market ID
+     *  @notice _marketItemOfOwner is mapping owner address to Market ID
      */
-    mapping(address => EnumerableSetUpgradeable.UintSet) private marketItemOfOwner;
+    mapping(address => EnumerableSetUpgradeable.UintSet) private _marketItemOfOwner;
 
     /**
-     *  @notice bidAuctionOfOwner is mapping owner address to auction ID
+     *  @notice _bidAuctionOfOwner is mapping owner address to auction ID
      */
-    mapping(address => EnumerableSetUpgradeable.UintSet) private bidAuctionOfOwner;
+    mapping(address => EnumerableSetUpgradeable.UintSet) private _bidAuctionOfOwner;
+
+    /**
+     *  @notice _auctionIdFromAssetOfOwner is mapping owner's asset address to auction ID
+     */
+    mapping(address => EnumerableSetUpgradeable.UintSet) private _auctionIdFromAssetOfOwner;
 
     event MarketItemCreated(
         uint256 indexed marketItemId,
@@ -198,6 +202,8 @@ contract MarketPlaceManager is
     event MadeOffer(uint256 indexed auctionId);
     event Claimed(uint256 indexed auctionId);
     event AcceptedOffer(uint256 indexed auctionId);
+    event UpdatedOffer(uint256 indexed auctionId);
+
     modifier validateId(uint256 id) {
         require(id <= _marketItemIds.current() && id > 0, "ERROR: market ID is not exist !");
         _;
@@ -345,9 +351,11 @@ contract MarketPlaceManager is
             (_checkNftStandard(nftContractAddress) == NftStandard.ERC1155 &&
                 IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) == amount)
         ) {
-            for (uint256 i = 1; i <= _auctionCounter.current(); i++) {
-                // 2. find Offer[] need to update
-                BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
+            for (uint256 i = 0; i < _auctionIdFromAssetOfOwner[_msgSender()].length(); i++) {
+                // 1. find Offer[] need to update
+                BidAuction storage validAuction = auctionIdToBidAuctionInfo[
+                    _auctionIdFromAssetOfOwner[_msgSender()].at(i)
+                ];
                 if (
                     validAuction.walletAsset.owner == _msgSender() &&
                     validAuction.walletAsset.nftAddress == nftContractAddress &&
@@ -374,12 +382,12 @@ contract MarketPlaceManager is
         require(item.seller == _msgSender(), "ERROR: you are not the seller !");
         // update market item
         item.status = MarketItemStatus.CANCELED;
-        marketItemOfOwner[_msgSender()].remove(marketItemId);
+        _marketItemOfOwner[_msgSender()].remove(marketItemId);
 
         // check and update offer
-        for (uint256 i = 1; i <= _auctionCounter.current(); i++) {
+        for (uint256 i = 0; i < _auctionIdFromAssetOfOwner[item.seller].length(); i++) {
             // 1. find Offer[] need to update
-            BidAuction storage validAuction = auctionIdToBidAuctionInfo[i];
+            BidAuction storage validAuction = auctionIdToBidAuctionInfo[_auctionIdFromAssetOfOwner[item.seller].at(i)];
             if (
                 validAuction.walletAsset.owner == _msgSender() &&
                 validAuction.walletAsset.nftAddress == item.nftContractAddress &&
@@ -427,7 +435,7 @@ contract MarketPlaceManager is
         // update new buyer for martket item
         data.buyer = _msgSender();
         data.status = MarketItemStatus.SOLD;
-        marketItemOfOwner[_msgSender()].remove(marketItemId);
+        _marketItemOfOwner[_msgSender()].remove(marketItemId);
         // request token
         _transferCall(data.paymentToken, data.price, _msgSender(), address(this));
 
@@ -469,6 +477,22 @@ contract MarketPlaceManager is
         uint256 amount,
         uint256 time
     ) external payable nonReentrant {
+        // check is Exist Offer
+        for (uint256 i = 0; i < _auctionIdFromAssetOfOwner[_msgSender()].length(); i++) {
+            BidAuction storage aution = auctionIdToBidAuctionInfo[_auctionIdFromAssetOfOwner[_msgSender()].at(i)];
+            if (
+                aution.walletAsset.nftAddress == nftAddress &&
+                aution.walletAsset.tokenId == tokenId &&
+                aution.walletAsset.owner == owner &&
+                keccak256(abi.encodePacked((aution.walletAsset.objectId))) == keccak256(abi.encodePacked((objectId)))
+            ) {
+                aution.paymentToken = paymentToken;
+                aution.bidPrice = bidPrice;
+                aution.expiredBidAuction = block.timestamp + time;
+                emit UpdatedOffer(aution.auctionId);
+                return;
+            }
+        }
         // Create Order
         _auctionCounter.increment();
         uint256 auctionId = _auctionCounter.current();
@@ -488,10 +512,17 @@ contract MarketPlaceManager is
         uint256 bidPrice,
         uint256 time
     ) external payable nonReentrant validateId(marketItemId) {
-        // require(
-        //     marketItemIdToMarketItem[marketItemId].status == MarketItemStatus.LISTING,
-        //     "ERROR: Item is not listed !"
-        // );
+        // check is Exist Offer
+        for (uint256 i = 0; i < _auctionIdFromAssetOfOwner[_msgSender()].length(); i++) {
+            BidAuction storage aution = auctionIdToBidAuctionInfo[_auctionIdFromAssetOfOwner[_msgSender()].at(i)];
+            if (aution.marketItemId == marketItemId) {
+                aution.paymentToken = paymentToken;
+                aution.bidPrice = bidPrice;
+                aution.expiredBidAuction = block.timestamp + time;
+                emit UpdatedOffer(aution.auctionId);
+                return;
+            }
+        }
         // Create Order
         _auctionCounter.increment();
 
@@ -560,6 +591,15 @@ contract MarketPlaceManager is
             auctionInfo.marketItemId == 0 ? auctionInfo.walletAsset.owner : marketItem.seller
         );
 
+        // remove data form storage
+        _bidAuctionOfOwner[auctionInfo.bidder].remove(auctionInfo.auctionId);
+        _auctionIdFromAssetOfOwner[
+            auctionInfo.marketItemId == 0
+                ? auctionInfo.walletAsset.owner
+                : marketItemIdToMarketItem[auctionInfo.marketItemId].seller
+        ].remove(auctionInfo.auctionId);
+        delete auctionIdToBidAuctionInfo[auctionInfo.auctionId];
+
         emit AcceptedOffer(auctionInfo.auctionId);
     }
 
@@ -573,8 +613,13 @@ contract MarketPlaceManager is
         _transferCall(auctionInfo.paymentToken, auctionInfo.bidPrice, address(this), _msgSender());
         // remove record
         auctionInfo.status = OfferStatus.CLAIMED;
-        bidAuctionOfOwner[_msgSender()].remove(auctionId);
-        // delete auctionIdToBidAuctionInfo[auctionId];
+        _bidAuctionOfOwner[auctionInfo.bidder].remove(auctionInfo.auctionId);
+        _auctionIdFromAssetOfOwner[
+            auctionInfo.marketItemId == 0
+                ? auctionInfo.walletAsset.owner
+                : marketItemIdToMarketItem[auctionInfo.marketItemId].seller
+        ].remove(auctionInfo.auctionId);
+        delete auctionIdToBidAuctionInfo[auctionInfo.auctionId];
         emit Claimed(auctionId);
     }
 
@@ -616,7 +661,10 @@ contract MarketPlaceManager is
         );
         auctionIdToBidAuctionInfo[auctionId] = newBid;
 
-        bidAuctionOfOwner[_msgSender()].add(auctionId);
+        _bidAuctionOfOwner[_msgSender()].add(auctionId);
+        _auctionIdFromAssetOfOwner[
+            marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller
+        ].add(auctionId);
         totalBidAuction += bidPrice;
         // send offer money
         _transferCall(paymentToken, bidPrice, _msgSender(), address(this));
@@ -789,7 +837,7 @@ contract MarketPlaceManager is
             _permitedPaymentToken.contains(_paymentToken) ? _paymentToken : address(0)
         );
 
-        marketItemOfOwner[_seller].add(marketItemId);
+        _marketItemOfOwner[_seller].add(marketItemId);
 
         emit MarketItemCreated(
             marketItemId,
@@ -853,9 +901,9 @@ contract MarketPlaceManager is
      *  @dev    All caller can call this function.
      */
     function fetchMarketItemsByAddress(address account) external view returns (MarketItem[] memory) {
-        MarketItem[] memory data = new MarketItem[](marketItemOfOwner[account].length());
-        for (uint256 i = 0; i < marketItemOfOwner[account].length(); i++) {
-            data[i] = marketItemIdToMarketItem[marketItemOfOwner[account].at(i)];
+        MarketItem[] memory data = new MarketItem[](_marketItemOfOwner[account].length());
+        for (uint256 i = 0; i < _marketItemOfOwner[account].length(); i++) {
+            data[i] = marketItemIdToMarketItem[_marketItemOfOwner[account].at(i)];
         }
         return data;
     }
@@ -928,6 +976,45 @@ contract MarketPlaceManager is
         return (royaltiesReceiver, royaltiesAmount);
     }
 
+    // /**
+    //  *  @notice Return bool value of isOffer market item of Bidder
+    //  */
+    // function isOfferMarketItem(address bidder, uint256 marketItemId) public view returns (bool) {
+    //     for (uint256 i = 0; i < _bidAuctionOfOwner[bidder].length(); i++) {
+    //         BidAuction memory auctionInfo = auctionIdToBidAuctionInfo[_bidAuctionOfOwner[bidder].at(i)];
+    //         if (auctionInfo.marketItemId == marketItemId) {
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
+
+    // /**
+    //  *  @notice Return bool value of isOffer wallet asset of Bidder
+    //  */
+    // function isOfferWalletAsset(
+    //     address bidder,
+    //     address nftAddress,
+    //     uint256 tokenId,
+    //     address ownerAddress,
+    //     string memory objectId
+    // ) public view returns (bool) {
+    //     for (uint256 i = 0; i < _bidAuctionOfOwner[bidder].length(); i++) {
+    //         BidAuction memory auctionInfo = auctionIdToBidAuctionInfo[_bidAuctionOfOwner[bidder].at(i)];
+    //         if (
+    //             auctionInfo.walletAsset.nftAddress == nftAddress &&
+    //             auctionInfo.walletAsset.tokenId == tokenId &&
+    //             auctionInfo.walletAsset.owner == ownerAddress  &&
+    //             keccak256(abi.encodePacked((auctionInfo.walletAsset.objectId))) ==
+    //             keccak256(abi.encodePacked((objectId)))
+    //             _compareStrings(auctionInfo.walletAsset.objectId, objectId)
+    //         ) {
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
+
     /**
      *  @notice Return permit token status
      */
@@ -968,9 +1055,9 @@ contract MarketPlaceManager is
      *  @notice get data of offer order of bidder
      */
     function getOfferOrderOfBidder(address bidder) public view returns (BidAuction[] memory) {
-        BidAuction[] memory data = new BidAuction[](bidAuctionOfOwner[bidder].length());
-        for (uint256 i = 0; i < bidAuctionOfOwner[bidder].length(); i++) {
-            data[i] = auctionIdToBidAuctionInfo[bidAuctionOfOwner[bidder].at(i)];
+        BidAuction[] memory data = new BidAuction[](_bidAuctionOfOwner[bidder].length());
+        for (uint256 i = 0; i < _bidAuctionOfOwner[bidder].length(); i++) {
+            data[i] = auctionIdToBidAuctionInfo[_bidAuctionOfOwner[bidder].at(i)];
         }
         return data;
     }

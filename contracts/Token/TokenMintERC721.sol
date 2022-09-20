@@ -109,6 +109,18 @@ contract TokenMintERC721 is
     }
 
     /**
+     *  @notice Get list token ID of owner address.
+     */
+    function tokensOfOwner(address owner) public view returns (uint256[] memory) {
+        uint256 count = balanceOf(owner);
+        uint256[] memory ids = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            ids[i] = tokenOfOwnerByIndex(owner, i);
+        }
+        return ids;
+    }
+
+    /**
      *  @notice Mapping token ID to base URI in ipfs storage
      *
      *  @dev    All caller can call this function.
