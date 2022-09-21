@@ -552,9 +552,6 @@ contract MarketPlaceManager is
 
         // send nft to buyer
         if (auctionInfo.marketItemId == 0) {
-            // Update status of market item
-            marketItem.status = MarketItemStatus.SOLD;
-            marketItem.buyer = auctionInfo.bidder;
             _transferNFTCall(
                 auctionInfo.walletAsset.nftAddress,
                 auctionInfo.walletAsset.tokenId,
@@ -563,6 +560,9 @@ contract MarketPlaceManager is
                 auctionInfo.bidder
             );
         } else {
+            // Update status of market item
+            marketItem.status = MarketItemStatus.SOLD;
+            marketItem.buyer = auctionInfo.bidder;
             _transferNFTCall(
                 marketItem.nftContractAddress,
                 marketItem.tokenId,
