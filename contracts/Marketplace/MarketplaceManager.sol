@@ -334,11 +334,11 @@ contract MarketPlaceManager is
         // create market item to store data selling
         _createMarketInfo(nftContractAddress, tokenId, amount, price, _msgSender(), startTime, endTime, paymentToken);
         // check and update offer
-        // NftStandard nftType = _checkNftStandard(nftContractAddress);
+        NftStandard nftType = _checkNftStandard(nftContractAddress);
         // 1. check sell all
         if (
-            _checkNftStandard(nftContractAddress) == NftStandard.ERC721 ||
-            (_checkNftStandard(nftContractAddress) == NftStandard.ERC1155 &&
+            nftType == NftStandard.ERC721 ||
+            (nftType == NftStandard.ERC1155 &&
                 IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) == amount)
         ) {
             for (uint256 i = 0; i < _auctionIdFromAssetOfOwner[_msgSender()].length(); i++) {
@@ -389,6 +389,7 @@ contract MarketPlaceManager is
                 validAuction.walletAsset.owner = _msgSender();
                 validAuction.walletAsset.nftAddress = item.nftContractAddress;
                 validAuction.walletAsset.tokenId = item.tokenId;
+                validAuction.amount = item.amount;
             }
         }
 
@@ -484,7 +485,7 @@ contract MarketPlaceManager is
                 }
                 auction.paymentToken = paymentToken;
                 auction.bidPrice = bidPrice;
-                auction.expiredBidAuction = block.timestamp + time;
+                auction.expiredBidAuction = time;
                 emit UpdatedOffer(auction.auctionId);
                 return;
             }
@@ -520,7 +521,7 @@ contract MarketPlaceManager is
                 }
                 auction.paymentToken = paymentToken;
                 auction.bidPrice = bidPrice;
-                auction.expiredBidAuction = block.timestamp + time;
+                auction.expiredBidAuction = time;
                 emit UpdatedOffer(auction.auctionId);
                 return;
             }
@@ -537,7 +538,7 @@ contract MarketPlaceManager is
      */
     function acceptOffer(uint256 auctionId) external payable nonReentrant {
         BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
-        MarketItem memory marketItem = marketItemIdToMarketItem[auctionInfo.marketItemId];
+        MarketItem storage marketItem = marketItemIdToMarketItem[auctionInfo.marketItemId];
 
         require(auctionInfo.expiredBidAuction >= block.timestamp, "ERROR: Overtime !");
         if (auctionInfo.marketItemId == 0) {
@@ -551,6 +552,9 @@ contract MarketPlaceManager is
 
         // send nft to buyer
         if (auctionInfo.marketItemId == 0) {
+            // Update status of market item
+            marketItem.status = MarketItemStatus.SOLD;
+            marketItem.buyer = auctionInfo.bidder;
             _transferNFTCall(
                 auctionInfo.walletAsset.nftAddress,
                 auctionInfo.walletAsset.tokenId,
@@ -644,7 +648,6 @@ contract MarketPlaceManager is
         uint256 marketItemId,
         WalletAsset memory walletAsset
     ) internal {
-        // require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         uint256 auctionId = _auctionCounter.current();
 
         BidAuction memory newBid = BidAuction(
@@ -655,7 +658,7 @@ contract MarketPlaceManager is
             marketItemId,
             walletAsset,
             amount,
-            block.timestamp + time
+            time
         );
         auctionIdToBidAuctionInfo[auctionId] = newBid;
 
@@ -973,45 +976,6 @@ contract MarketPlaceManager is
         );
         return (royaltiesReceiver, royaltiesAmount);
     }
-
-    // /**
-    //  *  @notice Return bool value of isOffer market item of Bidder
-    //  */
-    // function isOfferMarketItem(address bidder, uint256 marketItemId) public view returns (bool) {
-    //     for (uint256 i = 0; i < _bidAuctionOfOwner[bidder].length(); i++) {
-    //         BidAuction memory auctionInfo = auctionIdToBidAuctionInfo[_bidAuctionOfOwner[bidder].at(i)];
-    //         if (auctionInfo.marketItemId == marketItemId) {
-    //             return true;
-    //         }
-    //     }
-    //     return false;
-    // }
-
-    // /**
-    //  *  @notice Return bool value of isOffer wallet asset of Bidder
-    //  */
-    // function isOfferWalletAsset(
-    //     address bidder,
-    //     address nftAddress,
-    //     uint256 tokenId,
-    //     address ownerAddress,
-    //     string memory objectId
-    // ) public view returns (bool) {
-    //     for (uint256 i = 0; i < _bidAuctionOfOwner[bidder].length(); i++) {
-    //         BidAuction memory auctionInfo = auctionIdToBidAuctionInfo[_bidAuctionOfOwner[bidder].at(i)];
-    //         if (
-    //             auctionInfo.walletAsset.nftAddress == nftAddress &&
-    //             auctionInfo.walletAsset.tokenId == tokenId &&
-    //             auctionInfo.walletAsset.owner == ownerAddress  &&
-    //             keccak256(abi.encodePacked((auctionInfo.walletAsset.objectId))) ==
-    //             keccak256(abi.encodePacked((objectId)))
-    //             _compareStrings(auctionInfo.walletAsset.objectId, objectId)
-    //         ) {
-    //             return true;
-    //         }
-    //     }
-    //     return false;
-    // }
 
     /**
      *  @notice Return permit token status
