@@ -56,11 +56,7 @@ contract MarketPlaceManager is
         SOLD,
         CANCELED
     }
-    enum OfferStatus {
-        AVAILABLE,
-        ACCEPTED,
-        CLAIMED
-    }
+
     struct MarketItem {
         uint256 marketItemId;
         address nftContractAddress;
@@ -93,7 +89,6 @@ contract MarketPlaceManager is
         WalletAsset walletAsset;
         uint256 amount;
         uint256 expiredBidAuction;
-        OfferStatus status;
     }
 
     /**
@@ -115,11 +110,6 @@ contract MarketPlaceManager is
      *  @notice listingFee is fee user must pay for contract when create
      */
     uint256 public listingFee;
-
-    /**
-     *  @notice totalBidAuction is total amount bid ò auction
-     */
-    uint256 public totalBidAuction;
 
     /**
      *  @notice marketItemIdToMarketItem is mapping market ID to Market Item
@@ -477,19 +467,25 @@ contract MarketPlaceManager is
         uint256 amount,
         uint256 time
     ) external payable nonReentrant {
+        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         // check is Exist Offer
-        for (uint256 i = 0; i < _auctionIdFromAssetOfOwner[_msgSender()].length(); i++) {
-            BidAuction storage aution = auctionIdToBidAuctionInfo[_auctionIdFromAssetOfOwner[_msgSender()].at(i)];
+        for (uint256 i = 0; i < _bidAuctionOfOwner[_msgSender()].length(); i++) {
+            BidAuction storage auction = auctionIdToBidAuctionInfo[_bidAuctionOfOwner[_msgSender()].at(i)];
             if (
-                aution.walletAsset.nftAddress == nftAddress &&
-                aution.walletAsset.tokenId == tokenId &&
-                aution.walletAsset.owner == owner &&
-                keccak256(abi.encodePacked((aution.walletAsset.objectId))) == keccak256(abi.encodePacked((objectId)))
+                auction.walletAsset.nftAddress == nftAddress &&
+                auction.walletAsset.tokenId == tokenId &&
+                auction.walletAsset.owner == owner &&
+                keccak256(abi.encodePacked((auction.walletAsset.objectId))) == keccak256(abi.encodePacked((objectId)))
             ) {
-                aution.paymentToken = paymentToken;
-                aution.bidPrice = bidPrice;
-                aution.expiredBidAuction = block.timestamp + time;
-                emit UpdatedOffer(aution.auctionId);
+                if (bidPrice > auction.bidPrice) {
+                    _transferCall(auction.paymentToken, bidPrice - auction.bidPrice, _msgSender(), address(this));
+                } else {
+                    _transferCall(auction.paymentToken, auction.bidPrice - bidPrice, address(this), _msgSender());
+                }
+                auction.paymentToken = paymentToken;
+                auction.bidPrice = bidPrice;
+                auction.expiredBidAuction = block.timestamp + time;
+                emit UpdatedOffer(auction.auctionId);
                 return;
             }
         }
@@ -512,14 +508,20 @@ contract MarketPlaceManager is
         uint256 bidPrice,
         uint256 time
     ) external payable nonReentrant validateId(marketItemId) {
+        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         // check is Exist Offer
-        for (uint256 i = 0; i < _auctionIdFromAssetOfOwner[_msgSender()].length(); i++) {
-            BidAuction storage aution = auctionIdToBidAuctionInfo[_auctionIdFromAssetOfOwner[_msgSender()].at(i)];
-            if (aution.marketItemId == marketItemId) {
-                aution.paymentToken = paymentToken;
-                aution.bidPrice = bidPrice;
-                aution.expiredBidAuction = block.timestamp + time;
-                emit UpdatedOffer(aution.auctionId);
+        for (uint256 i = 0; i < _bidAuctionOfOwner[_msgSender()].length(); i++) {
+            BidAuction storage auction = auctionIdToBidAuctionInfo[_bidAuctionOfOwner[_msgSender()].at(i)];
+            if (auction.marketItemId == marketItemId) {
+                if (bidPrice > auction.bidPrice) {
+                    _transferCall(auction.paymentToken, bidPrice - auction.bidPrice, _msgSender(), address(this));
+                } else {
+                    _transferCall(auction.paymentToken, auction.bidPrice - bidPrice, address(this), _msgSender());
+                }
+                auction.paymentToken = paymentToken;
+                auction.bidPrice = bidPrice;
+                auction.expiredBidAuction = block.timestamp + time;
+                emit UpdatedOffer(auction.auctionId);
                 return;
             }
         }
@@ -547,8 +549,6 @@ contract MarketPlaceManager is
             );
         }
 
-        // update data
-        auctionInfo.status = OfferStatus.ACCEPTED;
         // send nft to buyer
         if (auctionInfo.marketItemId == 0) {
             _transferNFTCall(
@@ -612,7 +612,6 @@ contract MarketPlaceManager is
         // refund all amount
         _transferCall(auctionInfo.paymentToken, auctionInfo.bidPrice, address(this), _msgSender());
         // remove record
-        auctionInfo.status = OfferStatus.CLAIMED;
         _bidAuctionOfOwner[auctionInfo.bidder].remove(auctionInfo.auctionId);
         _auctionIdFromAssetOfOwner[
             auctionInfo.marketItemId == 0
@@ -645,7 +644,7 @@ contract MarketPlaceManager is
         uint256 marketItemId,
         WalletAsset memory walletAsset
     ) internal {
-        require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
+        // require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         uint256 auctionId = _auctionCounter.current();
 
         BidAuction memory newBid = BidAuction(
@@ -656,8 +655,7 @@ contract MarketPlaceManager is
             marketItemId,
             walletAsset,
             amount,
-            block.timestamp + time,
-            OfferStatus.AVAILABLE
+            block.timestamp + time
         );
         auctionIdToBidAuctionInfo[auctionId] = newBid;
 
@@ -665,7 +663,7 @@ contract MarketPlaceManager is
         _auctionIdFromAssetOfOwner[
             marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller
         ].add(auctionId);
-        totalBidAuction += bidPrice;
+
         // send offer money
         _transferCall(paymentToken, bidPrice, _msgSender(), address(this));
         emit MadeOffer(auctionId);
