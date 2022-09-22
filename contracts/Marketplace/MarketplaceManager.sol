@@ -486,6 +486,7 @@ contract MarketPlaceManager is
                 auction.paymentToken = paymentToken;
                 auction.bidPrice = bidPrice;
                 auction.expiredBidAuction = time;
+                auction.amount = amount;
                 emit UpdatedOffer(auction.auctionId);
                 return;
             }
@@ -604,7 +605,7 @@ contract MarketPlaceManager is
         ].remove(auctionInfo.auctionId);
         delete auctionIdToBidAuctionInfo[auctionInfo.auctionId];
 
-        emit AcceptedOffer(auctionInfo.auctionId);
+        emit AcceptedOffer(auctionId);
     }
 
     /**
