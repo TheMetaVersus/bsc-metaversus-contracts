@@ -77,7 +77,6 @@ contract MarketPlaceManager is
         address owner;
         address nftAddress;
         uint256 tokenId;
-        string objectId;
     }
 
     struct BidAuction {
@@ -150,7 +149,8 @@ contract MarketPlaceManager is
         uint256 price,
         uint256 nftType,
         uint256 startTime,
-        uint256 endTime
+        uint256 endTime,
+        address paymentToken
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
@@ -163,7 +163,8 @@ contract MarketPlaceManager is
         uint256 price,
         uint256 nftType,
         uint256 startTime,
-        uint256 endTime
+        uint256 endTime,
+        address paymentToken
     );
     event CanceledSelling(
         uint256 indexed marketItemId,
@@ -174,7 +175,8 @@ contract MarketPlaceManager is
         uint256 price,
         uint256 nftType,
         uint256 startTime,
-        uint256 endTime
+        uint256 endTime,
+        address paymentToken
     );
     event Bought(
         uint256 indexed marketItemId,
@@ -185,7 +187,8 @@ contract MarketPlaceManager is
         uint256 price,
         uint256 nftType,
         uint256 startTime,
-        uint256 endTime
+        uint256 endTime,
+        address paymentToken
     );
     event SetPause(bool isPause);
     event SetPermitedNFT(address nftAddress, bool allow);
@@ -263,6 +266,7 @@ contract MarketPlaceManager is
     function sellAvaiableInMarketplace(
         uint256 marketItemId,
         uint256 price,
+        uint256 amount,
         uint256 startTime,
         uint256 endTime,
         address paymentToken
@@ -270,13 +274,33 @@ contract MarketPlaceManager is
         MarketItem storage item = marketItemIdToMarketItem[marketItemId];
         require(item.endTime < block.timestamp, "ERROR: market item is not free !");
         require(item.seller == _msgSender(), "ERROR: sender is not owner this NFT");
-
+        if (item.nftType == uint256(NftStandard.ERC1155)) {
+            if (amount > item.amount) {
+                _transferNFTCall(
+                    item.nftContractAddress,
+                    item.tokenId,
+                    amount - item.amount,
+                    _msgSender(),
+                    address(this)
+                );
+                item.amount = amount;
+            } else if (amount < item.amount) {
+                _transferNFTCall(
+                    item.nftContractAddress,
+                    item.tokenId,
+                    item.amount - amount,
+                    address(this),
+                    _msgSender()
+                );
+                item.amount = amount;
+            }
+        }
         item.price = price;
         item.status = MarketItemStatus.LISTING;
         item.startTime = startTime;
         item.endTime = endTime;
         item.paymentToken = paymentToken;
-        // self transfer fer get event logs
+        // self transfer for get event logs
         _transferNFTCall(item.nftContractAddress, item.tokenId, item.amount, address(this), address(this));
 
         emit SoldAvailableItem(
@@ -288,7 +312,8 @@ contract MarketPlaceManager is
             item.price,
             item.nftType,
             item.startTime,
-            item.endTime
+            item.endTime,
+            item.paymentToken
         );
     }
 
@@ -404,7 +429,8 @@ contract MarketPlaceManager is
             item.price,
             item.nftType,
             item.startTime,
-            item.endTime
+            item.endTime,
+            item.paymentToken
         );
     }
 
@@ -451,7 +477,8 @@ contract MarketPlaceManager is
             data.price,
             data.nftType,
             data.startTime,
-            data.endTime
+            data.endTime,
+            data.paymentToken
         );
     }
 
@@ -459,7 +486,6 @@ contract MarketPlaceManager is
      * @dev make Offer with any NFT in wallet
      */
     function makeOfferWalletAsset(
-        string memory objectId,
         address paymentToken,
         uint256 bidPrice,
         address owner,
@@ -476,11 +502,11 @@ contract MarketPlaceManager is
                 auction.walletAsset.nftAddress == nftAddress &&
                 auction.walletAsset.tokenId == tokenId &&
                 auction.walletAsset.owner == owner &&
-                keccak256(abi.encodePacked((auction.walletAsset.objectId))) == keccak256(abi.encodePacked((objectId)))
+                auction.bidder == _msgSender()
             ) {
                 if (bidPrice > auction.bidPrice) {
                     _transferCall(auction.paymentToken, bidPrice - auction.bidPrice, _msgSender(), address(this));
-                } else {
+                } else if (bidPrice < auction.bidPrice) {
                     _transferCall(auction.paymentToken, auction.bidPrice - bidPrice, address(this), _msgSender());
                 }
                 auction.paymentToken = paymentToken;
@@ -495,7 +521,7 @@ contract MarketPlaceManager is
         _auctionCounter.increment();
         uint256 auctionId = _auctionCounter.current();
 
-        WalletAsset memory newWalletAsset = WalletAsset(auctionId, owner, nftAddress, tokenId, objectId);
+        WalletAsset memory newWalletAsset = WalletAsset(auctionId, owner, nftAddress, tokenId);
         assetIdToWalletAssetInfo[auctionId] = newWalletAsset;
 
         _internalMakeOffer(paymentToken, bidPrice, time, amount, 0, newWalletAsset);
@@ -850,7 +876,8 @@ contract MarketPlaceManager is
             price,
             uint256(nftType),
             startTime,
-            endTime
+            endTime,
+            _paymentToken
         );
     }
 
