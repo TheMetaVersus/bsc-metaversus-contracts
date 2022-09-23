@@ -221,6 +221,20 @@ async function main() {
   console.log(
     "========================================================================================="
   );
+
+  // Preparation
+  await tokenMintERC721.setAdmin(mtvsManager.address, true);
+  await tokenMintERC1155.setAdmin(mtvsManager.address, true);
+  await mtvsManager.setPause(false);
+  await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
+  await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
+
+  await mkpManager.setPermitedPaymentToken(contract.mtvs, true);
+  await mkpManager.setPermitedPaymentToken(contract.usd, true);
+  await mkpManager.setAdmin(mtvsManager.address, true);
+  await mkpManager.setAdmin(mtvsManager.address, true);
+  await mkpManager.setPause(false);
+
   const contractAddresses = {
     // admin: admin,
     // treasury: treasury.address,

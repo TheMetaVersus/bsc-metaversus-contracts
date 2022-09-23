@@ -732,7 +732,7 @@ contract MarketPlaceManager is
             if (to == address(this)) {
                 require(msg.value == amount, "Failed to send into contract");
             } else {
-                (bool sent, ) = payable(to).call{ value: amount }("");
+                (bool sent, ) = to.call{ value: amount }("");
                 require(sent, "Failed to send native");
             }
         } else {

@@ -657,7 +657,7 @@ describe("Marketplace Manager:", () => {
             expect(offerOrder.length).to.greaterThan(0);
         });
 
-        it("should make offer with native success", async () => {
+        it.only("should make offer with native success", async () => {
             await token.mint(user1.address, ONE_ETHER.mul(1000));
             await token.mint(user2.address, ONE_ETHER.mul(1000));
 
@@ -670,28 +670,34 @@ describe("Marketplace Manager:", () => {
 
             const tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK), constants.ZERO_ADDRESS);
+                .sell(
+                    nftTest.address,
+                    1,
+                    1,
+                    ONE_ETHER,
+                    add(current, 100),
+                    add(current, ONE_WEEK),
+                    constants.ZERO_ADDRESS
+                );
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
+            await skipTime(1000);
+            // await token.mint(user2.address, ONE_ETHER);
+            // await token.connect(user2).approve(mkpManager.address, ONE_ETHER);
+            // await mkpManager
+            //     .connect(user2)
+            //     .makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER, add(current, ONE_WEEK), {
+            //         value: ONE_ETHER.toString(),
+            //     });
 
-            await token.mint(user2.address, ONE_ETHER);
-            await token.connect(user2).approve(mkpManager.address, ONE_ETHER);
-            // await expect(() =>
-            //  await mkpManager.connect(user1).makeOffer(marketId, token.address, ONE_ETHER, ONE_WEEK);
-            // ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
-            // await expect(() =>
-            await mkpManager
-                .connect(user2)
-                .makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER, add(current, ONE_WEEK), {
-                    value: ONE_ETHER.toString(),
-                });
-            // ).to.changeEtherBalance(user1, -1);
+            // await mkpManager.connect(user1).acceptOffer(1);
+            // const offerOrder = await mkpManager.getOfferOrderOfBidder(user2.address);
 
-            await mkpManager.connect(user1).acceptOffer(1);
-            const offerOrder = await mkpManager.getOfferOrderOfBidder(user2.address);
-
-            expect(offerOrder.length).to.equal(0);
+            // expect(offerOrder.length).to.equal(0);
+            const txx = await mkpManager.connect(user2).buy(marketId, { value: ONE_ETHER });
+            const log = await txx.wait();
+            console.log(log.gasUsed.toString());
         });
 
         it("should replace make offer before with native success", async () => {
