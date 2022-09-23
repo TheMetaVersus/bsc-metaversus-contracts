@@ -169,7 +169,7 @@ describe("Marketplace Manager:", () => {
     describe("sellAvaiableInMarketplace function:", async () => {
         it("should revert when market Item ID invalid: ", async () => {
             await expect(
-                mkpManager.sellAvaiableInMarketplace(1, 0, ONE_WEEK, ONE_WEEK, token.address)
+                mkpManager.sellAvaiableInMarketplace(1, 0, 1, ONE_WEEK, ONE_WEEK, token.address)
             ).to.be.revertedWith("ERROR: market ID is not exist !");
         });
         it("should revert when price equal to zero: ", async () => {
@@ -187,7 +187,7 @@ describe("Marketplace Manager:", () => {
 
             await mtvsManager.connect(user1).createNFT(typeNft, amount, uri, price, startTime, endTime, token.address);
             await expect(
-                mkpManager.sellAvaiableInMarketplace(1, 0, current, current + ONE_WEEK, token.address)
+                mkpManager.sellAvaiableInMarketplace(1, 0, 1, current, current + ONE_WEEK, token.address)
             ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
         it("should revert when caller is not owner: ", async () => {
@@ -209,7 +209,7 @@ describe("Marketplace Manager:", () => {
 
             await mtvsManager.connect(user1).createNFT(typeNft, amount, uri, price, startTime, endTime, token.address);
             await expect(
-                mkpManager.sellAvaiableInMarketplace(1, price + 1000, current, current + ONE_WEEK, token.address)
+                mkpManager.sellAvaiableInMarketplace(1, price + 1000, 1, current, current + ONE_WEEK, token.address)
             ).to.be.revertedWith("ERROR: sender is not owner this NFT");
         });
         it("should sellAvaiableInMarketplace success and return marketItemId: ", async () => {
@@ -237,6 +237,7 @@ describe("Marketplace Manager:", () => {
                 .sellAvaiableInMarketplace(
                     latest_1[0].marketItemId.toString(),
                     10005,
+                    amount,
                     current,
                     add(current, ONE_WEEK),
                     token.address
@@ -258,6 +259,7 @@ describe("Marketplace Manager:", () => {
                 .sellAvaiableInMarketplace(
                     latest_2[0].marketItemId.toString(),
                     100056,
+                    amount,
                     current,
                     add(current, ONE_WEEK),
                     token.address
@@ -423,36 +425,36 @@ describe("Marketplace Manager:", () => {
     });
     describe("makeOfferWalletAsset function", async () => {
         it("should revert when payment token is not allowed", async () => {
+            const current = await getCurrentTime();
             await token.mint(owner.address, ONE_ETHER);
             await token.approve(mkpManager.address, ONE_ETHER);
             await expect(
                 mkpManager.makeOfferWalletAsset(
-                    "objectid",
                     tokenMintERC721.address,
                     ONE_ETHER,
                     user1.address,
                     tokenMintERC721.address,
                     1,
                     1,
-                    ONE_WEEK
+                    add(current, ONE_WEEK)
                 )
             ).to.be.revertedWith("ERROR: payment token is not supported !");
         });
         it("should make offer in wallet success ", async () => {
+            const current = await getCurrentTime();
             await token.mint(user1.address, ONE_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
             await expect(() =>
                 mkpManager
                     .connect(user1)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user2.address,
                         tokenMintERC721.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
             const offerOrder = await mkpManager.getOfferOrderOfBidder(user1.address);
@@ -460,6 +462,7 @@ describe("Marketplace Manager:", () => {
             expect(offerOrder.length).to.greaterThan(0);
         });
         it("should MOVE offer in wallet to marketplace success ", async () => {
+            const current = await getCurrentTime();
             await token.mint(user1.address, ONE_ETHER);
 
             await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
@@ -472,19 +475,17 @@ describe("Marketplace Manager:", () => {
                 mkpManager
                     .connect(user2)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user1.address,
                         nftTest.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
 
             await nftTest.connect(user1).approve(mkpManager.address, 1);
-            const current = await getCurrentTime();
 
             const tx = await mkpManager
                 .connect(user1)
@@ -497,6 +498,7 @@ describe("Marketplace Manager:", () => {
             expect(list[0].marketItemId).to.equal(marketId);
         });
         it("should MOVE offer in marketplace to wallet success when cancel", async () => {
+            const current = await getCurrentTime();
             await token.mint(user1.address, ONE_ETHER);
 
             await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
@@ -509,19 +511,17 @@ describe("Marketplace Manager:", () => {
                 mkpManager
                     .connect(user2)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user1.address,
                         nftTest.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
 
             await nftTest.connect(user1).approve(mkpManager.address, 1);
-            const current = await getCurrentTime();
 
             const tx = await mkpManager
                 .connect(user1)
@@ -537,6 +537,7 @@ describe("Marketplace Manager:", () => {
         });
 
         it("should replace make offer before with token", async () => {
+            const current = await getCurrentTime();
             await token.mint(user1.address, ONE_ETHER);
 
             await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
@@ -549,14 +550,13 @@ describe("Marketplace Manager:", () => {
                 mkpManager
                     .connect(user2)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user1.address,
                         nftTest.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
 
@@ -564,28 +564,26 @@ describe("Marketplace Manager:", () => {
                 mkpManager
                     .connect(user2)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER.mul(2),
                         user1.address,
                         nftTest.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
             await expect(() =>
                 mkpManager
                     .connect(user2)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user1.address,
                         nftTest.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER);
 
@@ -627,7 +625,7 @@ describe("Marketplace Manager:", () => {
             await token.mint(owner.address, ONE_ETHER);
             await token.approve(mkpManager.address, ONE_ETHER);
             await expect(
-                mkpManager.makeOffer(marketId, tokenMintERC721.address, ONE_ETHER, ONE_WEEK)
+                mkpManager.makeOffer(marketId, tokenMintERC721.address, ONE_ETHER, add(current, ONE_WEEK))
             ).to.be.revertedWith("ERROR: payment token is not supported !");
         });
 
@@ -651,7 +649,7 @@ describe("Marketplace Manager:", () => {
             await token.mint(user1.address, ONE_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
             await expect(() =>
-                mkpManager.connect(user1).makeOffer(marketId, token.address, ONE_ETHER, ONE_WEEK)
+                mkpManager.connect(user1).makeOffer(marketId, token.address, ONE_ETHER, add(current, ONE_WEEK))
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
 
             const offerOrder = await mkpManager.getOfferOrderOfBidder(user1.address);
@@ -685,7 +683,9 @@ describe("Marketplace Manager:", () => {
             // await expect(() =>
             await mkpManager
                 .connect(user2)
-                .makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER, ONE_WEEK, { value: ONE_ETHER.toString() });
+                .makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER, add(current, ONE_WEEK), {
+                    value: ONE_ETHER.toString(),
+                });
             // ).to.changeEtherBalance(user1, -1);
 
             await mkpManager.connect(user1).acceptOffer(1);
@@ -720,15 +720,21 @@ describe("Marketplace Manager:", () => {
             // await expect(() =>
             await mkpManager
                 .connect(user2)
-                .makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER, ONE_WEEK, { value: ONE_ETHER.toString() });
+                .makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER, add(current, ONE_WEEK), {
+                    value: ONE_ETHER.toString(),
+                });
 
-            await mkpManager.connect(user2).makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER.mul(2), ONE_WEEK, {
-                value: ONE_ETHER.toString(),
-            });
+            await mkpManager
+                .connect(user2)
+                .makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER.mul(2), add(current, ONE_WEEK), {
+                    value: ONE_ETHER.toString(),
+                });
 
-            await mkpManager.connect(user2).makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER, ONE_WEEK, {
-                value: 0,
-            });
+            await mkpManager
+                .connect(user2)
+                .makeOffer(marketId, constants.ZERO_ADDRESS, ONE_ETHER, add(current, ONE_WEEK), {
+                    value: 0,
+                });
             // ).to.changeEtherBalance(user1, -1);
 
             // await mkpManager.connect(user1).acceptOffer(1);
@@ -739,20 +745,20 @@ describe("Marketplace Manager:", () => {
     });
     describe("acceptOfferWalletAsset function", async () => {
         it("should revert when caller is not owner asset", async () => {
+            const current = await getCurrentTime();
             await token.mint(user1.address, ONE_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
             await expect(() =>
                 mkpManager
                     .connect(user1)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user2.address,
                         tokenMintERC721.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
 
@@ -762,6 +768,7 @@ describe("Marketplace Manager:", () => {
             await expect(mkpManager.acceptOffer(1)).to.be.revertedWith("ERROR: Invalid owner of asset !");
         });
         it("should accept offer success", async () => {
+            const current = await getCurrentTime();
             await token.mint(user2.address, multiply(1000, ONE_ETHER));
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
             await token.connect(user2).approve(nftTest.address, ethers.constants.MaxUint256);
@@ -774,14 +781,13 @@ describe("Marketplace Manager:", () => {
                 mkpManager
                     .connect(user1)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user2.address,
                         nftTest.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
             await nftTest.connect(user2).approve(mkpManager.address, 1);
@@ -811,7 +817,7 @@ describe("Marketplace Manager:", () => {
             await token.mint(user1.address, ONE_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
             await expect(() =>
-                mkpManager.connect(user1).makeOffer(marketId, token.address, ONE_ETHER, ONE_WEEK)
+                mkpManager.connect(user1).makeOffer(marketId, token.address, ONE_ETHER, add(current, ONE_WEEK))
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
 
             // const current = await getCurrentTime();
@@ -838,7 +844,7 @@ describe("Marketplace Manager:", () => {
             await token.mint(user1.address, multiply(1000, ONE_ETHER));
             await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
             await expect(() =>
-                mkpManager.connect(user1).makeOffer(marketId, token.address, ONE_ETHER, ONE_WEEK)
+                mkpManager.connect(user1).makeOffer(marketId, token.address, ONE_ETHER, add(current, ONE_WEEK))
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
 
             await mkpManager.connect(user2).acceptOffer(1);
@@ -849,6 +855,7 @@ describe("Marketplace Manager:", () => {
     });
     describe("refundBidAmount function", async () => {
         it("should revert when invalid bidder", async () => {
+            const current = await getCurrentTime();
             await token.mint(user2.address, multiply(1000, ONE_ETHER));
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
             await token.connect(user2).approve(nftTest.address, ethers.constants.MaxUint256);
@@ -861,20 +868,20 @@ describe("Marketplace Manager:", () => {
                 mkpManager
                     .connect(user1)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user2.address,
                         nftTest.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
 
             await expect(mkpManager.refundBidAmount(1)).to.be.revertedWith("ERROR: Invalid bidder !");
         });
         it("should refund bid amount success", async () => {
+            const current = await getCurrentTime();
             await token.mint(user2.address, multiply(1000, ONE_ETHER));
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
             await token.connect(user2).approve(nftTest.address, ethers.constants.MaxUint256);
@@ -886,14 +893,13 @@ describe("Marketplace Manager:", () => {
                 mkpManager
                     .connect(user1)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user2.address,
                         nftTest.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
             await mkpManager.connect(user1).refundBidAmount(1);
@@ -904,6 +910,7 @@ describe("Marketplace Manager:", () => {
     });
     describe("getOfferOrderOfBidder function", async () => {
         it("should return offer list of bidder", async () => {
+            const current = await getCurrentTime();
             await token.mint(user2.address, multiply(1000, ONE_ETHER));
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
             await token.connect(user2).approve(nftTest.address, ethers.constants.MaxUint256);
@@ -915,14 +922,13 @@ describe("Marketplace Manager:", () => {
                 mkpManager
                     .connect(user1)
                     .makeOfferWalletAsset(
-                        "test1",
                         token.address,
                         ONE_ETHER,
                         user2.address,
                         nftTest.address,
                         1,
                         1,
-                        ONE_WEEK
+                        add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
             // await mkpManager.connect(user1).refundBidAmount(1);
