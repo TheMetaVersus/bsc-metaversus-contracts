@@ -1,7 +1,7 @@
 const { ethers, Wallet, Contract } = require("ethers");
-
-// const mkpManagerABI = require("../artifacts/contracts/Marketplace/MarketplaceManager.sol/MarketPlaceManager.json");
-
+const contract = require("../contracts.json");
+const mkpManagerABI = require("../artifacts/contracts/Marketplace/MarketplaceManager.sol/MarketPlaceManager.json");
+const mtvsManagerABI = require("../artifacts/contracts/Marketplace/MetaversusManager.sol/MetaversusManager.json");
 let provider = new ethers.providers.JsonRpcProvider(
   "https://data-seed-prebsc-1-s1.binance.org:8545/"
 );
@@ -10,46 +10,47 @@ let walletPK = `${process.env.DEPLOY_ACCOUNT}`;
 
 const wallet = new Wallet(walletPK, provider);
 
-// const mkpManager = new Contract(
-//   "0xf645c0fe03d5f3c11f0d88854CBC54277C2004e8",
-//   mkpManagerABI.abi,
-//   wallet
-// );
+const mkpManager = new Contract(contract.mkpManager, mkpManagerABI.abi, wallet);
 
-const abi = [
-  {
-    inputs: [
-      { internalType: "uint256", name: "amountIn", type: "uint256" },
-      { internalType: "address[]", name: "path", type: "address[]" }
-    ],
-    name: "getAmountsOut",
-    outputs: [
-      { internalType: "uint256[]", name: "amounts", type: "uint256[]" }
-    ],
-    stateMutability: "view",
-    type: "function"
-  }
-];
-
-const dexRouter = new Contract(
-  "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
-  abi,
+const mtvsManager = new Contract(
+  contract.mtvsManager,
+  mtvsManagerABI.abi,
   wallet
 );
 
-const getTokenPriceFromPancakeRouter = async (tokenA, tokenB) => {
-  return (
-    await dexRouter.getAmountsOut("1000000000000000000", [tokenA, tokenB])
-  )[1];
+const createNFT = async (
+  nftType,
+  amount,
+  uri,
+  price,
+  startTime,
+  endTime,
+  paymentToken
+) => {
+  await mtvsManager.createNFT(
+    nftType,
+    amount,
+    uri,
+    price,
+    startTime,
+    endTime,
+    paymentToken
+  );
 };
 const main = async () => {
-  // const data = await mkpManager.fetchAvailableMarketItems();
-  // console.log("all market items: ", data);
-  const tokenIn = "0x99133A25338B76BACAd646922023517B4014cAb8";
-  const tokenOut = "0xeD24FC36d5Ee211Ea25A80239Fb8C4Cfd80f12Ee"; // BUSD
-
-  const price = await getTokenPriceFromPancakeRouter(tokenIn, tokenOut);
-  console.log("Price MTVS token is", ethers.utils.formatEther(price));
+  const startTime = new Date.now() / 1000;
+  const endTime = startTime + 86400; // 1 days
+  const paymentToken = "0x0000000000000000000000000000000000000000";
+  // create NFT mint and Sale
+  await mtvsManager.createNFT(
+    1,
+    1000,
+    "uri",
+    ethers.utils.parseEther("1"),
+    startTime,
+    endTime,
+    paymentToken
+  );
 };
 
 // Run the arbitrage and output the result or error

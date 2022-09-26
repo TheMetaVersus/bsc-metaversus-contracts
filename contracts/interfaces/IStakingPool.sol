@@ -10,7 +10,8 @@ interface IStakingPool {
         uint256 rewardRate,
         uint256 poolDuration,
         address pancakeRouter,
-        address usdToken
+        address busdToken,
+        address aggregatorProxyBUSD_USD
     ) external;
 
     function transferOwnership(address newOwner) external;

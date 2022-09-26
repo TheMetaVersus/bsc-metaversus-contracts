@@ -10,9 +10,9 @@ async function main() {
   const admin = addresses[0];
 
   // Loading contract factory.
-  const USD = await ethers.getContractFactory("USD");
+  // const USD = await ethers.getContractFactory("USD");
 
-  const MTVS = await ethers.getContractFactory("MTVS");
+  // const MTVS = await ethers.getContractFactory("MTVS");
   const Treasury = await ethers.getContractFactory("Treasury");
   const TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
   const TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
@@ -30,8 +30,8 @@ async function main() {
     "========================================================================================="
   );
 
-  // const treasury = await upgrades.deployProxy(Treasury, [admin]);
-  // await treasury.deployed();
+  const treasury = await upgrades.deployProxy(Treasury, [admin]);
+  await treasury.deployed();
 
   // const mtvs = await upgrades.deployProxy(MTVS, [
   //   admin,
@@ -63,7 +63,7 @@ async function main() {
     admin,
     "NFT Metaversus",
     "nMTVS",
-    contract.treasury, //treasury.address,
+    treasury.address,
     250
   ]);
   await tokenMintERC721.deployed();
@@ -74,7 +74,7 @@ async function main() {
 
   const tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [
     admin,
-    contract.treasury, //treasury.address,
+    treasury.address,
     250
   ]);
   await tokenMintERC1155.deployed();
@@ -85,7 +85,7 @@ async function main() {
 
   const mkpManager = await upgrades.deployProxy(MkpManager, [
     admin,
-    contract.treasury //treasury.address
+    treasury.address
   ]);
   await mkpManager.deployed();
   console.log("mkpManager deployed in:", mkpManager.address);
@@ -98,7 +98,7 @@ async function main() {
     tokenMintERC721.address,
     tokenMintERC1155.address,
     contract.mtvs, //mtvs.address,
-    contract.treasury, //treasury.address,
+    treasury.address,
     mkpManager.address
   ]);
   await mtvsManager.deployed();
@@ -124,7 +124,8 @@ async function main() {
     process.env.REWARD_RATE_30_DAY,
     process.env.POOL_DURATION_30_DAY,
     process.env.PANCAKE_ROUTER,
-    contract.usd //process.env.BUSD_TOKEN,
+    process.env.BUSD_TOKEN,
+    process.env.EACA_AGGREGATOR_BUSD_USD_TESTNET
   );
 
   await tx_pool30d.wait();
@@ -137,7 +138,8 @@ async function main() {
     process.env.REWARD_RATE_60_DAY,
     process.env.POOL_DURATION_60_DAY,
     process.env.PANCAKE_ROUTER,
-    contract.usd //process.env.BUSD_TOKEN,
+    process.env.BUSD_TOKEN,
+    process.env.EACA_AGGREGATOR_BUSD_USD_TESTNET
   );
 
   await tx_pool60d.wait();
@@ -149,7 +151,8 @@ async function main() {
     process.env.REWARD_RATE_90_DAY,
     process.env.POOL_DURATION_90_DAY,
     process.env.PANCAKE_ROUTER,
-    contract.usd //process.env.BUSD_TOKEN,
+    process.env.BUSD_TOKEN,
+    process.env.EACA_AGGREGATOR_BUSD_USD_TESTNET
   );
 
   await tx_pool90d.wait();
@@ -165,10 +168,10 @@ async function main() {
   console.log(
     "========================================================================================="
   );
-  // const treasuryVerify = await upgrades.erc1967.getImplementationAddress(
-  //   treasury.address
-  // );
-  // console.log("treasuryVerify deployed in:", treasuryVerify);
+  const treasuryVerify = await upgrades.erc1967.getImplementationAddress(
+    treasury.address
+  );
+  console.log("treasuryVerify deployed in:", treasuryVerify);
   // console.log(
   //   "========================================================================================="
   // );
@@ -221,11 +224,25 @@ async function main() {
   console.log(
     "========================================================================================="
   );
+
+  // Preparation
+  await tokenMintERC721.setAdmin(mtvsManager.address, true);
+  await tokenMintERC1155.setAdmin(mtvsManager.address, true);
+  await mtvsManager.setPause(false);
+  await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
+  await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
+
+  await mkpManager.setPermitedPaymentToken(process.env.ZERO_ADDRESS, true);
+  await mkpManager.setPermitedPaymentToken(contract.mtvs, true);
+  await mkpManager.setPermitedPaymentToken(contract.usd, true);
+  await mkpManager.setAdmin(mtvsManager.address, true);
+  await mkpManager.setPause(false);
+
   const contractAddresses = {
     // admin: admin,
-    // treasury: treasury.address,
     // mtvs: mtvs.address,
     ...contract,
+    treasury: treasury.address,
     tokenMintERC721: tokenMintERC721.address,
     tokenMintERC1155: tokenMintERC1155.address,
     mtvsManager: mtvsManager.address,
@@ -241,7 +258,7 @@ async function main() {
 
   const contractAddresses_verify = {
     // admin: admin,
-    // treasury: treasuryVerify,
+    treasury: treasuryVerify,
     // mtvs: mtvsVerify,
     tokenMintERC721: tokenMintERC721Verify,
     tokenMintERC1155: tokenMintERC1155Verify,
