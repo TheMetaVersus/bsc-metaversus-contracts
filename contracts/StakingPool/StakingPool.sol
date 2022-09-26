@@ -7,7 +7,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../interfaces/IMarketplaceManager.sol";
+import "../interfaces/IPriceConsumerV3.sol";
 import "../interfaces/IPancakeRouter.sol";
 import "../Adminable.sol";
 
@@ -81,9 +83,14 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     address public mkpManager;
 
     /**
-     *  @notice usdToken is address that price of token equal to one USD
+     *  @notice busdToken is address that price of token equal to one USD
      */
-    address public usdToken;
+    address public busdToken;
+
+    /**
+     *  @notice aggregatorProxyBUSD_USD is address that price of BUSD/USD
+     */
+    address public aggregatorProxyBUSD_USD;
 
     /**
      *  @notice pancakeRouter is address of Pancake Router
@@ -125,14 +132,15 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         uint256 _rewardRate,
         uint256 _poolDuration,
         address _pancakeRouter,
-        address _usdToken
+        address _busdToken,
+        address _aggregatorProxyBUSD_USD
     )
         public
         initializer
         notZeroAddress(_owner)
         notZeroAddress(_stakeToken)
         notZeroAddress(_rewardToken)
-        notZeroAddress(_mkpManagerAddrress)
+        // notZeroAddress(_mkpManagerAddrress)
         notZeroAmount(_rewardRate)
         notZeroAmount(_poolDuration)
     {
@@ -140,11 +148,12 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         transferOwnership(_owner);
         stakeToken = IERC20Upgradeable(_stakeToken);
         rewardToken = IERC20Upgradeable(_rewardToken);
+        aggregatorProxyBUSD_USD = _aggregatorProxyBUSD_USD;
         rewardRate = _rewardRate;
         poolDuration = _poolDuration;
         mkpManager = _mkpManagerAddrress;
         pancakeRouter = _pancakeRouter;
-        usdToken = _usdToken;
+        busdToken = _busdToken;
         pendingTime = 1 days; // default
         acceptableLost = 50; // 50%
         timeStone = 86400;
@@ -187,7 +196,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      */
     function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
         require(block.timestamp > startTime, "ERROR: not time for stake !");
-        require(getPriceFormatUSD(address(stakeToken), usdToken, _amount) >= 5e20, "Must stake more than 500$");
+        require(getAmountOutWith(_amount) >= 5e20, "Must stake more than 500$");
         require(startTime + poolDuration > block.timestamp, "ERROR: staking pool for NFT had been expired !");
         require(
             IMarketplaceManager(mkpManager).wasBuyer(_msgSender()),
@@ -423,6 +432,14 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         path[1] = _tokenOut;
         uint[] memory amountOutMins = IPancakeRouter(pancakeRouter).getAmountsOut(_amountIn, path);
         return amountOutMins[path.length - 1];
+    }
+
+    /**
+     * Returns the latest price
+     */
+    function getAmountOutWith(uint amount) public view returns (uint) {
+        (, int price, , , ) = AggregatorV3Interface(aggregatorProxyBUSD_USD).latestRoundData();
+        return (getPriceFormatUSD(address(stakeToken), busdToken, amount) * 1e8) / uint(price);
     }
 
     /**

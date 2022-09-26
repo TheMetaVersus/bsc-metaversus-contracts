@@ -39,7 +39,8 @@ contract PoolFactory is Initializable, Adminable {
         uint256 rewardRate,
         uint256 poolDuration,
         address pancakeRouter,
-        address usdToken
+        address busdToken,
+        address aggregatorProxyBUSD_USD
     ) external onlyOwnerOrAdmin {
         _poolCounter.increment();
         uint256 currentId = _poolCounter.current();
@@ -60,7 +61,8 @@ contract PoolFactory is Initializable, Adminable {
             rewardRate,
             poolDuration,
             pancakeRouter,
-            usdToken
+            busdToken,
+            aggregatorProxyBUSD_USD
         );
 
         emit PoolDeployed(address(pool), _msgSender());

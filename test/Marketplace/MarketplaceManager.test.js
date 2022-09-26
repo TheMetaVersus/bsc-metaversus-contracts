@@ -497,16 +497,18 @@ describe("Marketplace Manager:", () => {
             const list = await mkpManager.getOfferOrderOfBidder(user2.address);
             expect(list[0].marketItemId).to.equal(marketId);
         });
-        it("should MOVE offer in marketplace to wallet success when cancel", async () => {
+        it.only("should MOVE offer in marketplace to wallet success when cancel", async () => {
             const current = await getCurrentTime();
-            await token.mint(user1.address, ONE_ETHER);
-
+            await token.mint(user1.address, ONE_ETHER.mul(1000));
+            await token.mint(user2.address, ONE_ETHER.mul(1000));
+            await token.mint(user3.address, ONE_ETHER.mul(1000));
             await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
 
             await token.mint(user2.address, ONE_ETHER);
-            await token.connect(user2).approve(mkpManager.address, ONE_ETHER);
+            await token.connect(user2).approve(mkpManager.address, ONE_ETHER.mul(1000));
+            await token.connect(user3).approve(mkpManager.address, ONE_ETHER.mul(1000));
             await expect(() =>
                 mkpManager
                     .connect(user2)
@@ -520,7 +522,8 @@ describe("Marketplace Manager:", () => {
                         add(current, ONE_WEEK)
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
-
+            const acidư = await mkpManager.getOfferOrderOfBidder(user2.address);
+            console.log("acid wallet :", acidư);
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
             const tx = await mkpManager
@@ -529,11 +532,19 @@ describe("Marketplace Manager:", () => {
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
+            await expect(() =>
+                mkpManager.connect(user3).makeOffer(marketId, token.address, ONE_ETHER, add(current, ONE_WEEK))
+            ).to.changeTokenBalance(token, user3, ONE_ETHER.mul(-1));
 
+            const acidb = await mkpManager.getOfferOrderOfBidder(user2.address);
+            const acidb3 = await mkpManager.getOfferOrderOfBidder(user3.address);
+            console.log("acid before :", acidb, acidb3);
             await mkpManager.connect(user1).cancelSell(marketId);
-
-            const list = await mkpManager.getOfferOrderOfBidder(user2.address);
-            expect(list[0].marketItemId).to.equal(0);
+            const acid = await mkpManager.getOfferOrderOfBidder(user2.address);
+            const acidb33 = await mkpManager.getOfferOrderOfBidder(user3.address);
+            console.log("acid:", acid, acidb33);
+            // const list = await mkpManager.marketItemIdToMarketItem(marketId);
+            // expect(list.marketItemId).to.equal(0);
         });
 
         it("should replace make offer before with token", async () => {
@@ -657,7 +668,7 @@ describe("Marketplace Manager:", () => {
             expect(offerOrder.length).to.greaterThan(0);
         });
 
-        it.only("should make offer with native success", async () => {
+        it("should make offer with native success", async () => {
             await token.mint(user1.address, ONE_ETHER.mul(1000));
             await token.mint(user2.address, ONE_ETHER.mul(1000));
 

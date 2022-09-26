@@ -194,7 +194,17 @@ contract MarketPlaceManager is
     event SetPermitedNFT(address nftAddress, bool allow);
     event MadeOffer(uint256 indexed auctionId);
     event Claimed(uint256 indexed auctionId);
-    event AcceptedOffer(uint256 indexed auctionId);
+    event AcceptedOffer(
+        uint256 indexed auctionId,
+        address bidder,
+        address paymentToken,
+        uint256 bidPrice,
+        uint256 marketItemId,
+        address owner,
+        address nftAddress,
+        uint256 tokenId,
+        uint256 amount
+    );
     event UpdatedOffer(uint256 indexed auctionId);
 
     modifier validateId(uint256 id) {
@@ -403,11 +413,7 @@ contract MarketPlaceManager is
         for (uint256 i = 0; i < _auctionIdFromAssetOfOwner[item.seller].length(); i++) {
             // 1. find Offer[] need to update
             BidAuction storage validAuction = auctionIdToBidAuctionInfo[_auctionIdFromAssetOfOwner[item.seller].at(i)];
-            if (
-                validAuction.walletAsset.owner == _msgSender() &&
-                validAuction.walletAsset.nftAddress == item.nftContractAddress &&
-                validAuction.walletAsset.tokenId == item.tokenId
-            ) {
+            if (validAuction.marketItemId == marketItemId) {
                 // 2. update Offer[]
                 validAuction.marketItemId = 0;
                 validAuction.walletAsset.walletAssetId = validAuction.auctionId;
@@ -631,7 +637,17 @@ contract MarketPlaceManager is
         ].remove(auctionInfo.auctionId);
         delete auctionIdToBidAuctionInfo[auctionInfo.auctionId];
 
-        emit AcceptedOffer(auctionId);
+        emit AcceptedOffer(
+            auctionId,
+            auctionInfo.bidder,
+            auctionInfo.paymentToken,
+            auctionInfo.bidPrice,
+            auctionInfo.marketItemId,
+            auctionInfo.walletAsset.owner,
+            auctionInfo.walletAsset.nftAddress,
+            auctionInfo.walletAsset.tokenId,
+            auctionInfo.marketItemId == 0 ? auctionInfo.amount : auctionInfo.amount
+        );
     }
 
     /**
