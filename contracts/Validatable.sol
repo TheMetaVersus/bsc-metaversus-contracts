@@ -11,6 +11,11 @@ contract Validatable is ContextUpgradeable {
      */
     IAdmin public admin;
 
+    modifier onlyOwner() {
+        require(admin.isOwner(_msgSender()), "Caller is not an owner");
+        _;
+    }
+
     modifier onlyAdmin() {
         require(admin.isAdmin(_msgSender()), "Caller is not an owner or admin");
         _;

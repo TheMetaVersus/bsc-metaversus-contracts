@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -12,8 +11,10 @@ import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
-import "../Struct.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 
+import "../interfaces/IMarketplaceManager.sol";
+import "../Struct.sol";
 import "../Validatable.sol";
 
 /**
@@ -28,7 +29,8 @@ contract MarketPlaceManager is
     Validatable,
     ReentrancyGuardUpgradeable,
     ERC721HolderUpgradeable,
-    ERC1155HolderUpgradeable
+    ERC1155HolderUpgradeable,
+    IMarketplaceManager
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
@@ -164,7 +166,6 @@ contract MarketPlaceManager is
      */
     function initialize(address _treasury, IAdmin _admin) public initializer {
         __Validatable_init(_admin);
-        __Context_init();
         __ReentrancyGuard_init();
 
         treasury = _treasury;
@@ -579,6 +580,24 @@ contract MarketPlaceManager is
             data[i] = orderIdToOrderInfo[_orderOfOwner[bidder].at(i)];
         }
         return data;
+    }
+
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC1155ReceiverUpgradeable, IERC165Upgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IMarketplaceManager).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /**

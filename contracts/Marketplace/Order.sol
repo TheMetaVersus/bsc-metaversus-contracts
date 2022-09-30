@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 
 import "../interfaces/IMarketplaceManager.sol";
-import "../interfaces/IAdmin.sol";
+import "../interfaces/IOrder.sol";
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Order Contract
@@ -16,16 +17,11 @@ import "../interfaces/IAdmin.sol";
  *  @notice This smart contract is the part of marketplace for exhange multiple non-fungiable token with standard ERC721 and ERC1155
  *          all action which user could sell, unsell, buy them.
  */
-contract OrderManager is ContextUpgradeable, ReentrancyGuardUpgradeable {
+contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IOrder {
     /**
      *  @notice marketplace store the address of the marketplaceManager contract
      */
     IMarketplaceManager public marketplace;
-
-    /**
-     *  @notice marketplace store the address of the marketplaceManager contract
-     */
-    IAdmin public admin;
 
     event SoldAvailableItem(
         uint256 indexed marketItemId,
@@ -78,40 +74,15 @@ contract OrderManager is ContextUpgradeable, ReentrancyGuardUpgradeable {
     );
     event UpdatedOffer(uint256 indexed orderId);
 
-    modifier onlyAdmin() {
-        require(admin.isAdmin(_msgSender()), "Caller is not an owner or admin");
-        _;
-    }
-
-    modifier whenNotPaused() {
-        require(!admin.isPaused(), "Pausable: paused");
-        _;
-    }
-
-    modifier validWallet(address _account) {
-        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
-        _;
-    }
-
-    modifier notZeroAddress(address _account) {
-        require(_account != address(0), "Invalid address");
-        _;
-    }
-
-    modifier notZeroAmount(uint256 _amount) {
-        require(_amount > 0, "Invalid amount");
-        _;
-    }
-
     /**
      *  @notice Initialize new logic contract.
      */
     function initialize(IMarketplaceManager _marketplace, IAdmin _admin) public initializer {
-        __Context_init();
+        __Validatable_init(_admin);
         __ReentrancyGuard_init();
+        __ERC165_init();
 
         marketplace = _marketplace;
-        admin = _admin;
     }
 
     /**
@@ -548,5 +519,23 @@ contract OrderManager is ContextUpgradeable, ReentrancyGuardUpgradeable {
             data.endTime,
             data.paymentToken
         );
+    }
+
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165Upgradeable, IERC165Upgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IOrder).interfaceId || super.supportsInterface(interfaceId);
     }
 }

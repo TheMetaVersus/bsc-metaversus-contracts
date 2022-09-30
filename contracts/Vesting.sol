@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
+import "./interfaces/IVesting.sol";
 import "./Validatable.sol";
 
 /**
@@ -13,7 +15,7 @@ import "./Validatable.sol";
  *  @notice Init info about amount of token percentage to users at initial,
  *          user must claim by themselves
  */
-contract Vesting is Validatable {
+contract Vesting is Validatable, ERC165Upgradeable, IVesting {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable public token;
@@ -44,6 +46,8 @@ contract Vesting is Validatable {
 
     function initialize(IERC20Upgradeable _token, IAdmin _admin) public initializer {
         __Validatable_init(_admin);
+        __ERC165_init();
+
         token = _token;
     }
 
@@ -94,6 +98,24 @@ contract Vesting is Validatable {
         _vests[index] = Vest(owner_, amount, stakeType, block.timestamp, initial, cliff, linear, 0);
         _nonce[owner_]++;
         return index;
+    }
+
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165Upgradeable, IERC165Upgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IVesting).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function getVestId(address user, uint256 nonce) public pure returns (bytes32) {

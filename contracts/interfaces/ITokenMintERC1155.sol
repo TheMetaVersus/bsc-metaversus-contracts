@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-interface ITokenMintERC1155 {
+import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
+
+interface ITokenMintERC1155 is IERC165Upgradeable {
     function getTokenCounter() external view returns (uint256 tokenId);
 
     function mint(

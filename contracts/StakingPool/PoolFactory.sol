@@ -3,12 +3,14 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "../interfaces/IStakingPool.sol";
+import "../interfaces/IPoolFactory.sol";
 import "../Validatable.sol";
 
-contract PoolFactory is Validatable {
+contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
 
@@ -29,6 +31,7 @@ contract PoolFactory is Validatable {
 
     function initialize(IStakingPool _template, IAdmin _admin) public initializer {
         __Validatable_init(_admin);
+        __ERC165_init();
 
         template = _template;
         admin = _admin;
@@ -65,10 +68,29 @@ contract PoolFactory is Validatable {
             poolDuration,
             pancakeRouter,
             busdToken,
-            aggregatorProxyBUSD_USD
+            aggregatorProxyBUSD_USD,
+            admin
         );
 
         // emit PoolDeployed(address(pool), _msgSender());
+    }
+
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165Upgradeable, IERC165Upgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IPoolFactory).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function getPool(uint256 id) public view returns (address) {

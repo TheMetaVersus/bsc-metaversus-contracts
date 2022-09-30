@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
+import "../interfaces/IMTVS.sol";
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Fungible token
@@ -14,7 +18,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
  *          by the only controllers and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial.
  */
-contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
+contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
     /**
      *  @notice controllers mapping from token ID to isComtroller status
      */
@@ -22,21 +26,6 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
 
     event SetController(address indexed user, bool allow);
     event Minted(address indexed receiver, uint256 amount);
-
-    modifier onlyControllers() {
-        require((owner() == _msgSender() || controllers[_msgSender()]), "Ownable: caller is not a controller");
-        _;
-    }
-
-    modifier notZeroAddress(address addr) {
-        require(addr != address(0), "ERROR: invalid address !");
-        _;
-    }
-
-    modifier notZeroAmount(uint256 amount) {
-        require(amount > 0, "ERROR: Amount equal to zero !");
-        _;
-    }
 
     /**
      *  @notice Initialize new logic contract.
@@ -46,11 +35,12 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
         string memory _name,
         string memory _symbol,
         uint256 _totalSupply,
-        address _treasury
+        address _treasury,
+        IAdmin _admin
     ) public initializer notZeroAddress(_curator) notZeroAddress(_treasury) notZeroAmount(_totalSupply) {
-        ERC20Upgradeable.__ERC20_init(_name, _symbol);
-        OwnableUpgradeable.__Ownable_init();
-        transferOwnership(_curator);
+        __Validatable_init(_admin);
+        __ERC20_init(_name, _symbol);
+
         controllers[_curator] = true;
         _mint(_treasury, _totalSupply);
     }
@@ -70,12 +60,7 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      *
      *  @dev    Only controllers can call this function.
      */
-    function mint(address receiver, uint256 amount)
-        external
-        onlyControllers
-        notZeroAddress(receiver)
-        notZeroAmount(amount)
-    {
+    function mint(address receiver, uint256 amount) external onlyAdmin notZeroAddress(receiver) notZeroAmount(amount) {
         _mint(receiver, amount);
 
         emit Minted(receiver, amount);
@@ -88,6 +73,24 @@ contract MTVS is Initializable, OwnableUpgradeable, ERC20Upgradeable {
      */
     function burn(uint256 amount) external notZeroAmount(amount) {
         _burn(_msgSender(), amount);
+    }
+
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165Upgradeable, IERC165Upgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IMTVS).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /**

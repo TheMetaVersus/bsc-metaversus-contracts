@@ -3,4 +3,4 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 
-interface IOrder is IERC165Upgradeable {}
+interface IMTVS is IERC165Upgradeable {}

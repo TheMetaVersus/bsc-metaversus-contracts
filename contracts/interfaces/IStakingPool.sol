@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-interface IStakingPool {
-    function initialize(
-        address owner,
-        address stakeToken,
-        address rewardToken,
-        address mkpManagerAddrress,
-        uint256 rewardRate,
-        uint256 poolDuration,
-        address pancakeRouter,
-        address busdToken,
-        address aggregatorProxyBUSD_USD
-    ) external;
+import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 
-    function transferOwnership(address newOwner) external;
+import "./IAdmin.sol";
+
+interface IStakingPool is IERC165Upgradeable {
+    function initialize(
+        address _owner,
+        address _stakeToken,
+        address _rewardToken,
+        address _mkpManagerAddrress,
+        uint256 _rewardRate,
+        uint256 _poolDuration,
+        address _pancakeRouter,
+        address _busdToken,
+        address _aggregatorProxyBUSD_USD,
+        IAdmin _admin
+    ) external;
 }
