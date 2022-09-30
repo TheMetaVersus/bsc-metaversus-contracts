@@ -47,18 +47,13 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
      */
     uint256 public totalBidAuctions;
 
-    /**
-     *  @notice percentage increase in price after each bid
-     */
-    uint256 public minPriceIncreaseBidPercent;
-
     struct AuctionInfo {
         address owner;
         address tokenAddress;
         address paymentToken;
         uint256 tokenId;
         uint256 startPrice;
-        uint256 reservePrice;
+        uint256 endPrice;
         uint256 startTime;
         uint256 endTime;
         uint256[] listBidId;
@@ -73,7 +68,6 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
         uint256 bidPrice;
         bool status;
         bool isOwnerAccepted;
-        bool isBiderClaimed;
     }
 
     /**
@@ -108,11 +102,6 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
     mapping(address => mapping(uint256 => bool)) public tokenOnAuction;
 
     /**
-     *  @notice auctionHighestBidId is mapping auctionId to bidId
-     */
-    mapping(uint256 => uint256) public auctionHighestBidId;
-
-    /**
      *  @notice auctionBidCount is mapping auctionId to count
      */
     mapping(uint256 => uint256) public auctionBidCount;
@@ -129,13 +118,12 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
     event AuctionCanceled(uint256 indexed _auctionId);
     event BidAuctionCanceled(uint256 indexed _bidAuctionId);
     event BidAuctionAccepted(uint256 indexed _bidAuctionId);
-    event BidAuctionClaimed(uint256 indexed _bidAuctionId);
     event AuctionReclaimed(uint256 indexed _auctionId);
     event PermitedPaymentTokenChanged(address indexed _paymentToken, bool _accepted);
     event FundsWithdrawed(address indexed _tokenAddress, uint256 _amount);
     event SystemFeeChanged(uint256 _fee);
-    event MinPriceIncreaseBidPercentChanged(uint256 _oldValue, uint256 _newValue);
     event TreasuryChanged(address _oldValue, address _newValue);
+    event BoughtAuction(address _user, uint256 _auctionId, uint256 _price);
 
     /**
      *  @notice Initialize new logic contract.
@@ -145,7 +133,6 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
         __Pausable_init();
         __ERC721Holder_init();
         systemFee = 2500; // 2.5%
-        minPriceIncreaseBidPercent = 1000; // 1%
         treasury = _treasury;
     }
 
@@ -170,16 +157,6 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
         require(_newFee <= DENOMINATOR, "Invalid systemFee");
         systemFee = _newFee;
         emit SystemFeeChanged(_newFee);
-    }
-
-    /**
-     *  @notice Set percentage increase in price after each bid
-     */
-    function setMinPriceIncreaseBidPercent(uint256 _newValue) external onlyOwner {
-        require(_newValue != minPriceIncreaseBidPercent, "MinPriceIncreaseBidPercent is already set up");
-        uint256 _oldValue = minPriceIncreaseBidPercent;
-        minPriceIncreaseBidPercent = _newValue;
-        emit MinPriceIncreaseBidPercentChanged(_oldValue, minPriceIncreaseBidPercent);
     }
 
     /**
@@ -294,11 +271,51 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
                 _paid(_paymentToken, _royaltiesReceiver, _royaltiesAmount);
             }
         }
-        
+
         uint256 _systemAmount = (_bidPrice * systemFee) / DENOMINATOR;
         uint256 _totalEarnings = _systemAmount >= _netValue ? _systemAmount : _netValue - _systemAmount;
 
         _paid(_paymentToken, auctions[bidAuction.auctionId].owner, _totalEarnings);
+    }
+
+    /**
+     *  @notice pay auction
+     */
+    function _payAuction(uint256 _auctionId, uint256 _amount) internal {
+        AuctionInfo memory auction = auctions[_auctionId];
+
+        address _paymentToken = auction.paymentToken;
+        uint256 _netValue = 0;
+
+        if (isRoyalty(auction.tokenAddress)) {
+            (address _royaltiesReceiver, uint256 _royaltiesAmount) = getRoyaltyInfo(
+                auction.tokenAddress,
+                auction.tokenId,
+                _amount
+            );
+
+            // Deduce royalties from sale value
+            _netValue = _amount - _royaltiesAmount;
+            // Transfer royalties to rightholder if not zero
+            if (_royaltiesAmount > 0 && _royaltiesReceiver != address(0)) {
+                _paid(_paymentToken, _royaltiesReceiver, _royaltiesAmount);
+            }
+        }
+
+        uint256 _systemAmount = (_amount * systemFee) / DENOMINATOR;
+        uint256 _totalEarnings = _systemAmount >= _netValue ? _systemAmount : _netValue - _systemAmount;
+
+        _paid(_paymentToken, auctions[_auctionId].owner, _totalEarnings);
+    }
+
+    /**
+     *  @notice Transfer nft bid auction
+     */
+    function _transferAuction(uint256 _auctionId, address _user) internal {
+        AuctionInfo storage auction = auctions[_auctionId];
+        tokenOnAuction[auction.tokenAddress][auction.tokenId] = false;
+
+        _transferAfterAuction(auction.tokenAddress, auction.tokenId, _user);
     }
 
     /**
@@ -341,7 +358,7 @@ contract Auction is ManagerAuction {
      *  @param  _paymentToken  payment token
      *  @param  _tokenId  tokenId in nft
      *  @param  _startPrice  start price auction
-     *  @param  _reservePrice  reserve price auction
+     *  @param  _endPrice  end price auction
      *  @param  _startTime  start time auction
      *  @param  _endTime  ebd time auction
      */
@@ -350,12 +367,12 @@ contract Auction is ManagerAuction {
         address _paymentToken,
         uint256 _tokenId,
         uint256 _startPrice,
-        uint256 _reservePrice,
+        uint256 _endPrice,
         uint256 _startTime,
         uint256 _endTime
     ) external payable whenNotPaused returns (uint256 _auctionId) {
         require(permitedPaymentToken[_paymentToken], "Payment not support");
-        require(_startPrice <= _reservePrice, "Price invalid");
+        require(_endPrice <= _startPrice, "Price invalid");
         require(_startTime <= _endTime, "Time invalid");
 
         bool isERC721 = IERC721Upgradeable(_tokenAddress).supportsInterface(_INTERFACE_ID_ERC721);
@@ -375,7 +392,7 @@ contract Auction is ManagerAuction {
         newAuction.paymentToken = _paymentToken;
         newAuction.tokenId = _tokenId;
         newAuction.startPrice = _startPrice;
-        newAuction.reservePrice = _reservePrice;
+        newAuction.endPrice = _endPrice;
         newAuction.startTime = _startTime;
         newAuction.endTime = _endTime;
 
@@ -384,6 +401,57 @@ contract Auction is ManagerAuction {
         emit AuctionCreated(_auctionId, _tokenAddress, _tokenId);
 
         return _auctionId;
+    }
+
+    /**
+     *  @notice buy auction.
+     *  @dev    this method can called by anyone
+     *  @param  _auctionId  auctionId
+     */
+    function buyAuction(uint256 _auctionId) external payable whenNotPaused {
+        AuctionInfo memory currentAuction = auctions[_auctionId];
+
+        require(
+            block.timestamp >= currentAuction.startTime && block.timestamp <= currentAuction.endTime,
+            "Not in time auction"
+        );
+
+        uint256 _amount = currentPriceAuction(_auctionId);
+
+        if (currentAuction.paymentToken == address(0)) {
+            require(msg.value >= _amount, "Invalid amount");
+        } else {
+            IERC20Upgradeable(currentAuction.paymentToken).safeTransferFrom(msg.sender, address(this), _amount);
+        }
+
+        _payAuction(_auctionId, _amount);
+        _transferAuction(_auctionId, msg.sender);
+
+        emit BoughtAuction(msg.sender, _auctionId, _amount);
+    }
+
+    function currentPriceAuction(uint256 _auctionId) public view returns (uint256) {
+        AuctionInfo memory currentAuction = auctions[_auctionId];
+        uint256 _time = currentAuction.endTime - currentAuction.startTime;
+        if (_time == 0) {
+            return currentAuction.endPrice;
+        }
+
+        if (block.timestamp < currentAuction.startPrice) {
+            return currentAuction.startPrice;
+        }
+
+        uint256 _decrement = (currentAuction.startPrice - currentAuction.endPrice) / _time;
+        uint256 _decrementAmt = (block.timestamp - currentAuction.startTime) * _decrement;
+
+        if (
+            _decrementAmt > currentAuction.startPrice ||
+            currentAuction.startPrice - _decrementAmt <= currentAuction.endPrice
+        ) {
+            return currentAuction.endPrice;
+        }
+
+        return currentAuction.startPrice - _decrementAmt;
     }
 
     /**
@@ -410,18 +478,10 @@ contract Auction is ManagerAuction {
             "Not in time auction"
         );
 
-        require(_price >= currentAuction.startPrice, "Price lower than start price");
+        require(_price >= currentAuction.endPrice, "Price lower than end price");
         require(tokenOnAuction[_tokenAddress][_tokenId], "Auction closed");
 
         require(!userJoinAuction[_auctionId][msg.sender], "User joined auction");
-
-        require(
-            auctionBidCount[_auctionId] == 0 ||
-                _price >
-                (bidAuctions[auctionHighestBidId[_auctionId]].bidPrice * (DENOMINATOR + minPriceIncreaseBidPercent)) /
-                    DENOMINATOR,
-            "Price bid less than min price"
-        );
 
         auctionBidCount[_auctionId] += 1;
 
@@ -435,7 +495,6 @@ contract Auction is ManagerAuction {
         newBidAuction.tokenAddress = _tokenAddress;
         newBidAuction.status = true;
         newBidAuction.isOwnerAccepted = false;
-        newBidAuction.isBiderClaimed = false;
         newBidAuction.paymentToken = _paymentToken;
 
         if (_paymentToken == address(0)) {
@@ -450,8 +509,6 @@ contract Auction is ManagerAuction {
         _bidAuctionId = totalBidAuctions;
 
         currentAuction.listBidId.push(_bidAuctionId);
-
-        auctionHighestBidId[_auctionId] = _bidAuctionId;
 
         totalBidAuctions++;
 
@@ -477,29 +534,32 @@ contract Auction is ManagerAuction {
         );
 
         require(objEditBidAuction.status, "Bid cancelled");
+        require(_price >= currentAuction.endPrice, "Price lower than end price");
 
-        // can only cancelAuction before auction started
-        require(
-            _price >
-                (bidAuctions[auctionHighestBidId[objEditBidAuction.auctionId]].bidPrice *
-                    (DENOMINATOR + minPriceIncreaseBidPercent)) /
-                    DENOMINATOR,
-            "Price bid less than min price"
-        );
+        bool isExcess = objEditBidAuction.bidPrice > _price;
+        uint256 amount = isExcess ? objEditBidAuction.bidPrice - _price : _price - objEditBidAuction.bidPrice;
 
-        auctionBidCount[objEditBidAuction.auctionId] += 1;
-
-        if (objEditBidAuction.paymentToken == address(0)) {
-            require(msg.value >= _price - objEditBidAuction.bidPrice, "Invalid amount");
+        if (!isExcess) {
+            adminHoldPayment[objEditBidAuction.paymentToken] += amount;
+            if (objEditBidAuction.paymentToken != address(0)) {
+                IERC20Upgradeable(objEditBidAuction.paymentToken).safeTransferFrom(
+                    objEditBidAuction.bidder,
+                    address(this),
+                    amount
+                );
+            } else {
+                require(msg.value >= amount, "Invalid amount");
+            }
         } else {
-            IERC20Upgradeable(objEditBidAuction.paymentToken).safeTransferFrom(
-                objEditBidAuction.bidder,
-                address(this),
-                _price - objEditBidAuction.bidPrice
-            );
+            adminHoldPayment[objEditBidAuction.paymentToken] -= amount;
+            if (objEditBidAuction.paymentToken != address(0)) {
+                IERC20Upgradeable(objEditBidAuction.paymentToken).safeTransfer(objEditBidAuction.bidder, amount);
+            } else {
+                payable(msg.sender).sendValue(amount);
+            }
         }
 
-        adminHoldPayment[objEditBidAuction.paymentToken] += _price - objEditBidAuction.bidPrice;
+        auctionBidCount[objEditBidAuction.auctionId] += 1;
 
         objEditBidAuction.status = false;
         uint256 oldBidAuctionId = _bidAuctionId;
@@ -510,8 +570,6 @@ contract Auction is ManagerAuction {
         _bidAuctionId = totalBidAuctions;
 
         currentAuction.listBidId.push(totalBidAuctions);
-
-        auctionHighestBidId[objEditBidAuction.auctionId] = totalBidAuctions;
 
         totalBidAuctions++;
 
@@ -552,15 +610,6 @@ contract Auction is ManagerAuction {
         require(currentBid.status, "Bid closed");
         require(msg.sender == currentBid.bidder, "Not owner bid auction");
 
-        AuctionInfo memory currentAuction = auctions[bidAuctions[_bidAuctionId].auctionId];
-
-        if (bidAuctions[_bidAuctionId].bidPrice >= currentAuction.reservePrice) {
-            require(
-                bidAuctions[auctionHighestBidId[currentBid.auctionId]].bidPrice > currentBid.bidPrice,
-                "Can not cancel highest bid"
-            );
-        }
-
         userJoinAuction[currentBid.auctionId][msg.sender] = false;
         adminHoldPayment[currentBid.paymentToken] -= currentBid.bidPrice;
 
@@ -587,15 +636,11 @@ contract Auction is ManagerAuction {
      */
     function reclaimAuction(uint256 _auctionId) external whenNotPaused {
         AuctionInfo memory currentAuction = auctions[_auctionId];
-        uint256 highestBidId = auctionHighestBidId[_auctionId];
 
         require(currentAuction.endTime < block.timestamp, "Auction not end");
         require(currentAuction.owner == msg.sender, "Auction not owner");
 
-        require(
-            auctionBidCount[_auctionId] == 0 || bidAuctions[highestBidId].bidPrice < currentAuction.reservePrice,
-            "Bid price greater than reserve price"
-        );
+        require(auctionBidCount[_auctionId] == 0, "Auction has a bid");
         require(tokenOnAuction[currentAuction.tokenAddress][currentAuction.tokenId], "Version cancelled");
 
         _returnBidAuction(_auctionId);
@@ -612,57 +657,17 @@ contract Auction is ManagerAuction {
         BidAuction storage currentBid = bidAuctions[_bidAuctionId];
         AuctionInfo memory currentAuction = auctions[currentBid.auctionId];
         require(currentAuction.endTime < block.timestamp, "Auction not end");
-        uint256 highestBidId = auctionHighestBidId[currentBid.auctionId];
-        require(_bidAuctionId == highestBidId, "Not highest bid");
         require(currentAuction.owner == msg.sender, "Auction not owner");
-
-        require(currentBid.bidPrice >= currentAuction.reservePrice, "Reserve price not met");
 
         require(!currentBid.isOwnerAccepted, "Bid accepted");
 
-        if (!currentBid.isBiderClaimed) {
-            currentBid.isBiderClaimed = true;
-            _transferBidAuction(_bidAuctionId);
-            emit BidAuctionClaimed(_bidAuctionId);
-        }
-
+        _transferBidAuction(_bidAuctionId);
         _payBidAuction(_bidAuctionId);
 
         adminHoldPayment[currentBid.paymentToken] -= currentBid.bidPrice;
         currentBid.isOwnerAccepted = true;
 
         emit BidAuctionAccepted(_bidAuctionId);
-    }
-
-    /**
-     *  @notice winner claim auction after auction end.
-     *  @dev    this method can called by winner auction
-     *  @param  _bidAuctionId  bidAuctionId
-     */
-    function claimWinnerAuction(uint256 _bidAuctionId) external whenNotPaused {
-        BidAuction storage currentBid = bidAuctions[_bidAuctionId];
-        AuctionInfo memory currentAuction = auctions[currentBid.auctionId];
-        require(currentAuction.endTime < block.timestamp, "Auction not end");
-        uint256 highestBidId = auctionHighestBidId[currentBid.auctionId];
-        require(_bidAuctionId == highestBidId, "Not highest bid");
-        require(msg.sender == bidAuctions[highestBidId].bidder, "Not winner"); // make sure the sender is the winner
-
-        require(currentBid.bidPrice >= currentAuction.reservePrice, "Reserve price not met");
-
-        require(!currentBid.isBiderClaimed, "Bid claimed");
-        if (!currentBid.isOwnerAccepted) {
-            currentBid.isOwnerAccepted = true;
-            _payBidAuction(_bidAuctionId);
-
-            adminHoldPayment[currentBid.paymentToken] -= currentBid.bidPrice;
-            emit BidAuctionAccepted(_bidAuctionId);
-        }
-
-        _transferBidAuction(_bidAuctionId);
-
-        currentBid.isBiderClaimed = true;
-
-        emit BidAuctionClaimed(_bidAuctionId);
     }
 
     /**
