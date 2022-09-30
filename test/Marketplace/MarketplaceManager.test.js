@@ -497,7 +497,7 @@ describe("Marketplace Manager:", () => {
             const list = await mkpManager.getOfferOrderOfBidder(user2.address);
             expect(list[0].marketItemId).to.equal(marketId);
         });
-        it.only("should MOVE offer in marketplace to wallet success when cancel", async () => {
+        it("should MOVE offer in marketplace to wallet success when cancel", async () => {
             const current = await getCurrentTime();
             await token.mint(user1.address, ONE_ETHER.mul(1000));
             await token.mint(user2.address, ONE_ETHER.mul(1000));
@@ -523,12 +523,12 @@ describe("Marketplace Manager:", () => {
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
             const acidư = await mkpManager.getOfferOrderOfBidder(user2.address);
-            console.log("acid wallet :", acidư);
+            // console.log("acid wallet :", acidư);
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
             const tx = await mkpManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK), token.address);
+                .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK), token.address, false);
             let listener = await tx.wait();
             let event = listener.events.find(x => x.event == "MarketItemCreated");
             const marketId = event.args[0].toString();
@@ -538,11 +538,11 @@ describe("Marketplace Manager:", () => {
 
             const acidb = await mkpManager.getOfferOrderOfBidder(user2.address);
             const acidb3 = await mkpManager.getOfferOrderOfBidder(user3.address);
-            console.log("acid before :", acidb, acidb3);
+            // console.log("acid before :", acidb, acidb3);
             await mkpManager.connect(user1).cancelSell(marketId);
             const acid = await mkpManager.getOfferOrderOfBidder(user2.address);
             const acidb33 = await mkpManager.getOfferOrderOfBidder(user3.address);
-            console.log("acid:", acid, acidb33);
+            // console.log("acid:", acid, acidb33);
             // const list = await mkpManager.marketItemIdToMarketItem(marketId);
             // expect(list.marketItemId).to.equal(0);
         });

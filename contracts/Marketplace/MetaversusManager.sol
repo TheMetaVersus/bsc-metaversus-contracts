@@ -125,7 +125,7 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
         if (typeNft == TypeNft.ERC721) {
             tokenMintERC721.mint(address(marketplace), uri);
             uint256 currentId = tokenMintERC721.getTokenCounter();
-            marketplace.callAfterMint(
+            marketplace.extCreateMarketInfo(
                 address(tokenMintERC721),
                 currentId,
                 amount,
@@ -138,7 +138,7 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
         } else if (typeNft == TypeNft.ERC1155) {
             tokenMintERC1155.mint(address(marketplace), amount, uri);
             uint256 currentId = tokenMintERC1155.getTokenCounter();
-            marketplace.callAfterMint(
+            marketplace.extCreateMarketInfo(
                 address(tokenMintERC1155),
                 currentId,
                 amount,
@@ -228,7 +228,7 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
         // uint256[] amounts = IERC1155Upgradeable(nftContractAddress).balanceOfBatch(senders, ids);
         for (uint256 i = 0; i < ids.length; i++) {
             _transferNFTCall(nftAddress, ids[i], amounts[i], _msgSender(), address(marketplace));
-            marketplace.callAfterMint(
+            marketplace.extCreateMarketInfo(
                 nftAddress,
                 ids[i],
                 amounts[i],
