@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -294,7 +294,7 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
                 _paid(_paymentToken, _royaltiesReceiver, _royaltiesAmount);
             }
         }
-        
+
         uint256 _systemAmount = (_bidPrice * systemFee) / DENOMINATOR;
         uint256 _totalEarnings = _systemAmount >= _netValue ? _systemAmount : _netValue - _systemAmount;
 
