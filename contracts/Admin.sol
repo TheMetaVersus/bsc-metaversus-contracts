@@ -9,6 +9,7 @@ import "./interfaces/ITokenMintERC721.sol";
 import "./interfaces/ITokenMintERC1155.sol";
 import "./interfaces/IMarketplaceManager.sol";
 import "./interfaces/IStakingPool.sol";
+import "./interfaces/IOrder.sol";
 
 /**
  *  @title  Dev Admin Contract
@@ -27,6 +28,7 @@ contract Admin is OwnableUpgradeable, PausableUpgradeable, IAdmin {
     ITokenMintERC1155 tokenMintERC1155;
     IMarketplaceManager marketplaceManager;
     IStakingPool stakingPool;
+    IOrder order;
 
     event SetAdmin(address indexed user, bool allow);
     event SetPause(bool indexed isPause);
@@ -54,6 +56,16 @@ contract Admin is OwnableUpgradeable, PausableUpgradeable, IAdmin {
     function setAdmin(address user, bool allow) external onlyOwner validWallet(user) {
         admins[user] = allow;
         emit SetAdmin(user, allow);
+    }
+
+    /**
+     *  @notice Set pause action
+     */
+    function setPause(bool isPause) public onlyOwner {
+        if (isPause) _pause();
+        else _unpause();
+
+        emit SetPause(isPause);
     }
 
     /**
@@ -89,13 +101,11 @@ contract Admin is OwnableUpgradeable, PausableUpgradeable, IAdmin {
     }
 
     /**
-     *  @notice Set pause action
+     *  @notice Replace the admin role by another address.
+     *  @dev    Only owner can call this function.
      */
-    function setPause(bool isPause) public onlyOwner {
-        if (isPause) _pause();
-        else _unpause();
-
-        emit SetPause(isPause);
+    function setOrder(IOrder _order) external onlyOwner {
+        order = _order;
     }
 
     /**
@@ -123,28 +133,35 @@ contract Admin is OwnableUpgradeable, PausableUpgradeable, IAdmin {
     /**
      *  @notice Check account whether it is the admin role.
      */
-    function isTokenMintERC721(address _tokenMintERC721) external view virtual returns (bool) {
+    function isTokenMintERC721(ITokenMintERC721 _tokenMintERC721) external view virtual returns (bool) {
         return _tokenMintERC721 == tokenMintERC721;
     }
 
     /**
      *  @notice Check account whether it is the admin role.
      */
-    function isTokenMintERC1155(address _tokenMintERC1155) external view virtual returns (bool) {
+    function isTokenMintERC1155(ITokenMintERC1155 _tokenMintERC1155) external view virtual returns (bool) {
         return _tokenMintERC1155 == tokenMintERC1155;
     }
 
     /**
      *  @notice Check account whether it is the admin role.
      */
-    function isMarketplaceManager(address _marketplaceManager) external view virtual returns (bool) {
+    function isMarketplaceManager(IMarketplaceManager _marketplaceManager) external view virtual returns (bool) {
         return _marketplaceManager == marketplaceManager;
     }
 
     /**
      *  @notice Check account whether it is the admin role.
      */
-    function isStakingPool(address _stakingPool) external view virtual returns (bool) {
+    function isStakingPool(IStakingPool _stakingPool) external view virtual returns (bool) {
         return _stakingPool == stakingPool;
+    }
+
+    /**
+     *  @notice Check account whether it is the admin role.
+     */
+    function isOrder(IOrder _order) external view virtual returns (bool) {
+        return _order == order;
     }
 }

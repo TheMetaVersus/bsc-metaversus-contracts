@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -11,7 +10,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../interfaces/IPriceConsumerV3.sol";
 import "../interfaces/IPancakeRouter.sol";
-import "../interfaces/IAdmin.sol";
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Staking Pool Contract
@@ -21,7 +20,7 @@ import "../interfaces/IAdmin.sol";
  *  @notice This smart contract is the staking pool for staking, earning more MTVS token with standard ERC20
  *          all action which user could stake, unstake, claim them.
  */
-contract StakingPool is ContextUpgradeable, ReentrancyGuardUpgradeable {
+contract StakingPool is Validatable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     struct Lazy {
@@ -78,11 +77,6 @@ contract StakingPool is ContextUpgradeable, ReentrancyGuardUpgradeable {
     IERC20Upgradeable public rewardToken;
 
     /**
-     *  @notice paymentToken IAdmin is interface of Admin contract
-     */
-    IAdmin public admin;
-
-    /**
      *  @notice mkpManager is address of Marketplace Manager
      */
     address public mkpManager;
@@ -125,31 +119,6 @@ contract StakingPool is ContextUpgradeable, ReentrancyGuardUpgradeable {
     event SetAcceptableLost(uint256 lost);
     event SetTimeStone(uint256 timeStone);
 
-    modifier onlyAdmin() {
-        require(admin.isAdmin(_msgSender()), "Caller is not an owner or admin");
-        _;
-    }
-
-    modifier whenNotPaused() {
-        require(!admin.isPaused(), "Pausable: paused");
-        _;
-    }
-
-    modifier validWallet(address _account) {
-        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
-        _;
-    }
-
-    modifier notZeroAddress(address _account) {
-        require(_account != address(0), "Invalid address");
-        _;
-    }
-
-    modifier notZeroAmount(uint256 _amount) {
-        require(_amount > 0, "Invalid amount");
-        _;
-    }
-
     /**
      *  @notice Initialize new logic contract.
      */
@@ -174,7 +143,7 @@ contract StakingPool is ContextUpgradeable, ReentrancyGuardUpgradeable {
         notZeroAmount(_rewardRate)
         notZeroAmount(_poolDuration)
     {
-        __Context_init();
+        __Validatable_init(_admin);
         __ReentrancyGuard_init();
 
         stakeToken = IERC20Upgradeable(_stakeToken);
@@ -188,7 +157,6 @@ contract StakingPool is ContextUpgradeable, ReentrancyGuardUpgradeable {
         pendingTime = 1 days; // default
         acceptableLost = 50; // 50%
         timeStone = 86400;
-        admin = _admin;
     }
 
     /**

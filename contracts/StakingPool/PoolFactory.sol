@@ -1,24 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "../interfaces/IStakingPool.sol";
-import "../interfaces/IAdmin.sol";
+import "../Validatable.sol";
 
-contract PoolFactory is ContextUpgradeable {
+contract PoolFactory is Validatable {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
 
     IStakingPool public template;
-
-    /**
-     *  @notice paymentToken IAdmin is interface of Admin contract
-     */
-    IAdmin public admin;
 
     CountersUpgradeable.Counter private _poolCounter;
     EnumerableSetUpgradeable.AddressSet private _pools;
@@ -33,33 +27,8 @@ contract PoolFactory is ContextUpgradeable {
 
     event PoolDeployed(address pool, address deployer);
 
-    modifier onlyAdmin() {
-        require(admin.isAdmin(_msgSender()), "Caller is not an owner or admin");
-        _;
-    }
-
-    modifier whenNotPaused() {
-        require(!admin.isPaused(), "Pausable: paused");
-        _;
-    }
-
-    modifier validWallet(address _account) {
-        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
-        _;
-    }
-
-    modifier notZeroAddress(address _account) {
-        require(_account != address(0), "Invalid address");
-        _;
-    }
-
-    modifier notZeroAmount(uint256 _amount) {
-        require(_amount > 0, "Invalid amount");
-        _;
-    }
-
     function initialize(IStakingPool _template, IAdmin _admin) public initializer {
-        __Context_init();
+        __Validatable_init(_admin);
 
         template = _template;
         admin = _admin;

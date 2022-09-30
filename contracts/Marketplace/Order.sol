@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+
 import "../interfaces/IMarketplaceManager.sol";
-import "../Adminable.sol";
+import "../interfaces/IAdmin.sol";
 
 /**
  *  @title  Dev Order Contract
@@ -16,11 +16,16 @@ import "../Adminable.sol";
  *  @notice This smart contract is the part of marketplace for exhange multiple non-fungiable token with standard ERC721 and ERC1155
  *          all action which user could sell, unsell, buy them.
  */
-contract OrderManager is ReentrancyGuardUpgradeable, OwnableUpgradeable, Adminable, PausableUpgradeable {
+contract OrderManager is ContextUpgradeable, ReentrancyGuardUpgradeable {
     /**
      *  @notice marketplace store the address of the marketplaceManager contract
      */
     IMarketplaceManager public marketplace;
+
+    /**
+     *  @notice marketplace store the address of the marketplaceManager contract
+     */
+    IAdmin public admin;
 
     event SoldAvailableItem(
         uint256 indexed marketItemId,
@@ -73,14 +78,40 @@ contract OrderManager is ReentrancyGuardUpgradeable, OwnableUpgradeable, Adminab
     );
     event UpdatedOffer(uint256 indexed orderId);
 
+    modifier onlyAdmin() {
+        require(admin.isAdmin(_msgSender()), "Caller is not an owner or admin");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!admin.isPaused(), "Pausable: paused");
+        _;
+    }
+
+    modifier validWallet(address _account) {
+        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
+        _;
+    }
+
+    modifier notZeroAddress(address _account) {
+        require(_account != address(0), "Invalid address");
+        _;
+    }
+
+    modifier notZeroAmount(uint256 _amount) {
+        require(_amount > 0, "Invalid amount");
+        _;
+    }
+
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(address _marketplace) public initializer notZeroAddress(_marketplace) {
-        Adminable.__Adminable_init();
-        PausableUpgradeable.__Pausable_init();
-        marketplace = IMarketplaceManager(_marketplace);
-        _pause();
+    function initialize(IMarketplaceManager _marketplace, IAdmin _admin) public initializer {
+        __Context_init();
+        __ReentrancyGuard_init();
+
+        marketplace = _marketplace;
+        admin = _admin;
     }
 
     /**

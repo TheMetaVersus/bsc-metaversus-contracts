@@ -1,131 +1,125 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity 0.8.9;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.9;
 
-// import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-// import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-// import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-// import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-// import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
-// import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
-// import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-// import "../Adminable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
-// /**
-//  *  @title  Dev Non-fungible token
-//  *
-//  *  @author Metaversus Team
-//  *
-//  *  @notice This smart contract create the token ERC1155 for Operation. These tokens initially are minted
-//  *          by the all user and using for purchase in marketplace operation.
-//  *          The contract here by is implemented to initial some NFT with royalties.
-//  */
+import "../Validatable.sol";
 
-// contract TokenMintERC1155 is
-//     Initializable,
-//     Adminable,
-//     ReentrancyGuardUpgradeable,
-//     ERC1155Upgradeable,
-//     ERC2981Upgradeable
-// {
-//     using SafeERC20Upgradeable for IERC20Upgradeable;
-//     using CountersUpgradeable for CountersUpgradeable.Counter;
+/**
+ *  @title  Dev Non-fungible token
+ *
+ *  @author Metaversus Team
+ *
+ *  @notice This smart contract create the token ERC1155 for Operation. These tokens initially are minted
+ *          by the all user and using for purchase in marketplace operation.
+ *          The contract here by is implemented to initial some NFT with royalties.
+ */
 
-//     /**
-//      *  @notice _tokenCounter uint256 (counter). This is the counter for store
-//      *          current token ID value in storage.
-//      */
-//     CountersUpgradeable.Counter private _tokenCounter;
+contract TokenMintERC1155 is Validatable, ReentrancyGuardUpgradeable, ERC1155Upgradeable, ERC2981Upgradeable {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using CountersUpgradeable for CountersUpgradeable.Counter;
 
-//     /**
-//      *  @notice treasury store the address of the TreasuryManager contract
-//      */
-//     address public treasury;
+    /**
+     *  @notice _tokenCounter uint256 (counter). This is the counter for store
+     *          current token ID value in storage.
+     */
+    CountersUpgradeable.Counter private _tokenCounter;
 
-//     /**
-//      *  @notice uris mapping from token ID to token uri
-//      */
-//     mapping(uint256 => string) public uris;
+    /**
+     *  @notice treasury store the address of the TreasuryManager contract
+     */
+    address public treasury;
 
-//     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-//     event Minted(uint256 indexed tokenId, address indexed to);
+    /**
+     *  @notice uris mapping from token ID to token uri
+     */
+    mapping(uint256 => string) public uris;
 
-//     /**
-//      *  @notice Initialize new logic contract.
-//      */
-//     function initialize(
-//         address _owner,
-//         address _treasury,
-//         uint96 _feeNumerator
-//     ) public initializer notZeroAddress(_owner) notZeroAddress(_treasury) notZeroAmount(_feeNumerator) {
-//         Adminable.__Adminable_init();
-//         transferOwnership(_owner);
-//         treasury = _treasury;
-//         _setDefaultRoyalty(_treasury, _feeNumerator);
-//     }
+    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
+    event Minted(uint256 indexed tokenId, address indexed to);
 
-//     /**
-//      *  @notice Set new uri for each token ID
-//      */
-//     function setURI(string memory newuri, uint256 tokenId) external onlyOwnerOrAdmin {
-//         uris[tokenId] = newuri;
-//     }
+    /**
+     *  @notice Initialize new logic contract.
+     */
+    function initialize(
+        address _treasury,
+        uint96 _feeNumerator,
+        IAdmin _admin
+    ) public initializer {
+        __Validatable_init(_admin);
 
-//     /**
-//      *  @notice set treasury to change TreasuryManager address.
-//      *
-//      *  @dev    Only owner or admin can call this function.
-//      */
-//     function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
-//         address oldTreasury = treasury;
-//         treasury = account;
-//         emit SetTreasury(oldTreasury, treasury);
-//     }
+        treasury = _treasury;
+        _setDefaultRoyalty(_treasury, _feeNumerator);
+    }
 
-//     /**
-//      *  @notice Mint NFT not pay token
-//      *
-//      *  @dev    Only owner or admin can call this function.
-//      */
-//     function mint(
-//         address receiver,
-//         uint256 amount,
-//         string memory newuri
-//     ) external onlyOwnerOrAdmin notZeroAddress(receiver) notZeroAmount(amount) {
-//         _tokenCounter.increment();
-//         uint256 tokenId = _tokenCounter.current();
+    /**
+     *  @notice Set new uri for each token ID
+     */
+    function setURI(string memory newuri, uint256 tokenId) external onlyAdmin {
+        uris[tokenId] = newuri;
+    }
 
-//         uris[tokenId] = newuri;
+    /**
+     *  @notice set treasury to change TreasuryManager address.
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
+        address oldTreasury = treasury;
+        treasury = account;
+        emit SetTreasury(oldTreasury, treasury);
+    }
 
-//         _mint(receiver, tokenId, amount, "");
+    /**
+     *  @notice Mint NFT not pay token
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function mint(
+        address receiver,
+        uint256 amount,
+        string memory newuri
+    ) external onlyAdmin notZeroAddress(receiver) notZeroAmount(amount) {
+        _tokenCounter.increment();
+        uint256 tokenId = _tokenCounter.current();
 
-//         emit Minted(tokenId, receiver);
-//     }
+        uris[tokenId] = newuri;
 
-//     /**
-//      *  @notice Get token counter
-//      *
-//      *  @dev    All caller can call this function.
-//      */
-//     function getTokenCounter() external view returns (uint256) {
-//         return _tokenCounter.current();
-//     }
+        _mint(receiver, tokenId, amount, "");
 
-//     /**
-//      * @dev See {IERC165-supportsInterface} override for ERC2981Upgradeable, ERC1155Upgradeable
-//      */
-//     function supportsInterface(bytes4 interfaceId)
-//         public
-//         view
-//         override(ERC1155Upgradeable, ERC2981Upgradeable)
-//         returns (bool)
-//     {
-//         return super.supportsInterface(interfaceId);
-//     }
+        emit Minted(tokenId, receiver);
+    }
 
-//     /**
-//      *  @notice Return token URI.
-//      */
-//     function uri(uint256 tokenId) public view override returns (string memory) {
-//         return uris[tokenId];
-//     }
-// }
+    /**
+     *  @notice Get token counter
+     *
+     *  @dev    All caller can call this function.
+     */
+    function getTokenCounter() external view returns (uint256) {
+        return _tokenCounter.current();
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface} override for ERC2981Upgradeable, ERC1155Upgradeable
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC1155Upgradeable, ERC2981Upgradeable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+
+    /**
+     *  @notice Return token URI.
+     */
+    function uri(uint256 tokenId) public view override returns (string memory) {
+        return uris[tokenId];
+    }
+}
