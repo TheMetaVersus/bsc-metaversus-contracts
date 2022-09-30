@@ -2,13 +2,14 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "../Adminable.sol";
+
+import "../interfaces/IAdmin.sol";
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -19,13 +20,7 @@ import "../Adminable.sol";
  *          by the all user and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
-contract TokenMintERC721 is
-    Initializable,
-    ReentrancyGuardUpgradeable,
-    Adminable,
-    ERC721EnumerableUpgradeable,
-    ERC2981Upgradeable
-{
+contract TokenMintERC721 is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpgradeable, ERC2981Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -56,13 +51,16 @@ contract TokenMintERC721 is
         string memory _name,
         string memory _symbol,
         address _treasury,
-        uint96 _feeNumerator
-    ) public initializer notZeroAddress(_owner) notZeroAddress(_treasury) notZeroAmount(_feeNumerator) {
-        ERC721Upgradeable.__ERC721_init(_name, _symbol);
-        Adminable.__Adminable_init();
-        transferOwnership(_owner);
+        uint96 _feeNumerator,
+        IAdmin _admin
+    ) public initializer notZeroAddress(_owner) {
+        __Validatable_init(_admin);
+        __ReentrancyGuard_init();
+        __ERC721_init(_name, _symbol);
+
         treasury = _treasury;
         _setDefaultRoyalty(_treasury, _feeNumerator);
+        admin = _admin;
     }
 
     /**
@@ -70,7 +68,7 @@ contract TokenMintERC721 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
+    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
@@ -81,7 +79,7 @@ contract TokenMintERC721 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver, string memory uri) external onlyOwnerOrAdmin notZeroAddress(receiver) {
+    function mint(address receiver, string memory uri) external onlyAdmin notZeroAddress(receiver) {
         _tokenCounter.increment();
         uint256 tokenId = _tokenCounter.current();
 
@@ -95,7 +93,7 @@ contract TokenMintERC721 is
     /**
      *  @notice Set new uri for each token ID
      */
-    function setTokenURI(string memory newURI, uint256 tokenId) external onlyOwnerOrAdmin {
+    function setTokenURI(string memory newURI, uint256 tokenId) external onlyAdmin {
         uris[tokenId] = newURI;
     }
 

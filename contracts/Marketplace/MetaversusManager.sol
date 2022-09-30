@@ -2,17 +2,18 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
+
 import "../interfaces/ITokenMintERC721.sol";
 import "../interfaces/ITokenMintERC1155.sol";
 import "../interfaces/INFTMTVSTicket.sol";
 import "../interfaces/IMarketplaceManager.sol";
-import "../Adminable.sol";
+import "../interfaces/IAdmin.sol";
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Metaversus Contract
@@ -22,7 +23,7 @@ import "../Adminable.sol";
  *  @notice This smart contract create the token metaversus manager for Operation. These contract using to control
  *          all action which user call and interact for purchasing in marketplace operation.
  */
-contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminable, PausableUpgradeable {
+contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
@@ -60,7 +61,7 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
     event BoughtTicket(address indexed to);
     event BoughtTicketEvent(address indexed to, string indexed eventid);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event SetMarketplace(address indexed oldTreasury, address indexed newTreasury);
+    event SetMarketplace(IMarketplaceManager indexed oldTreasury, IMarketplaceManager indexed newTreasury);
     event Created(uint256 indexed typeMint, address indexed to, uint256 indexed amount);
     event SetPause(bool isPause);
 
@@ -69,21 +70,31 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
      */
     function initialize(
         address _owner,
-        address nft721Addr,
-        address nft1155Addr,
-        address _paymentToken,
+        ITokenMintERC721 nft721Addr,
+        ITokenMintERC1155 nft1155Addr,
+        IERC20Upgradeable _paymentToken,
         address _treasury,
-        address _marketplaceAddr
-    ) public initializer notZeroAddress(_owner) notZeroAddress(_treasury) {
-        Adminable.__Adminable_init();
-        PausableUpgradeable.__Pausable_init();
-        transferOwnership(_owner);
+        IMarketplaceManager _marketplaceAddr,
+        IAdmin _admin
+    )
+        public
+        initializer
+        validWallet(_owner)
+        notZeroAddress(address(nft721Addr))
+        notZeroAddress(address(nft1155Addr))
+        notZeroAddress(address(_paymentToken))
+        notZeroAddress(address(_treasury))
+        notZeroAddress(address(_marketplaceAddr))
+    {
+        __Validatable_init(_admin);
+        __Context_init();
+        __ReentrancyGuard_init();
+
         treasury = _treasury;
-        marketplace = IMarketplaceManager(_marketplaceAddr);
-        paymentToken = IERC20Upgradeable(_paymentToken);
-        tokenMintERC721 = ITokenMintERC721(nft721Addr);
-        tokenMintERC1155 = ITokenMintERC1155(nft1155Addr);
-        _pause();
+        marketplace = _marketplaceAddr;
+        paymentToken = _paymentToken;
+        tokenMintERC721 = nft721Addr;
+        tokenMintERC1155 = nft1155Addr;
     }
 
     /**
@@ -91,9 +102,9 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
+    function setTreasury(address _account) external onlyAdmin validWallet(_account) {
         address oldTreasury = treasury;
-        treasury = account;
+        treasury = _account;
         emit SetTreasury(oldTreasury, treasury);
     }
 
@@ -102,10 +113,14 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setMarketplace(address newMarketplace) external onlyOwnerOrAdmin notZeroAddress(newMarketplace) {
-        address oldMarketplace = address(marketplace);
-        marketplace = IMarketplaceManager(newMarketplace);
-        emit SetMarketplace(oldMarketplace, address(marketplace));
+    function setMarketplace(IMarketplaceManager _newMarketplace)
+        external
+        onlyAdmin
+        notZeroAddress(address(_newMarketplace))
+    {
+        IMarketplaceManager oldMarketplace = marketplace;
+        marketplace = _newMarketplace;
+        emit SetMarketplace(oldMarketplace, marketplace);
     }
 
     /**
@@ -170,17 +185,6 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
         paymentToken.safeTransferFrom(_msgSender(), treasury, amount);
 
         emit BoughtTicketEvent(_msgSender(), eventId);
-    }
-
-    /**
-     *  @notice Set pause action
-     */
-    function setPause(bool isPause) public onlyOwnerOrAdmin {
-        if (isPause) {
-            _pause();
-        } else _unpause();
-
-        emit SetPause(isPause);
     }
 
     /**

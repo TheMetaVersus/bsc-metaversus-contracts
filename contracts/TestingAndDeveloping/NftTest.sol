@@ -2,13 +2,13 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "../Adminable.sol";
+
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -19,13 +19,7 @@ import "../Adminable.sol";
  *          by the all user and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
-contract NftTest is
-    Initializable,
-    ReentrancyGuardUpgradeable,
-    Adminable,
-    ERC721EnumerableUpgradeable,
-    ERC2981Upgradeable
-{
+contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpgradeable, ERC2981Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -63,18 +57,18 @@ contract NftTest is
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _owner,
         string memory _name,
         string memory _symbol,
         address _paymentToken,
         address _treasury,
         uint96 _feeNumerator,
-        uint256 _price
+        uint256 _price,
+        IAdmin _admin
     ) public initializer {
-        ERC721Upgradeable.__ERC721_init(_name, _symbol);
-        Adminable.__Adminable_init();
+        __Validatable_init(_admin);
+        __ERC721_init(_name, _symbol);
+
         paymentToken = IERC20Upgradeable(_paymentToken);
-        transferOwnership(_owner);
         treasury = _treasury;
         price = _price;
         _setDefaultRoyalty(_treasury, _feeNumerator);
@@ -85,7 +79,7 @@ contract NftTest is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
+    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
@@ -96,7 +90,7 @@ contract NftTest is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setPrice(uint256 newPrice) external onlyOwnerOrAdmin notZeroAmount(newPrice) {
+    function setPrice(uint256 newPrice) external onlyAdmin notZeroAmount(newPrice) {
         uint256 oldPrice = price;
         price = newPrice;
         emit SetPrice(oldPrice, price);
@@ -121,7 +115,7 @@ contract NftTest is
     /**
      *  @notice Set new uri for each token ID
      */
-    function setTokenURI(string memory newURI, uint256 tokenId) external onlyOwnerOrAdmin {
+    function setTokenURI(string memory newURI, uint256 tokenId) external onlyAdmin {
         uris[tokenId] = newURI;
     }
 

@@ -2,13 +2,13 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "../Adminable.sol";
+
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -20,13 +20,7 @@ import "../Adminable.sol";
  *          The contract here by is implemented to initial some NFT with royalties.
  */
 
-contract TokenMintERC1155 is
-    Initializable,
-    Adminable,
-    ReentrancyGuardUpgradeable,
-    ERC1155Upgradeable,
-    ERC2981Upgradeable
-{
+contract TokenMintERC1155 is Validatable, ReentrancyGuardUpgradeable, ERC1155Upgradeable, ERC2981Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -53,12 +47,12 @@ contract TokenMintERC1155 is
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _owner,
         address _treasury,
-        uint96 _feeNumerator
-    ) public initializer notZeroAddress(_owner) notZeroAddress(_treasury) notZeroAmount(_feeNumerator) {
-        Adminable.__Adminable_init();
-        transferOwnership(_owner);
+        uint96 _feeNumerator,
+        IAdmin _admin
+    ) public initializer {
+        __Validatable_init(_admin);
+
         treasury = _treasury;
         _setDefaultRoyalty(_treasury, _feeNumerator);
     }
@@ -66,7 +60,7 @@ contract TokenMintERC1155 is
     /**
      *  @notice Set new uri for each token ID
      */
-    function setURI(string memory newuri, uint256 tokenId) external onlyOwnerOrAdmin {
+    function setURI(string memory newuri, uint256 tokenId) external onlyAdmin {
         uris[tokenId] = newuri;
     }
 
@@ -75,7 +69,7 @@ contract TokenMintERC1155 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
+    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
@@ -90,7 +84,7 @@ contract TokenMintERC1155 is
         address receiver,
         uint256 amount,
         string memory newuri
-    ) external onlyOwnerOrAdmin notZeroAddress(receiver) notZeroAmount(amount) {
+    ) external onlyAdmin notZeroAddress(receiver) notZeroAmount(amount) {
         _tokenCounter.increment();
         uint256 tokenId = _tokenCounter.current();
 

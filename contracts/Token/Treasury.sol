@@ -2,11 +2,11 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
-import "../Adminable.sol";
+
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Treasury Contract
@@ -16,7 +16,7 @@ import "../Adminable.sol";
  *  @notice This smart contract create the treasury for Operation. This contract initially store
  *          all assets and using for purchase in marketplace operation.
  */
-contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
+contract Treasury is Validatable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     /**
@@ -30,9 +30,8 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(address _owner) public initializer notZeroAddress(_owner) {
-        Adminable.__Adminable_init();
-        transferOwnership(_owner);
+    function initialize(IAdmin _admin) public initializer {
+        __Validatable_init(_admin);
     }
 
     receive() external payable {}
@@ -42,7 +41,7 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
      */
     function setPermitedPaymentToken(address _paymentToken, bool allow)
         external
-        onlyOwnerOrAdmin
+        onlyAdmin
         notZeroAddress(_paymentToken)
     {
         if (allow) {
@@ -63,7 +62,7 @@ contract Treasury is Initializable, Adminable, ReentrancyGuardUpgradeable {
         uint256 _amount
     )
         external
-        onlyOwnerOrAdmin
+        onlyAdmin
         notZeroAddress(_paymentToken)
         notZeroAddress(_destination)
         notZeroAmount(_amount)

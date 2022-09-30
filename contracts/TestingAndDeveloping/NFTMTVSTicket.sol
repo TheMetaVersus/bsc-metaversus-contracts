@@ -2,14 +2,14 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import "../Adminable.sol";
+
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -20,13 +20,7 @@ import "../Adminable.sol";
  *          by the all user and using for staking in staking pool operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
-contract NFTMTVSTicket is
-    Initializable,
-    ReentrancyGuardUpgradeable,
-    Adminable,
-    ERC721EnumerableUpgradeable,
-    ERC2981Upgradeable
-{
+contract NFTMTVSTicket is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpgradeable, ERC2981Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using StringsUpgradeable for uint256;
@@ -71,26 +65,18 @@ contract NFTMTVSTicket is
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _owner,
         string memory _name,
         string memory _symbol,
         address _paymentToken,
         address _treasury,
         uint96 _feeNumerator,
-        uint256 _price
-    )
-        public
-        initializer
-        notZeroAddress(_owner)
-        notZeroAddress(_paymentToken)
-        notZeroAddress(_treasury)
-        notZeroAmount(_feeNumerator)
-        notZeroAmount(_price)
-    {
-        ERC721Upgradeable.__ERC721_init(_name, _symbol);
-        Adminable.__Adminable_init();
+        uint256 _price,
+        IAdmin _admin
+    ) public initializer {
+        __Validatable_init(_admin);
+        __ERC721_init(_name, _symbol);
+
         paymentToken = IERC20Upgradeable(_paymentToken);
-        transferOwnership(_owner);
         treasury = _treasury;
         price = _price;
         _setDefaultRoyalty(_treasury, _feeNumerator);
@@ -101,7 +87,7 @@ contract NFTMTVSTicket is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
+    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
         address oldTreasury = treasury;
         treasury = account;
         emit SetTreasury(oldTreasury, treasury);
@@ -112,7 +98,7 @@ contract NFTMTVSTicket is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setPrice(uint256 newPrice) external onlyOwnerOrAdmin notZeroAmount(newPrice) {
+    function setPrice(uint256 newPrice) external onlyAdmin notZeroAmount(newPrice) {
         uint256 oldPrice = price;
         price = newPrice;
         emit SetPrice(oldPrice, price);
@@ -123,7 +109,7 @@ contract NFTMTVSTicket is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setLocked(bool status) external onlyOwnerOrAdmin {
+    function setLocked(bool status) external onlyAdmin {
         isLocked = status;
         emit SetLocked(status);
     }
@@ -150,7 +136,7 @@ contract NFTMTVSTicket is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver) external onlyOwnerOrAdmin notZeroAddress(receiver) {
+    function mint(address receiver) external onlyAdmin notZeroAddress(receiver) {
         require(balanceOf(receiver) == 0, "ERROR: Each account have only one");
         tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
@@ -163,7 +149,7 @@ contract NFTMTVSTicket is
     /**
      *  @notice Set base URI
      */
-    function setBaseURI(string memory newURI) external onlyOwnerOrAdmin {
+    function setBaseURI(string memory newURI) external onlyAdmin {
         baseURI = newURI;
     }
 

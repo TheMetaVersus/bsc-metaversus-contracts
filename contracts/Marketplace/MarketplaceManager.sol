@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
-import "../Adminable.sol";
 import "../Struct.sol";
+
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -26,11 +25,8 @@ import "../Struct.sol";
  *          all action which user could sell, unsell, buy them.
  */
 contract MarketPlaceManager is
-    Initializable,
+    Validatable,
     ReentrancyGuardUpgradeable,
-    OwnableUpgradeable,
-    Adminable,
-    PausableUpgradeable,
     ERC721HolderUpgradeable,
     ERC1155HolderUpgradeable
 {
@@ -166,18 +162,13 @@ contract MarketPlaceManager is
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(address _owner, address _treasury)
-        public
-        initializer
-        notZeroAddress(_owner)
-        notZeroAddress(_treasury)
-    {
-        Adminable.__Adminable_init();
-        PausableUpgradeable.__Pausable_init();
-        transferOwnership(_owner);
+    function initialize(address _treasury, IAdmin _admin) public initializer {
+        __Validatable_init(_admin);
+        __Context_init();
+        __ReentrancyGuard_init();
+
         treasury = _treasury;
         listingFee = 25e2; // 2.5%
-        _pause();
     }
 
     receive() external payable {}
@@ -185,7 +176,7 @@ contract MarketPlaceManager is
     /**
      *  @notice Set permit NFT
      */
-    function setPermitedNFT(address _nftAddress, bool allow) external onlyOwnerOrAdmin notZeroAddress(_nftAddress) {
+    function setPermitedNFT(address _nftAddress, bool allow) external onlyAdmin {
         if (allow) {
             _permitedNFTs.add(_nftAddress);
         } else if (isPermitedNFT(_nftAddress)) {
@@ -198,7 +189,7 @@ contract MarketPlaceManager is
     /**
      *  @notice Set permit payment token
      */
-    function setPermitedPaymentToken(address _paymentToken, bool allow) external onlyOwnerOrAdmin {
+    function setPermitedPaymentToken(address _paymentToken, bool allow) external onlyAdmin {
         if (allow) {
             _permitedPaymentToken.add(_paymentToken);
         } else if (isPermitedPaymentToken(_paymentToken)) {
@@ -213,21 +204,10 @@ contract MarketPlaceManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
+    function setTreasury(address _account) external onlyAdmin {
         address oldTreasury = treasury;
-        treasury = account;
+        treasury = _account;
         emit SetTreasury(oldTreasury, treasury);
-    }
-
-    /**
-     *  @notice Set pause action
-     */
-    function setPause(bool isPause) external onlyOwnerOrAdmin {
-        if (isPause) {
-            _pause();
-        } else _unpause();
-
-        emit SetPause(isPause);
     }
 
     /**
