@@ -14,7 +14,8 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
-import "../Adminable.sol";
+
+import "../interfaces/IAdmin.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -25,11 +26,8 @@ import "../Adminable.sol";
  *          all action which user could sell, unsell, buy them.
  */
 contract MarketPlaceManager is
-    Initializable,
+    ContextUpgradeable,
     ReentrancyGuardUpgradeable,
-    OwnableUpgradeable,
-    Adminable,
-    PausableUpgradeable,
     ERC721HolderUpgradeable,
     ERC1155HolderUpgradeable
 {
@@ -109,6 +107,11 @@ contract MarketPlaceManager is
      *  @notice listingFee is fee user must pay for contract when create
      */
     uint256 public listingFee;
+
+    /**
+     *  @notice paymentToken IAdmin is interface of Admin contract
+     */
+    IAdmin public admin;
 
     /**
      *  @notice marketItemIdToMarketItem is mapping market ID to Market Item
@@ -212,21 +215,45 @@ contract MarketPlaceManager is
         _;
     }
 
+    modifier onlyAdmin() {
+        require(admin.isAdmin(_msgSender()), "Caller is not an owner or admin");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!admin.isPaused(), "Pausable: paused");
+        _;
+    }
+
+    modifier validWallet(address _account) {
+        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
+        _;
+    }
+
+    modifier notZeroAddress(address _account) {
+        require(_account != address(0), "Invalid address");
+        _;
+    }
+
+    modifier notZeroAmount(uint256 _amount) {
+        require(_amount > 0, "Invalid amount");
+        _;
+    }
+
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(address _owner, address _treasury)
-        public
-        initializer
-        notZeroAddress(_owner)
-        notZeroAddress(_treasury)
-    {
-        Adminable.__Adminable_init();
-        PausableUpgradeable.__Pausable_init();
-        transferOwnership(_owner);
+    function initialize(
+        address _owner,
+        address _treasury,
+        IAdmin _admin
+    ) public initializer notZeroAddress(_owner) notZeroAddress(_treasury) {
+        __Context_init();
+        __ReentrancyGuard_init();
+
         treasury = _treasury;
         listingFee = 25e2; // 2.5%
-        _pause();
+        admin = _admin;
     }
 
     receive() external payable {}
@@ -234,7 +261,7 @@ contract MarketPlaceManager is
     /**
      *  @notice Set permit NFT
      */
-    function setPermitedNFT(address _nftAddress, bool allow) external onlyOwnerOrAdmin notZeroAddress(_nftAddress) {
+    function setPermitedNFT(address _nftAddress, bool allow) external onlyAdmin notZeroAddress(address(_nftAddress)) {
         if (allow) {
             _permitedNFTs.add(_nftAddress);
         } else if (isPermitedNFT(_nftAddress)) {
@@ -247,7 +274,11 @@ contract MarketPlaceManager is
     /**
      *  @notice Set permit payment token
      */
-    function setPermitedPaymentToken(address _paymentToken, bool allow) external onlyOwnerOrAdmin {
+    function setPermitedPaymentToken(address _paymentToken, bool allow)
+        external
+        onlyAdmin
+        notZeroAddress(address(_paymentToken))
+    {
         if (allow) {
             _permitedPaymentToken.add(_paymentToken);
         } else if (isPermitedPaymentToken(_paymentToken)) {
@@ -262,9 +293,9 @@ contract MarketPlaceManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyOwnerOrAdmin notZeroAddress(account) {
+    function setTreasury(address _account) external onlyAdmin notZeroAddress(address(_account)) {
         address oldTreasury = treasury;
-        treasury = account;
+        treasury = _account;
         emit SetTreasury(oldTreasury, treasury);
     }
 
@@ -280,7 +311,7 @@ contract MarketPlaceManager is
         uint256 startTime,
         uint256 endTime,
         address paymentToken
-    ) external nonReentrant validateId(marketItemId) notZeroAmount(price) whenNotPaused {
+    ) external nonReentrant validateId(marketItemId) notZeroAmount(price) notZeroAmount(amount) whenNotPaused {
         MarketItem storage item = marketItemIdToMarketItem[marketItemId];
         require(item.endTime < block.timestamp, "ERROR: market item is not free !");
         require(item.seller == _msgSender(), "ERROR: sender is not owner this NFT");
@@ -336,7 +367,7 @@ contract MarketPlaceManager is
         uint256 startTime,
         uint256 endTime,
         address paymentToken
-    ) external onlyOwnerOrAdmin notZeroAddress(nftAddress) notZeroAddress(seller) notZeroAmount(amount) {
+    ) external onlyAdmin validWallet(seller) whenNotPaused {
         require(_msgSender().isContract(), "ERROR: only allow contract call !");
         // create market item to store data
         _createMarketInfo(nftAddress, tokenId, amount, price, seller, startTime, endTime, paymentToken);
@@ -355,16 +386,7 @@ contract MarketPlaceManager is
         uint256 startTime,
         uint256 endTime,
         address paymentToken
-    )
-        external
-        nonReentrant
-        notZeroAddress(nftContractAddress)
-        notZeroAmount(amount)
-        notZeroAmount(price)
-        notZeroAmount(startTime)
-        notZeroAmount(endTime)
-        whenNotPaused
-    {
+    ) external nonReentrant whenNotPaused {
         require(endTime > block.timestamp, "ERROR: Only sell");
         // create market item to store data selling
         _createMarketInfo(nftContractAddress, tokenId, amount, price, _msgSender(), startTime, endTime, paymentToken);
@@ -499,7 +521,7 @@ contract MarketPlaceManager is
         uint256 tokenId,
         uint256 amount,
         uint256 time
-    ) external payable nonReentrant {
+    ) external payable nonReentrant whenNotPaused {
         require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         // check is Exist Offer
         for (uint256 i = 0; i < _bidAuctionOfOwner[_msgSender()].length(); i++) {
@@ -541,7 +563,7 @@ contract MarketPlaceManager is
         address paymentToken,
         uint256 bidPrice,
         uint256 time
-    ) external payable nonReentrant validateId(marketItemId) {
+    ) external payable nonReentrant validateId(marketItemId) whenNotPaused {
         require(_permitedPaymentToken.contains(paymentToken), "ERROR: payment token is not supported !");
         // check is Exist Offer
         for (uint256 i = 0; i < _bidAuctionOfOwner[_msgSender()].length(); i++) {
@@ -569,7 +591,7 @@ contract MarketPlaceManager is
     /**
      *  @notice accept Offer
      */
-    function acceptOffer(uint256 auctionId) external payable nonReentrant {
+    function acceptOffer(uint256 auctionId) external payable nonReentrant whenNotPaused {
         BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
         MarketItem storage marketItem = marketItemIdToMarketItem[auctionInfo.marketItemId];
 
@@ -653,7 +675,7 @@ contract MarketPlaceManager is
     /**
      *  @notice Refund amount token for Bid
      */
-    function refundBidAmount(uint256 auctionId) external {
+    function refundBidAmount(uint256 auctionId) external whenNotPaused {
         BidAuction storage auctionInfo = auctionIdToBidAuctionInfo[auctionId];
         require(auctionInfo.bidder == _msgSender(), "ERROR: Invalid bidder !");
         // refund all amount
@@ -667,17 +689,6 @@ contract MarketPlaceManager is
         ].remove(auctionInfo.auctionId);
         delete auctionIdToBidAuctionInfo[auctionInfo.auctionId];
         emit Claimed(auctionId);
-    }
-
-    /**
-     *  @notice Set pause action
-     */
-    function setPause(bool isPause) external onlyOwnerOrAdmin {
-        if (isPause) {
-            _pause();
-        } else _unpause();
-
-        emit SetPause(isPause);
     }
 
     /**

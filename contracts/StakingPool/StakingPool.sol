@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
 import "../interfaces/IMarketplaceManager.sol";
 import "../interfaces/IPriceConsumerV3.sol";
 import "../interfaces/IPancakeRouter.sol";
-import "../Adminable.sol";
+import "../interfaces/IAdmin.sol";
 
 /**
  *  @title  Dev Staking Pool Contract
@@ -21,7 +21,7 @@ import "../Adminable.sol";
  *  @notice This smart contract is the staking pool for staking, earning more MTVS token with standard ERC20
  *          all action which user could stake, unstake, claim them.
  */
-contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, PausableUpgradeable {
+contract StakingPool is ContextUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     struct Lazy {
@@ -78,6 +78,11 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     IERC20Upgradeable public rewardToken;
 
     /**
+     *  @notice paymentToken IAdmin is interface of Admin contract
+     */
+    IAdmin public admin;
+
+    /**
      *  @notice mkpManager is address of Marketplace Manager
      */
     address public mkpManager;
@@ -117,9 +122,33 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     event SetStartTime(uint256 indexed poolDuration);
     event RequestUnstake(address indexed sender);
     event RequestClaim(address indexed sender);
-    event SetPause(bool isPause);
     event SetAcceptableLost(uint256 lost);
     event SetTimeStone(uint256 timeStone);
+
+    modifier onlyAdmin() {
+        require(admin.isAdmin(_msgSender()), "Caller is not an owner or admin");
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!admin.isPaused(), "Pausable: paused");
+        _;
+    }
+
+    modifier validWallet(address _account) {
+        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
+        _;
+    }
+
+    modifier notZeroAddress(address _account) {
+        require(_account != address(0), "Invalid address");
+        _;
+    }
+
+    modifier notZeroAmount(uint256 _amount) {
+        require(_amount > 0, "Invalid amount");
+        _;
+    }
 
     /**
      *  @notice Initialize new logic contract.
@@ -133,7 +162,8 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         uint256 _poolDuration,
         address _pancakeRouter,
         address _busdToken,
-        address _aggregatorProxyBUSD_USD
+        address _aggregatorProxyBUSD_USD,
+        IAdmin _admin
     )
         public
         initializer
@@ -144,8 +174,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         notZeroAmount(_rewardRate)
         notZeroAmount(_poolDuration)
     {
-        Adminable.__Adminable_init();
-        transferOwnership(_owner);
+        __Context_init();
+        __ReentrancyGuard_init();
+
         stakeToken = IERC20Upgradeable(_stakeToken);
         rewardToken = IERC20Upgradeable(_rewardToken);
         aggregatorProxyBUSD_USD = _aggregatorProxyBUSD_USD;
@@ -157,7 +188,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
         pendingTime = 1 days; // default
         acceptableLost = 50; // 50%
         timeStone = 86400;
-        _pause();
+        admin = _admin;
     }
 
     /**
@@ -288,11 +319,11 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only admin can call this function.
      */
-    function emergencyWithdraw() external onlyOwner nonReentrant {
+    function emergencyWithdraw() external onlyAdmin nonReentrant {
         if (rewardToken == stakeToken) {
-            rewardToken.safeTransfer(owner(), rewardToken.balanceOf(address(this)) - stakedAmount);
+            rewardToken.safeTransfer(admin.owner(), rewardToken.balanceOf(address(this)) - stakedAmount);
         } else {
-            rewardToken.safeTransfer(owner(), rewardToken.balanceOf(address(this)));
+            rewardToken.safeTransfer(admin.owner(), rewardToken.balanceOf(address(this)));
         }
 
         emit EmergencyWithdrawed(_msgSender(), address(rewardToken));
@@ -303,7 +334,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setTimeStone(uint256 _timeStone) external onlyOwnerOrAdmin {
+    function setTimeStone(uint256 _timeStone) external onlyAdmin {
         timeStone = _timeStone;
         emit SetTimeStone(timeStone);
     }
@@ -313,7 +344,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setStartTime(uint256 _startTime) external onlyOwnerOrAdmin {
+    function setStartTime(uint256 _startTime) external onlyAdmin {
         startTime = _startTime;
         emit SetStartTime(startTime);
     }
@@ -321,7 +352,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
     /**
      *  @notice Set acceptable Lost of staking pool.
      */
-    function setAcceptableLost(uint256 lost) external onlyOwnerOrAdmin {
+    function setAcceptableLost(uint256 lost) external onlyAdmin {
         require(lost <= 100, "ERROR: Over limit !");
         acceptableLost = lost;
         emit SetAcceptableLost(acceptableLost);
@@ -332,7 +363,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setRewardRate(uint256 _rewardRate) external notZeroAmount(rewardRate) onlyOwnerOrAdmin {
+    function setRewardRate(uint256 _rewardRate) external notZeroAmount(rewardRate) onlyAdmin {
         rewardRate = _rewardRate;
         emit SetRewardRate(rewardRate);
     }
@@ -342,7 +373,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setPendingTime(uint256 _pendingTime) external notZeroAmount(_pendingTime) onlyOwnerOrAdmin {
+    function setPendingTime(uint256 _pendingTime) external notZeroAmount(_pendingTime) onlyAdmin {
         pendingTime = _pendingTime;
         emit SetPendingTime(pendingTime);
     }
@@ -352,20 +383,9 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *
      *  @dev    Only owner can call this function.
      */
-    function setPoolDuration(uint256 _poolDuration) external notZeroAmount(poolDuration) onlyOwnerOrAdmin {
+    function setPoolDuration(uint256 _poolDuration) external notZeroAmount(poolDuration) onlyAdmin {
         poolDuration = _poolDuration;
         emit SetDuration(poolDuration);
-    }
-
-    /**
-     *  @notice Set pause action
-     */
-    function setPause(bool isPause) public onlyOwnerOrAdmin {
-        if (isPause) {
-            _pause();
-        } else _unpause();
-
-        emit SetPause(isPause);
     }
 
     /**
@@ -446,7 +466,7 @@ contract StakingPool is Initializable, ReentrancyGuardUpgradeable, Adminable, Pa
      *  @notice Get status of pool
      */
     function isActivePool() public view returns (bool) {
-        return (startTime + poolDuration >= block.timestamp) && !paused();
+        return (startTime + poolDuration >= block.timestamp) && !admin.isPaused();
     }
 
     /**

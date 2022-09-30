@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "../Adminable.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -19,13 +18,7 @@ import "../Adminable.sol";
  *          by the all user and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
-contract TokenMintERC721 is
-    Initializable,
-    ReentrancyGuardUpgradeable,
-    Adminable,
-    ERC721EnumerableUpgradeable,
-    ERC2981Upgradeable
-{
+contract TokenMintERC721 is ReentrancyGuardUpgradeable, ERC721EnumerableUpgradeable, ERC2981Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
