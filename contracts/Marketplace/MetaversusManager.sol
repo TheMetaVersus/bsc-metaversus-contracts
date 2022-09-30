@@ -120,7 +120,8 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        address payment
+        address payment,
+        bytes calldata rootHash
     ) external nonReentrant notZeroAmount(amount) whenNotPaused {
         if (typeNft == TypeNft.ERC721) {
             tokenMintERC721.mint(address(marketplace), uri);
@@ -133,7 +134,8 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
                 _msgSender(),
                 startTime,
                 endTime,
-                payment
+                payment,
+                rootHash
             );
         } else if (typeNft == TypeNft.ERC1155) {
             tokenMintERC1155.mint(address(marketplace), amount, uri);
@@ -146,7 +148,8 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
                 _msgSender(),
                 startTime,
                 endTime,
-                payment
+                payment,
+                rootHash
             );
         }
 
@@ -211,21 +214,13 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
         uint256[] calldata ids,
         uint256[] calldata amounts,
         uint256[] calldata prices,
-        bool[] calldata privateIds,
+        bytes calldata rootHash,
         address payment,
         uint256 startTime,
         uint256 endTime
     ) public nonReentrant {
-        require(
-            ids.length == privateIds.length &&
-                amounts.length == privateIds.length &&
-                prices.length == privateIds.length,
-            "ERROR: Invalid length of input"
-        );
-        TypeNft typeNFT = _checkTypeNft(nftAddress);
-        require(typeNFT != TypeNft.NONE, "ERROR: Invalid NFT address");
-        // address[ids.length] senders = _msgSender()[](ids.length);
-        // uint256[] amounts = IERC1155Upgradeable(nftContractAddress).balanceOfBatch(senders, ids);
+        require(ids.length == amounts.length && amounts.length == prices.length, "ERROR: Invalid length of input");
+        require(_checkTypeNft(nftAddress) != TypeNft.NONE, "ERROR: Invalid NFT address");
         for (uint256 i = 0; i < ids.length; i++) {
             _transferNFTCall(nftAddress, ids[i], amounts[i], _msgSender(), address(marketplace));
             marketplace.extCreateMarketInfo(
@@ -236,7 +231,8 @@ contract MetaversusManager is Initializable, ReentrancyGuardUpgradeable, Adminab
                 _msgSender(),
                 startTime,
                 endTime,
-                payment
+                payment,
+                rootHash
             );
         }
     }

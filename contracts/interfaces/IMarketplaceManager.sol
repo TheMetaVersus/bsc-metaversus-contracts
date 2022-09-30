@@ -1,49 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "../Struct.sol";
+
 interface IMarketplaceManager {
-    enum NftStandard {
-        ERC721,
-        ERC1155,
-        NONE
-    }
-    enum MarketItemStatus {
-        LISTING,
-        SOLD,
-        CANCELED
-    }
-    struct MarketItem {
-        uint256 marketItemId;
-        address nftContractAddress;
-        uint256 tokenId;
-        uint256 amount;
-        uint256 price;
-        uint256 nftType;
-        address seller;
-        address buyer;
-        MarketItemStatus status;
-        uint256 startTime;
-        uint256 endTime;
-        address paymentToken;
-        bool isPrivate;
-    }
-    struct WalletAsset {
-        address owner;
-        address nftAddress;
-        uint256 tokenId;
-    }
-
-    struct Order {
-        uint256 orderId;
-        address bidder;
-        address paymentToken;
-        uint256 bidPrice;
-        uint256 marketItemId;
-        WalletAsset walletAsset;
-        uint256 amount;
-        uint256 expiredOrder;
-    }
-
     function wasBuyer(address account) external view returns (bool);
 
     // order
@@ -90,17 +50,18 @@ interface IMarketplaceManager {
         uint256 amount,
         uint256 marketItemId,
         WalletAsset memory walletAsset
-    ) external;
+    ) external payable;
 
     function extCreateMarketInfo(
-        address nftAddress,
-        uint256 tokenId,
-        uint256 amount,
-        uint256 price,
-        address seller,
-        uint256 startTime,
-        uint256 endTime,
-        address paymentToken
+        address _nftAddress,
+        uint256 _tokenId,
+        uint256 _amount,
+        uint256 _price,
+        address _seller,
+        uint256 _startTime,
+        uint256 _endTime,
+        address _paymentToken,
+        bytes calldata rootHash
     ) external;
 
     function getListingFee(uint256 amount) external view returns (uint256);
@@ -110,7 +71,7 @@ interface IMarketplaceManager {
         uint256 tokenId,
         uint256 grossSaleValue,
         address paymentToken
-    ) external returns (uint256);
+    ) external payable returns (uint256);
 
     function extTransferCall(
         address paymentToken,

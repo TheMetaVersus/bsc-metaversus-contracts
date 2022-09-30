@@ -15,6 +15,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "../Adminable.sol";
+import "../Struct.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -46,48 +47,48 @@ contract MarketPlaceManager is
     bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
     uint256 public constant DENOMINATOR = 1e5;
 
-    enum NftStandard {
-        ERC721,
-        ERC1155,
-        NONE
-    }
-    enum MarketItemStatus {
-        LISTING,
-        SOLD,
-        CANCELED
-    }
+    // enum NftStandard {
+    //     ERC721,
+    //     ERC1155,
+    //     NONE
+    // }
+    // enum MarketItemStatus {
+    //     LISTING,
+    //     SOLD,
+    //     CANCELED
+    // }
 
-    struct MarketItem {
-        uint256 marketItemId;
-        address nftContractAddress;
-        uint256 tokenId;
-        uint256 amount;
-        uint256 price;
-        uint256 nftType;
-        address seller;
-        address buyer;
-        MarketItemStatus status;
-        uint256 startTime;
-        uint256 endTime;
-        address paymentToken;
-    }
+    // struct MarketItem {
+    //     uint256 marketItemId;
+    //     address nftContractAddress;
+    //     uint256 tokenId;
+    //     uint256 amount;
+    //     uint256 price;
+    //     uint256 nftType;
+    //     address seller;
+    //     address buyer;
+    //     MarketItemStatus status;
+    //     uint256 startTime;
+    //     uint256 endTime;
+    //     address paymentToken;
+    // }
 
-    struct WalletAsset {
-        address owner;
-        address nftAddress;
-        uint256 tokenId;
-    }
+    // struct WalletAsset {
+    //     address owner;
+    //     address nftAddress;
+    //     uint256 tokenId;
+    // }
 
-    struct Order {
-        uint256 orderId;
-        address bidder;
-        address paymentToken;
-        uint256 bidPrice;
-        uint256 marketItemId;
-        WalletAsset walletAsset;
-        uint256 amount;
-        uint256 expiredOrder;
-    }
+    // struct Order {
+    //     uint256 orderId;
+    //     address bidder;
+    //     address paymentToken;
+    //     uint256 bidPrice;
+    //     uint256 marketItemId;
+    //     WalletAsset walletAsset;
+    //     uint256 amount;
+    //     uint256 expiredOrder;
+    // }
 
     /**
      *  @notice _permitedNFTs mapping from token address to isPermited status
@@ -239,7 +240,7 @@ contract MarketPlaceManager is
         uint256 amount,
         uint256 marketItemId,
         WalletAsset memory walletAsset
-    ) external {
+    ) external payable {
         _orderCounter.increment();
         uint256 orderId = _orderCounter.current();
 
@@ -261,7 +262,7 @@ contract MarketPlaceManager is
             .add(orderId);
 
         // send offer money
-        _transferCall(paymentToken, bidPrice, _msgSender(), address(this));
+        extTransferCall(paymentToken, bidPrice, _msgSender(), address(this));
         emit MadeOffer(orderId);
     }
 
@@ -288,37 +289,12 @@ contract MarketPlaceManager is
     /**
      *  @notice Transfer call
      */
-    function _transferCall(
-        address paymentToken,
-        uint256 amount,
-        address from,
-        address to
-    ) internal {
-        if (paymentToken == address(0)) {
-            if (to == address(this)) {
-                require(msg.value == amount, "Failed to send into contract");
-            } else {
-                (bool sent, ) = to.call{ value: amount }("");
-                require(sent, "Failed to send native");
-            }
-        } else {
-            if (to == address(this)) {
-                IERC20Upgradeable(paymentToken).safeTransferFrom(from, to, amount);
-            } else {
-                IERC20Upgradeable(paymentToken).transfer(to, amount);
-            }
-        }
-    }
-
-    /**
-     *  @notice Transfer call
-     */
     function extTransferCall(
         address paymentToken,
         uint256 amount,
         address from,
         address to
-    ) external payable {
+    ) public payable {
         if (paymentToken == address(0)) {
             if (to == address(this)) {
                 require(msg.value == amount, "Failed to send into contract");
@@ -388,7 +364,7 @@ contract MarketPlaceManager is
         uint256 tokenId,
         uint256 grossSaleValue,
         address paymentToken
-    ) external returns (uint256 netSaleAmount) {
+    ) external payable returns (uint256 netSaleAmount) {
         // Get amount of royalties to pays and recipient
         if (isRoyalty(nftContractAddress)) {
             (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
@@ -401,7 +377,7 @@ contract MarketPlaceManager is
             uint256 netSaleValue = grossSaleValue - royaltiesAmount;
             // Transfer royalties to rightholder if not zero
             if (royaltiesAmount > 0) {
-                _transferCall(paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
+                extTransferCall(paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
             }
             // Broadcast royalties payment
             emit RoyaltiesPaid(tokenId, royaltiesAmount);
@@ -450,7 +426,7 @@ contract MarketPlaceManager is
         );
 
         _marketItemOfOwner[_seller].add(marketItemId);
-        _rootHashesToMarketItemIds[rootHash].add(marketItemId);
+        _rootHashesToMarketItemIds[bytes32(rootHash)].add(marketItemId);
         emit MarketItemCreated(
             marketItemId,
             _nftAddress,
