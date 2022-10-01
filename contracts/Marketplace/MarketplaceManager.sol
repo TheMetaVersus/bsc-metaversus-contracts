@@ -106,6 +106,14 @@ contract MarketPlaceManager is
         uint256 endTime,
         address paymentToken
     );
+    event MarketItemUpdated(
+        uint256 indexed marketItemId,
+        uint256 price,
+        uint256 startTime,
+        uint256 endTime,
+        address paymentToken,
+        bytes rootHash
+    );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event SetPause(bool isPause);
@@ -376,6 +384,35 @@ contract MarketPlaceManager is
             _endTime >= _startTime ? _endTime : 0,
             _paymentToken
         );
+    }
+
+    /**
+     *  @notice Update market info with data
+     *
+     *  @dev    All caller can call this function.
+     */
+    function extUpdateMarketInfo(
+        uint256 marketItemId,
+        uint256 _price,
+        uint256 _startTime,
+        uint256 _endTime,
+        address _paymentToken,
+        bytes calldata rootHash
+    ) external validateId(marketItemId) notZeroAmount(_price) {
+        require(_msgSender().isContract(), "ERROR: only allow contract call !");
+        require(_endTime > _startTime, "Invalid time");
+        require(_permitedPaymentToken.contains(_paymentToken) || _paymentToken == address(0), "Invalid payment token");
+
+        MarketItem memory marketItem = marketItemIdToMarketItem[marketItemId];
+
+        marketItem.price = _price;
+        marketItem.startTime = _startTime;
+        marketItem.endTime = _endTime;
+        marketItem.paymentToken = _permitedPaymentToken.contains(_paymentToken) ? _paymentToken : address(0);
+
+        _rootHashesToMarketItemIds[bytes32(rootHash)].add(marketItemId);
+
+        emit MarketItemUpdated(marketItemId, _price, _startTime, _endTime, _paymentToken, rootHash);
     }
 
     /**
