@@ -25,6 +25,12 @@ contract Admin is PausableUpgradeable, OwnableUpgradeable, ERC165Upgradeable, IA
      */
     mapping(address => bool) public admins;
 
+    ITokenMintERC721 public tokenMintERC721;
+    ITokenMintERC1155 public tokenMintERC1155;
+    IMarketplaceManager public marketplaceManager;
+    IStakingPool public stakingPool;
+    IOrder public order;
+
     event SetAdmin(address indexed user, bool allow);
     event SetPause(bool indexed isPause);
 

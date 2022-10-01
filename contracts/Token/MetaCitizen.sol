@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import "../Adminable.sol";
+
+import "../interfaces/IMetaCitizen.sol";
+import "../Validatable.sol";
 
 /**
  *  @title  MetaVerus Citizen pass
@@ -17,7 +20,13 @@ import "../Adminable.sol";
  *  @notice This smart contract create the token ERC721 for represent membership value.
  *          Anyone can mint token by paying a fee, admin or owner can mint without fee.
  */
-contract MetaCitizen is ERC721EnumerableUpgradeable, ReentrancyGuardUpgradeable, Adminable {
+contract MetaCitizen is
+    Validatable,
+    ERC165Upgradeable,
+    ERC721EnumerableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    IMetaCitizen
+{
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using StringsUpgradeable for uint256;
@@ -57,27 +66,18 @@ contract MetaCitizen is ERC721EnumerableUpgradeable, ReentrancyGuardUpgradeable,
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _owner,
         address _treasury,
         address _paymentToken,
-        uint256 _mintFee
-    )
-        public
-        initializer
-        notZeroAddress(_owner)
-        notZeroAddress(_paymentToken)
-        notZeroAddress(_treasury)
-        notZeroAmount(_mintFee)
-    {
-        __Adminable_init();
+        uint256 _mintFee,
+        IAdmin _admin
+    ) public initializer notZeroAddress(_paymentToken) notZeroAddress(_treasury) notZeroAmount(_mintFee) {
+        __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC721_init("MetaversusWorld Citizen", "MWC");
 
         paymentToken = IERC20Upgradeable(_paymentToken);
         treasury = _treasury;
         mintFee = _mintFee;
-
-        transferOwnership(_owner);
     }
 
     /**
@@ -85,7 +85,7 @@ contract MetaCitizen is ERC721EnumerableUpgradeable, ReentrancyGuardUpgradeable,
      *  @dev Only owner or admin can call this function
      *  @param _newURI new base URI that need to replace
      */
-    function setBaseURI(string memory _newURI) external onlyOwnerOrAdmin {
+    function setBaseURI(string memory _newURI) external onlyOwner {
         baseURI = _newURI;
     }
 
@@ -94,7 +94,7 @@ contract MetaCitizen is ERC721EnumerableUpgradeable, ReentrancyGuardUpgradeable,
      *  @dev Only owner or admin can call this function
      *  @param _newToken new payment token need to replace
      */
-    function setPaymentToken(address _newToken) external onlyOwnerOrAdmin notZeroAddress(_newToken) {
+    function setPaymentToken(address _newToken) external onlyOwner notZeroAddress(_newToken) {
         address oldToken = address(paymentToken);
         paymentToken = IERC20Upgradeable(_newToken);
         emit SetPaymentToken(oldToken, _newToken);
@@ -105,7 +105,7 @@ contract MetaCitizen is ERC721EnumerableUpgradeable, ReentrancyGuardUpgradeable,
      *  @dev Only owner or admin can call this function.
      *  @param _account new base URI that need to replace
      */
-    function setTreasury(address _account) external onlyOwnerOrAdmin notZeroAddress(_account) {
+    function setTreasury(address _account) external onlyOwner notZeroAddress(_account) {
         address oldTreasury = treasury;
         treasury = _account;
         emit SetTreasury(oldTreasury, _account);
@@ -116,7 +116,7 @@ contract MetaCitizen is ERC721EnumerableUpgradeable, ReentrancyGuardUpgradeable,
      *  @dev Only owner or admin can call this function.
      *  @param _newFee new minting fee that need to replace
      */
-    function setMintFee(uint256 _newFee) external onlyOwnerOrAdmin notZeroAmount(_newFee) {
+    function setMintFee(uint256 _newFee) external onlyOwner notZeroAmount(_newFee) {
         uint256 oldFee = mintFee;
         mintFee = _newFee;
         emit SetMintFee(oldFee, _newFee);
@@ -144,7 +144,7 @@ contract MetaCitizen is ERC721EnumerableUpgradeable, ReentrancyGuardUpgradeable,
      *  @dev Only owner or admin can call this function.
      *  @param _to address that be minted to
      */
-    function mint(address _to) external onlyOwnerOrAdmin notZeroAddress(_to) {
+    function mint(address _to) external onlyOwner notZeroAddress(_to) {
         require(balanceOf(_to) == 0, "Already have one");
 
         tokenCounter.increment();
@@ -187,5 +187,23 @@ contract MetaCitizen is ERC721EnumerableUpgradeable, ReentrancyGuardUpgradeable,
         super._beforeTokenTransfer(from, to, tokenId);
 
         require((from == address(0) || to == address(0)) && from != to, "Can not be transfered");
+    }
+
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165Upgradeable, IERC165Upgradeable, ERC721EnumerableUpgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IMetaCitizen).interfaceId || super.supportsInterface(interfaceId);
     }
 }

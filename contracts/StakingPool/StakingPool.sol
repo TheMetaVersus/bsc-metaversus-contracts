@@ -125,7 +125,6 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _owner,
         address _stakeToken,
         address _rewardToken,
         address _mkpManagerAddrress,
