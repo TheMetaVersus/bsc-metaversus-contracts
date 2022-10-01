@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 
 import "./interfaces/IAdmin.sol";
 import "./interfaces/ITokenMintERC721.sol";
@@ -18,17 +19,11 @@ import "./interfaces/IOrder.sol";
  *
  *  @notice This smart contract is contract to control access and role to call function
  */
-contract Admin is OwnableUpgradeable, PausableUpgradeable, IAdmin {
+contract Admin is PausableUpgradeable, OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     /**
-     *  @notice _admins mapping from token ID to isAdmin status
+     *  @notice mapping from token ID to isAdmin status
      */
     mapping(address => bool) public admins;
-
-    ITokenMintERC721 tokenMintERC721;
-    ITokenMintERC1155 tokenMintERC1155;
-    IMarketplaceManager marketplaceManager;
-    IStakingPool stakingPool;
-    IOrder order;
 
     event SetAdmin(address indexed user, bool allow);
     event SetPause(bool indexed isPause);
@@ -42,8 +37,9 @@ contract Admin is OwnableUpgradeable, PausableUpgradeable, IAdmin {
      *  @notice Initialize new logic contract.
      */
     function initialize(address _owner) public initializer validWallet(_owner) {
-        __Ownable_init();
         __Pausable_init();
+        __Ownable_init();
+        __ERC165_init();
 
         transferOwnership(_owner);
         _pause();
@@ -69,51 +65,18 @@ contract Admin is OwnableUpgradeable, PausableUpgradeable, IAdmin {
     }
 
     /**
-     *  @notice Replace the admin role by another address.
-     *  @dev    Only owner can call this function.
-     */
-    function setTokenMintERC721(ITokenMintERC721 _tokenMintERC721) external onlyOwner {
-        tokenMintERC721 = _tokenMintERC721;
-    }
-
-    /**
-     *  @notice Replace the admin role by another address.
-     *  @dev    Only owner can call this function.
-     */
-    function setTokenMintERC1155(ITokenMintERC1155 _tokenMintERC1155) external onlyOwner {
-        tokenMintERC1155 = _tokenMintERC1155;
-    }
-
-    /**
-     *  @notice Replace the admin role by another address.
-     *  @dev    Only owner can call this function.
-     */
-    function setMarketplaceManager(IMarketplaceManager _marketplaceManager) external onlyOwner {
-        marketplaceManager = _marketplaceManager;
-    }
-
-    /**
-     *  @notice Replace the admin role by another address.
-     *  @dev    Only owner can call this function.
-     */
-    function setStakingPool(IStakingPool _stakingPool) external onlyOwner {
-        stakingPool = _stakingPool;
-    }
-
-    /**
-     *  @notice Replace the admin role by another address.
-     *  @dev    Only owner can call this function.
-     */
-    function setOrder(IOrder _order) external onlyOwner {
-        order = _order;
-    }
-
-    /**
      * @notice Get owner of this contract
      * @dev Using in related contracts
      */
     function owner() public view override(IAdmin, OwnableUpgradeable) returns (address) {
         return super.owner();
+    }
+
+    /**
+     *  @notice Check account whether it is the owner role.
+     */
+    function isOwner(address _account) external view virtual returns (bool) {
+        return _account == owner();
     }
 
     /**
@@ -131,37 +94,20 @@ contract Admin is OwnableUpgradeable, PausableUpgradeable, IAdmin {
     }
 
     /**
-     *  @notice Check account whether it is the admin role.
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
      */
-    function isTokenMintERC721(ITokenMintERC721 _tokenMintERC721) external view virtual returns (bool) {
-        return _tokenMintERC721 == tokenMintERC721;
-    }
-
-    /**
-     *  @notice Check account whether it is the admin role.
-     */
-    function isTokenMintERC1155(ITokenMintERC1155 _tokenMintERC1155) external view virtual returns (bool) {
-        return _tokenMintERC1155 == tokenMintERC1155;
-    }
-
-    /**
-     *  @notice Check account whether it is the admin role.
-     */
-    function isMarketplaceManager(IMarketplaceManager _marketplaceManager) external view virtual returns (bool) {
-        return _marketplaceManager == marketplaceManager;
-    }
-
-    /**
-     *  @notice Check account whether it is the admin role.
-     */
-    function isStakingPool(IStakingPool _stakingPool) external view virtual returns (bool) {
-        return _stakingPool == stakingPool;
-    }
-
-    /**
-     *  @notice Check account whether it is the admin role.
-     */
-    function isOrder(IOrder _order) external view virtual returns (bool) {
-        return _order == order;
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165Upgradeable, IERC165Upgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IAdmin).interfaceId || super.supportsInterface(interfaceId);
     }
 }

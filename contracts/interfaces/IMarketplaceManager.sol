@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
+
 import "../Struct.sol";
 
-interface IMarketplaceManager {
+interface IMarketplaceManager is IERC165Upgradeable {
     function wasBuyer(address account) external view returns (bool);
 
     // order
@@ -78,7 +80,7 @@ interface IMarketplaceManager {
         uint256 amount,
         address from,
         address to
-    ) external;
+    ) external payable;
 
     function extTransferNFTCall(
         address nftContractAddress,

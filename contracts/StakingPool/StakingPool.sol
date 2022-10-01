@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -10,6 +11,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../interfaces/IPriceConsumerV3.sol";
 import "../interfaces/IPancakeRouter.sol";
+import "../interfaces/IStakingPool.sol";
 import "../Validatable.sol";
 
 /**
@@ -20,7 +22,7 @@ import "../Validatable.sol";
  *  @notice This smart contract is the staking pool for staking, earning more MTVS token with standard ERC20
  *          all action which user could stake, unstake, claim them.
  */
-contract StakingPool is Validatable, ReentrancyGuardUpgradeable {
+contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IStakingPool {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     struct Lazy {
@@ -134,17 +136,17 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable {
         address _aggregatorProxyBUSD_USD,
         IAdmin _admin
     )
-        public
+        external
         initializer
-        notZeroAddress(_owner)
         notZeroAddress(_stakeToken)
         notZeroAddress(_rewardToken)
-        // notZeroAddress(_mkpManagerAddrress)
+        notZeroAddress(_mkpManagerAddrress)
         notZeroAmount(_rewardRate)
         notZeroAmount(_poolDuration)
     {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
+        __ERC165_init();
 
         stakeToken = IERC20Upgradeable(_stakeToken);
         rewardToken = IERC20Upgradeable(_rewardToken);
@@ -354,6 +356,24 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable {
     function setPoolDuration(uint256 _poolDuration) external notZeroAmount(poolDuration) onlyAdmin {
         poolDuration = _poolDuration;
         emit SetDuration(poolDuration);
+    }
+
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165Upgradeable, IERC165Upgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IStakingPool).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /**

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -12,6 +13,7 @@ import "../interfaces/ITokenMintERC721.sol";
 import "../interfaces/ITokenMintERC1155.sol";
 import "../interfaces/INFTMTVSTicket.sol";
 import "../interfaces/IMarketplaceManager.sol";
+import "../interfaces/IMetaversusManager.sol";
 import "../interfaces/IAdmin.sol";
 import "../Validatable.sol";
 
@@ -23,7 +25,7 @@ import "../Validatable.sol";
  *  @notice This smart contract create the token metaversus manager for Operation. These contract using to control
  *          all action which user call and interact for purchasing in marketplace operation.
  */
-contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable {
+contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IMetaversusManager {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
@@ -87,8 +89,8 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable {
         notZeroAddress(address(_marketplaceAddr))
     {
         __Validatable_init(_admin);
-        __Context_init();
         __ReentrancyGuard_init();
+        __ERC165_init();
 
         treasury = _treasury;
         marketplace = _marketplaceAddr;
@@ -239,6 +241,24 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable {
                 rootHash
             );
         }
+    }
+
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165Upgradeable, IERC165Upgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IMetaversusManager).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /**
