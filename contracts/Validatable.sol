@@ -64,5 +64,6 @@ contract Validatable is PausableUpgradeable {
         __Pausable_init();
         // TODO Validate
         admin = _admin;
+        _pause();
     }
 }
