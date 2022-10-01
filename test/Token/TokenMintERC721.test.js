@@ -144,4 +144,37 @@ describe("TokenMintERC721:", () => {
             expect(await tokenMintERC721.balanceOf(mkpManager.address)).to.equal(1);
         });
     });
+
+    describe("batch mint function:", async () => {
+        it("should revert when aller is not an owner or admin: ", async () => {
+            await expect(
+                tokenMintERC721.connect(user1).batchMint(mkpManager.address, ["this_uri", "this_uri_1", "this_uri_2"])
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
+        });
+
+        it("should revert when receiver address equal to zero address: ", async () => {
+            await expect(
+                tokenMintERC721.batchMint(constants.ZERO_ADDRESS, ["this_uri", "this_uri_1", "this_uri_2"])
+            ).to.be.revertedWith("ERROR: invalid address !");
+        });
+
+        it("should revert when amount of tokens is exceeded: ", async () => {
+            await token.mint(owner.address, ONE_ETHER);
+
+            await token.connect(owner).approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+
+            await expect(tokenMintERC721.batchMint(mkpManager.address, Array(101).fill("this_uri"))).to.be.revertedWith(
+                "Exceeded amount of tokens"
+            );
+        });
+
+        it("should mint success: ", async () => {
+            await token.mint(owner.address, ONE_ETHER);
+
+            await token.connect(owner).approve(tokenMintERC721.address, ethers.constants.MaxUint256);
+
+            await tokenMintERC721.mint(mkpManager.address, ["this_uri", "this_uri_1", "this_uri_2"]);
+            expect(await tokenMintERC721.balanceOf(mkpManager.address)).to.equal(1);
+        });
+    });
 });
