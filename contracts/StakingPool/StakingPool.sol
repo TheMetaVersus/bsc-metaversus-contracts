@@ -453,7 +453,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @notice Get status of pool
      */
     function isActivePool() public view returns (bool) {
-        return (startTime + poolDuration >= block.timestamp) && !admin.isPaused();
+        return (startTime + poolDuration >= block.timestamp) && !isPaused();
     }
 
     /**
