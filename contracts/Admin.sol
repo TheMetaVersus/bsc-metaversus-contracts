@@ -2,9 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
-
 import "./interfaces/IAdmin.sol";
 import "./interfaces/ITokenMintERC721.sol";
 import "./interfaces/ITokenMintERC1155.sol";
@@ -19,7 +17,7 @@ import "./interfaces/IOrder.sol";
  *
  *  @notice This smart contract is contract to control access and role to call function
  */
-contract Admin is PausableUpgradeable, OwnableUpgradeable, ERC165Upgradeable, IAdmin {
+contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     /**
      *  @notice mapping from token ID to isAdmin status
      */
@@ -32,7 +30,6 @@ contract Admin is PausableUpgradeable, OwnableUpgradeable, ERC165Upgradeable, IA
     IOrder public order;
 
     event SetAdmin(address indexed user, bool allow);
-    event SetPause(bool indexed isPause);
 
     modifier validWallet(address _account) {
         require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
@@ -43,12 +40,10 @@ contract Admin is PausableUpgradeable, OwnableUpgradeable, ERC165Upgradeable, IA
      *  @notice Initialize new logic contract.
      */
     function initialize(address _owner) public initializer validWallet(_owner) {
-        __Pausable_init();
         __Ownable_init();
         __ERC165_init();
 
         transferOwnership(_owner);
-        _pause();
     }
 
     /**
@@ -58,16 +53,6 @@ contract Admin is PausableUpgradeable, OwnableUpgradeable, ERC165Upgradeable, IA
     function setAdmin(address user, bool allow) external onlyOwner validWallet(user) {
         admins[user] = allow;
         emit SetAdmin(user, allow);
-    }
-
-    /**
-     *  @notice Set pause action
-     */
-    function setPause(bool isPause) public onlyOwner {
-        if (isPause) _pause();
-        else _unpause();
-
-        emit SetPause(isPause);
     }
 
     /**
@@ -93,10 +78,17 @@ contract Admin is PausableUpgradeable, OwnableUpgradeable, ERC165Upgradeable, IA
     }
 
     /**
-     *  @notice Check contract is paused.
+     *  @notice Check account whether it is the admin order.
      */
-    function isPaused() external view virtual returns (bool) {
-        return super.paused();
+    function isOrder(address _account) external view virtual returns (bool) {
+        return address(order) == _account;
+    }
+
+    /**
+     *  @notice Check account whether it is the admin order.
+     */
+    function setOrder(address _account) external onlyOwner {
+        order = IOrder(_account);
     }
 
     /**

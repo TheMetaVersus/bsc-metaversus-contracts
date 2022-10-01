@@ -65,7 +65,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event SetMarketplace(IMarketplaceManager indexed oldTreasury, IMarketplaceManager indexed newTreasury);
     event Created(uint256 indexed typeMint, address indexed to, uint256 indexed amount);
-    event SetPause(bool isPause);
 
     /**
      *  @notice Initialize new logic contract.

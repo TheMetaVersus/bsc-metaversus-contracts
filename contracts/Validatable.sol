@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "./interfaces/IAdmin.sol";
 
-contract Validatable is ContextUpgradeable {
+contract Validatable is PausableUpgradeable {
     /**
      *  @notice paymentToken IAdmin is interface of Admin contract
      */
     IAdmin public admin;
+
+    event SetPause(bool indexed isPause);
 
     modifier onlyOwner() {
         require(admin.isOwner(_msgSender()), "Caller is not an owner");
@@ -21,8 +22,8 @@ contract Validatable is ContextUpgradeable {
         _;
     }
 
-    modifier whenNotPaused() {
-        require(!admin.isPaused(), "Pausable: paused");
+    modifier onlyOrder() {
+        require(admin.isOrder(_msgSender()), "Caller is not an order contract");
         _;
     }
 
@@ -41,9 +42,26 @@ contract Validatable is ContextUpgradeable {
         _;
     }
 
+    /**
+     *  @notice Set pause action
+     */
+    function setPause(bool isPause) public onlyOwner {
+        if (isPause) _pause();
+        else _unpause();
+
+        emit SetPause(isPause);
+    }
+
+    /**
+     *  @notice Check contract is paused.
+     */
+    function isPaused() public view returns (bool) {
+        return super.paused();
+    }
+
     function __Validatable_init(IAdmin _admin) internal onlyInitializing {
         __Context_init();
-
+        __Pausable_init();
         // TODO Validate
         admin = _admin;
     }

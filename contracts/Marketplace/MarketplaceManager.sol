@@ -108,7 +108,6 @@ contract MarketPlaceManager is
     );
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
-    event SetPause(bool isPause);
     event SetPermitedNFT(address nftAddress, bool allow);
     event MadeOffer(uint256 indexed orderId);
 
@@ -195,8 +194,8 @@ contract MarketPlaceManager is
         orderIdToOrderInfo[orderId] = newBid;
 
         _orderOfOwner[_msgSender()].add(orderId);
-        _orderIdFromAssetOfOwner[marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller]
-            .add(orderId);
+        address caller = marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller;
+        _orderIdFromAssetOfOwner[caller].add(orderId);
 
         // send offer money
         extTransferCall(paymentToken, bidPrice, _msgSender(), address(this));
@@ -231,7 +230,7 @@ contract MarketPlaceManager is
         uint256 amount,
         address from,
         address to
-    ) public payable {
+    ) public payable onlyOrder {
         if (paymentToken == address(0)) {
             if (to == address(this)) {
                 require(msg.value == amount, "Failed to send into contract");

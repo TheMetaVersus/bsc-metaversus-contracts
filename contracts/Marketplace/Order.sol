@@ -59,7 +59,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 endTime,
         address paymentToken
     );
-    event SetPause(bool isPause);
+
     event Claimed(uint256 indexed orderId);
     event AcceptedOffer(
         uint256 indexed orderId,

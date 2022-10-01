@@ -8,7 +8,7 @@ interface IAdmin is IERC165Upgradeable {
 
     function isAdmin(address _account) external view returns (bool);
 
-    function isPaused() external view returns (bool);
+    function isOrder(address _account) external view returns (bool);
 
     function owner() external view returns (address);
 }
