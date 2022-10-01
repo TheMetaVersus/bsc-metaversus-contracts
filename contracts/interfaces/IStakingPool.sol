@@ -7,7 +7,6 @@ import "./IAdmin.sol";
 
 interface IStakingPool is IERC165Upgradeable {
     function initialize(
-        address _owner,
         address _stakeToken,
         address _rewardToken,
         address _mkpManagerAddrress,

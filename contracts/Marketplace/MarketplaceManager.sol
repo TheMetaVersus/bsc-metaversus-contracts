@@ -11,11 +11,10 @@ import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
-
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 import "../interfaces/IMarketplaceManager.sol";
-import "../Struct.sol";
 import "../Validatable.sol";
+import "../Struct.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -44,49 +43,6 @@ contract MarketPlaceManager is
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
     uint256 public constant DENOMINATOR = 1e5;
-
-    // enum NftStandard {
-    //     ERC721,
-    //     ERC1155,
-    //     NONE
-    // }
-    // enum MarketItemStatus {
-    //     LISTING,
-    //     SOLD,
-    //     CANCELED
-    // }
-
-    // struct MarketItem {
-    //     uint256 marketItemId;
-    //     address nftContractAddress;
-    //     uint256 tokenId;
-    //     uint256 amount;
-    //     uint256 price;
-    //     uint256 nftType;
-    //     address seller;
-    //     address buyer;
-    //     MarketItemStatus status;
-    //     uint256 startTime;
-    //     uint256 endTime;
-    //     address paymentToken;
-    // }
-
-    // struct WalletAsset {
-    //     address owner;
-    //     address nftAddress;
-    //     uint256 tokenId;
-    // }
-
-    // struct Order {
-    //     uint256 orderId;
-    //     address bidder;
-    //     address paymentToken;
-    //     uint256 bidPrice;
-    //     uint256 marketItemId;
-    //     WalletAsset walletAsset;
-    //     uint256 amount;
-    //     uint256 expiredOrder;
-    // }
 
     /**
      *  @notice _permitedNFTs mapping from token address to isPermited status
@@ -629,51 +585,103 @@ contract MarketPlaceManager is
         return this.onERC1155Received.selector;
     }
 
+    /**
+     *  @notice get order info from order ID
+     */
     function getOrderIdToOrderInfo(uint256 orderId) external view returns (Order memory) {
         return orderIdToOrderInfo[orderId];
     }
 
+    /**
+     *  @notice set order ID
+     */
     function setOrderIdToOrderInfo(uint256 orderId, Order memory value) external {
         orderIdToOrderInfo[orderId] = value;
     }
 
+    /**
+     *  @notice remove order info at order ID
+     */
     function removeOrderIdToOrderInfo(uint256 orderId) external {
         delete orderIdToOrderInfo[orderId];
     }
 
+    /**
+     *  @notice get market item info from market item ID
+     */
     function getMarketItemIdToMarketItem(uint256 marketItemId) external view returns (MarketItem memory) {
         return marketItemIdToMarketItem[marketItemId];
     }
 
+    /**
+     *  @notice set market item info at market item ID
+     */
     function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value) external {
         marketItemIdToMarketItem[marketItemId] = value;
     }
 
+    /**
+     *  @notice remove order id from owner asset
+     */
     function removeOrderIdFromAssetOfOwner(address owner, uint256 orderId) external {
         _orderIdFromAssetOfOwner[owner].remove(orderId);
     }
 
+    /**
+     *  @notice remove order id from owner
+     */
     function removeOrderOfOwner(address owner, uint256 orderId) external {
         _orderOfOwner[owner].remove(orderId);
     }
 
+    /**
+     *  @notice get order info from owner asset
+     */
     function getOrderIdFromAssetOfOwner(address owner, uint256 index) external view returns (uint256) {
         return _orderIdFromAssetOfOwner[owner].at(index);
     }
 
+    /**
+     *  @notice get length of order info from owner asset
+     */
     function getLengthOrderIdFromAssetOfOwner(address owner) external view returns (uint256) {
         return _orderIdFromAssetOfOwner[owner].length();
     }
 
+    /**
+     *  @notice get order info at order ID
+     */
     function getOrderOfOwner(address owner, uint256 index) external view returns (uint256) {
         return _orderOfOwner[owner].at(index);
     }
 
+    /**
+     *  @notice get length of order info from owner
+     */
     function getLengthOrderOfOwner(address owner) external view returns (uint256) {
         return _orderOfOwner[owner].length();
     }
 
+    /**
+     *  @notice remove market item info from owner
+     */
     function removeMarketItemOfOwner(address owner, uint256 marketItemId) external {
         _marketItemOfOwner[owner].remove(marketItemId);
+    }
+
+    /**
+     * @dev Returns true if an address (leaf)
+     * @param _marketItemId market item Id
+     * @param _proof Proof to verify address
+     * @param _leaf Address to verify
+     */
+    function verify(
+        uint256 _marketItemId,
+        bytes32[] memory _proof,
+        bytes32 _leaf
+    ) external view returns (bool) {
+        require(_marketItemId > 0, "Invalid market item ID");
+        bytes32 root = MerkleProofUpgradeable.processProof(_proof, _leaf);
+        return _rootHashesToMarketItemIds[root].contains(_marketItemId);
     }
 }

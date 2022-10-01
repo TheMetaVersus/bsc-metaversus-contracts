@@ -22,7 +22,6 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
     struct PoolInfo {
         bytes32 salt;
         address poolAddress;
-        address owner;
     }
     mapping(uint256 => PoolInfo) public poolIdToPoolInfos;
     mapping(address => EnumerableSetUpgradeable.UintSet) private _ownerToPoolIds;
@@ -38,7 +37,6 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
     }
 
     function create(
-        address owner,
         address stakeToken,
         address rewardToken,
         address mkpManagerAddrress,
@@ -55,12 +53,11 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
         require(address(pool) != address(0), "ERROR: Non Exist Pool, Please check your transfer");
 
         // store
-        PoolInfo memory newInfo = PoolInfo(salt, address(pool), owner);
+        PoolInfo memory newInfo = PoolInfo(salt, address(pool));
         poolIdToPoolInfos[currentId] = newInfo;
 
         // initialize
         pool.initialize(
-            owner,
             stakeToken,
             rewardToken,
             mkpManagerAddrress,
@@ -72,7 +69,7 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
             admin
         );
 
-        // emit PoolDeployed(address(pool), _msgSender());
+        emit PoolDeployed(address(pool), _msgSender());
     }
 
     /**
