@@ -120,9 +120,7 @@ describe("TokenMintERC1155:", () => {
             );
         });
         it("should revert when amount equal to zero address: ", async () => {
-            await expect(tokenMintERC1155.mint(mkpManager.address, 0, "this_uri")).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
+            await expect(tokenMintERC1155.mint(mkpManager.address, 0, "this_uri")).to.be.revertedWith("Invalid amount");
         });
         it("should mint success: ", async () => {
             await token.mint(owner.address, ONE_ETHER);
@@ -131,6 +129,57 @@ describe("TokenMintERC1155:", () => {
 
             await tokenMintERC1155.mint(mkpManager.address, 100, "this_uri");
             expect(await tokenMintERC1155.balanceOf(mkpManager.address, 1)).to.equal(100);
+        });
+    });
+
+    describe("batch mint function:", async () => {
+        it("should revert when caller is not owner: ", async () => {
+            await expect(
+                tokenMintERC1155
+                    .connect(user1)
+                    .mintBatch(mkpManager.address, [101, 102, 103], ["this_uri", "this_uri_1", "this_uri_2"])
+            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
+        });
+
+        it("should revert when amount length not equal to uris length: ", async () => {
+            await expect(
+                tokenMintERC1155.mintBatch(
+                    mkpManager.address,
+                    [10, 11, 12, 13],
+                    ["this_uri", "this_uri_1", "this_uri_2"]
+                )
+            ).to.be.revertedWith("Invalid length");
+        });
+
+        it("should revert when receiver address equal to zero address: ", async () => {
+            await expect(
+                tokenMintERC1155.mintBatch(
+                    constants.ZERO_ADDRESS,
+                    [10, 11, 12],
+                    ["this_uri", "this_uri_1", "this_uri_2"]
+                )
+            ).to.be.revertedWith("ERROR: invalid address !");
+        });
+
+        it("should revert when amount equal to zero address: ", async () => {
+            await expect(
+                tokenMintERC1155.mintBatch(mkpManager.address, [0, 100, 100], ["this_uri", "this_uri_1", "this_uri_2"])
+            ).to.be.revertedWith("Invalid amount");
+        });
+
+        it("should mint success: ", async () => {
+            await token.mint(owner.address, ONE_ETHER);
+
+            await token.connect(owner).approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
+
+            await tokenMintERC1155.mintBatch(
+                mkpManager.address,
+                [10, 11, 12],
+                ["this_uri", "this_uri_1", "this_uri_2"]
+            );
+            expect(await tokenMintERC1155.balanceOf(mkpManager.address, 1)).to.equal(10);
+            expect(await tokenMintERC1155.balanceOf(mkpManager.address, 2)).to.equal(11);
+            expect(await tokenMintERC1155.balanceOf(mkpManager.address, 3)).to.equal(12);
         });
     });
 });

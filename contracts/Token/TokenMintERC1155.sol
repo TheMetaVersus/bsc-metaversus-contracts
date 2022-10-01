@@ -49,6 +49,7 @@ contract TokenMintERC1155 is
 
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
+    event MintedBatch(uint256[] tokenIds, address indexed to);
 
     /**
      *  @notice Initialize new logic contract.
@@ -100,6 +101,37 @@ contract TokenMintERC1155 is
         _mint(receiver, tokenId, amount, "");
 
         emit Minted(tokenId, receiver);
+    }
+
+    /**
+     *  @notice Mint Batch NFT not pay token
+     *
+     *  @dev    Only owner or admin can call this function.
+     *  @dev    Max mint 100 tokens
+     */
+    function mintBatch(
+        address receiver,
+        uint256[] memory amounts,
+        string[] memory newUris
+    ) external onlyAdmin notZeroAddress(receiver) {
+        require(newUris.length == amounts.length, "Invalid length");
+        require(newUris.length <= 100, "Exceeded amount of tokens");
+
+        uint256[] memory tokenIds;
+        for (uint256 i = 0; i < newUris.length; ++i) {
+            uint256 amount = amounts[i];
+            require(amount > 0, "Invalid amount");
+
+            _tokenCounter.increment();
+            uint256 tokenId = _tokenCounter.current();
+
+            uris[tokenId] = newUris[i];
+            tokenIds[i] = tokenId;
+
+            _mint(receiver, tokenId, amount, "");
+        }
+
+        emit MintedBatch(tokenIds, receiver);
     }
 
     /**
