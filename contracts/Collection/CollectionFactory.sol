@@ -7,10 +7,11 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import "./ICollection.sol";
+import "../interfaces/ICollection.sol";
+import "../interfaces/ICollectionFactory.sol";
 import "../Validatable.sol";
 
-contract CollectionFactory is Validatable, ERC165Upgradeable {
+contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
@@ -47,7 +48,6 @@ contract CollectionFactory is Validatable, ERC165Upgradeable {
         IAdmin _admin
     ) public initializer {
         __ERC165_init();
-        // __Pausable_init();
         __Validatable_init(_admin);
 
         templateERC721 = _templateERC721;
@@ -63,7 +63,7 @@ contract CollectionFactory is Validatable, ERC165Upgradeable {
         address _receiverRoyalty,
         uint96 _feeNumerator,
         address _admin
-    ) external {
+    ) external whenNotPaused {
         require(
             _ownerToCollectionAddress[_msgSender()].length() < maxCollectionPerUser,
             "Exceeding the maxCollectionPerUser"
@@ -117,19 +117,19 @@ contract CollectionFactory is Validatable, ERC165Upgradeable {
         emit SetTemplateAddress(_templateERC721, _templateERC1155);
     }
 
-    function getCollectionInfo(uint256 _id) public view returns (CollectionInfo memory) {
+    function checkCollectionOfUser(address _user, address _nft) external view returns (bool) {
+        return _ownerToCollectionAddress[_user].contains(_nft);
+    }
+
+    function getCollectionInfo(uint256 _id) external view returns (CollectionInfo memory) {
         return collectionIdToCollectionInfos[_id];
     }
 
-    function getCollectionByUser(address _user) public view returns (address[] memory) {
+    function getCollectionByUser(address _user) external view returns (address[] memory) {
         return _ownerToCollectionAddress[_user].values();
     }
 
-    function getAllCollection() public view returns (CollectionInfo[] memory) {
-        CollectionInfo[] memory allCollections = new CollectionInfo[](_collectionCounter.current());
-        for (uint256 i = 0; i < _collectionCounter.current(); i++) {
-            allCollections[i] = collectionIdToCollectionInfos[i + 1];
-        }
-        return allCollections;
+    function getCollectionLength() public view returns (uint256) {
+        return _collectionCounter.current();
     }
 }

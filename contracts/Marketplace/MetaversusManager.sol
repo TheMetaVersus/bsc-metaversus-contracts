@@ -15,6 +15,7 @@ import "../interfaces/INFTMTVSTicket.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../interfaces/IMetaversusManager.sol";
 import "../interfaces/IAdmin.sol";
+import "../interfaces/ICollectionFactory.sol";
 import "../Validatable.sol";
 
 /**
@@ -56,6 +57,11 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
     IMarketplaceManager public marketplace;
 
     /**
+     *  @notice collectionFactory is interface of collection Factory
+     */
+    ICollectionFactory public collectionFactory;
+
+    /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
     address public treasury;
@@ -63,7 +69,8 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
     event BoughtTicket(address indexed to);
     event BoughtTicketEvent(address indexed to, string indexed eventid);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
-    event SetMarketplace(IMarketplaceManager indexed oldTreasury, IMarketplaceManager indexed newTreasury);
+    event SetMarketplace(IMarketplaceManager indexed oldMarketplace, IMarketplaceManager indexed newMarketplace);
+    event SetCollectionFactory(ICollectionFactory indexed oldValue, ICollectionFactory indexed newValue);
     event Created(uint256 indexed typeMint, address indexed to, uint256 indexed amount);
 
     /**
@@ -76,6 +83,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         IERC20Upgradeable _paymentToken,
         address _treasury,
         IMarketplaceManager _marketplaceAddr,
+        ICollectionFactory _collectionFactoryAddr,
         IAdmin _admin
     )
         public
@@ -86,6 +94,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         notZeroAddress(address(_paymentToken))
         notZeroAddress(address(_treasury))
         notZeroAddress(address(_marketplaceAddr))
+        notZeroAddress(address(_collectionFactoryAddr))
     {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
@@ -96,6 +105,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         paymentToken = _paymentToken;
         tokenMintERC721 = nft721Addr;
         tokenMintERC1155 = nft1155Addr;
+        collectionFactory = _collectionFactoryAddr;
     }
 
     /**
@@ -122,6 +132,21 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         IMarketplaceManager oldMarketplace = marketplace;
         marketplace = _newMarketplace;
         emit SetMarketplace(oldMarketplace, marketplace);
+    }
+
+    /**
+     *  @notice Set Marketplace to change MarketplaceManager address.
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function setCollectionFactory(ICollectionFactory _newCollectionFactory)
+        external
+        onlyAdmin
+        notZeroAddress(address(_newCollectionFactory))
+    {
+        ICollectionFactory oldCollectionFactory = collectionFactory;
+        collectionFactory = _newCollectionFactory;
+        emit SetCollectionFactory(oldCollectionFactory, collectionFactory);
     }
 
     /**
@@ -186,6 +211,59 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         paymentToken.safeTransferFrom(_msgSender(), treasury, amount);
 
         emit BoughtTicketEvent(_msgSender(), eventId);
+    }
+
+    /**
+     *  @notice Create NFT Limit
+     *
+     *  @dev    All caller can call this function.
+     */
+    function createNFTLimit(
+        address nftAddress,
+        uint256 amount,
+        string memory uri,
+        uint256 price,
+        uint256 startTime,
+        uint256 endTime,
+        address payment,
+        bytes calldata rootHash
+    ) external nonReentrant notZeroAmount(amount) whenNotPaused {
+        require(collectionFactory.checkCollectionOfUser(_msgSender(), nftAddress), "User is not create collection");
+
+        TypeNft _typeNft = _checkTypeNft(nftAddress);
+        require(_typeNft != TypeNft.NONE, "ERROR: Invalid NFT address");
+        
+        if (_typeNft == TypeNft.ERC721) {
+            ITokenMintERC721(nftAddress).mint(address(marketplace), uri);
+            uint256 currentId = ITokenMintERC721(nftAddress).getTokenCounter();
+            marketplace.extCreateMarketInfo(
+                nftAddress,
+                currentId,
+                amount,
+                price,
+                _msgSender(),
+                startTime,
+                endTime,
+                payment,
+                rootHash
+            );
+        } else if (_typeNft == TypeNft.ERC1155) {
+            ITokenMintERC1155(nftAddress).mint(address(marketplace), amount, uri);
+            uint256 currentId = ITokenMintERC1155(nftAddress).getTokenCounter();
+            marketplace.extCreateMarketInfo(
+                nftAddress,
+                currentId,
+                amount,
+                price,
+                _msgSender(),
+                startTime,
+                endTime,
+                payment,
+                rootHash
+            );
+        }
+
+        emit Created(uint256(_typeNft), _msgSender(), amount);
     }
 
     /**

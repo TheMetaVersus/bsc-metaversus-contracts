@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC721.sol";
-import "./ICollection.sol";
+import "../interfaces/ICollection.sol";
 import "../Validatable.sol";
 
 /**

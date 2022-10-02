@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC1155.sol";
-import "./ICollection.sol";
+import "../interfaces/ICollection.sol";
 import "../Validatable.sol";
 
 /**
@@ -117,6 +117,8 @@ contract TokenERC1155 is
 
         uint256[] memory _tokenIds = new uint256[](_amounts.length);
         for (uint256 i; i < _amounts.length; i++) {
+            require(_amounts[i] > 0, "Invalid amount");
+
             _tokenCounter.increment();
             _tokenId = _tokenCounter.current();
             uris[_tokenId] = _uri[i];
