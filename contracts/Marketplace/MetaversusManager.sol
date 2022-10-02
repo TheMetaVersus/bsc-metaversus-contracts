@@ -70,7 +70,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _owner,
         ITokenMintERC721 nft721Addr,
         ITokenMintERC1155 nft1155Addr,
         IERC20Upgradeable _paymentToken,
@@ -80,7 +79,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
     )
         public
         initializer
-        validWallet(_owner)
         notZeroAddress(address(nft721Addr))
         notZeroAddress(address(nft1155Addr))
         notZeroAddress(address(_paymentToken))
@@ -103,7 +101,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address _account) external onlyAdmin validWallet(_account) {
+    function setTreasury(address _account) external onlyAdmin notZeroAddress(_account) {
         address oldTreasury = treasury;
         treasury = _account;
         emit SetTreasury(oldTreasury, treasury);

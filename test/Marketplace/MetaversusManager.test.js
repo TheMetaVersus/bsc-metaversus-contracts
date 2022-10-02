@@ -15,50 +15,150 @@ describe("Metaversus Manager:", () => {
         user2 = accounts[2];
         user3 = accounts[3];
 
+        Admin = await ethers.getContractFactory("Admin");
+        admin = await upgrades.deployProxy(Admin, [owner.address]);
+
         Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            owner.address,
-            "Vetaversus Token",
+            user1.address,
+            "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
             treasury.address,
+            admin.address,
         ]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            owner.address,
             "NFT Metaversus",
             "nMTVS",
             treasury.address,
             250,
+            admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [owner.address, treasury.address, 250]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, treasury.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
-            owner.address,
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
             treasury.address,
             mkpManager.address,
+            admin.address,
         ]);
 
-        await mtvsManager.setPause(false);
-        await mkpManager.setPause(false);
         await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
         await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
     });
 
     describe("Deployment:", async () => {
+        it("Should be revert when NFT721 Address equal to Zero Address", async () => {
+            await expect(
+                upgrades.deployProxy(MTVSManager, [
+                    constants.ZERO_ADDRESS,
+                    tokenMintERC1155.address,
+                    token.address,
+                    treasury.address,
+                    mkpManager.address,
+                    admin.address,
+                ])
+            ).to.be.revertedWith("Invalid address");
+        });
+
+        it("Should be revert when NFT1155 Address equal to Zero Address", async () => {
+            await expect(
+                upgrades.deployProxy(MTVSManager, [
+                    tokenMintERC721.address,
+                    constants.ZERO_ADDRESS,
+                    token.address,
+                    treasury.address,
+                    mkpManager.address,
+                    admin.address,
+                ])
+            ).to.be.revertedWith("Invalid address");
+        });
+
+        it("Should be revert when token Address equal to Zero Address", async () => {
+            await expect(
+                upgrades.deployProxy(MTVSManager, [
+                    tokenMintERC721.address,
+                    tokenMintERC1155.address,
+                    constants.ZERO_ADDRESS,
+                    treasury.address,
+                    mkpManager.address,
+                    admin.address,
+                ])
+            ).to.be.revertedWith("Invalid address");
+        });
+
+        it("Should be revert when Treasury Address equal to Zero Address", async () => {
+            await expect(
+                upgrades.deployProxy(MTVSManager, [
+                    tokenMintERC721.address,
+                    tokenMintERC1155.address,
+                    token.address,
+                    constants.ZERO_ADDRESS,
+                    mkpManager.address,
+                    admin.address,
+                ])
+            ).to.be.revertedWith("Invalid address");
+        });
+
+        it("Should be revert when Marketplace Address equal to Zero Address", async () => {
+            await expect(
+                upgrades.deployProxy(MTVSManager, [
+                    tokenMintERC721.address,
+                    tokenMintERC1155.address,
+                    token.address,
+                    treasury.address,
+                    constants.ZERO_ADDRESS,
+                    admin.address,
+                ])
+            ).to.be.revertedWith("Invalid address");
+        });
+
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(
+                upgrades.deployProxy(MTVSManager, [
+                    tokenMintERC721.address,
+                    tokenMintERC1155.address,
+                    token.address,
+                    treasury.address,
+                    mkpManager.address,
+                    constants.ZERO_ADDRESS,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
+            await expect(
+                upgrades.deployProxy(MTVSManager, [
+                    tokenMintERC721.address,
+                    tokenMintERC1155.address,
+                    token.address,
+                    treasury.address,
+                    mkpManager.address,
+                    user1.address,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
+            await expect(
+                upgrades.deployProxy(MTVSManager, [
+                    tokenMintERC721.address,
+                    tokenMintERC1155.address,
+                    token.address,
+                    treasury.address,
+                    mkpManager.address,
+                    treasury.address,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
+        });
+
         it("Check all address token were set: ", async () => {
             expect(await mtvsManager.paymentToken()).to.equal(token.address);
             expect(await mtvsManager.tokenMintERC721()).to.equal(tokenMintERC721.address);
@@ -67,42 +167,19 @@ describe("Metaversus Manager:", () => {
             expect(await mtvsManager.marketplace()).to.equal(mkpManager.address);
             expect(await mtvsManager.treasury()).to.equal(treasury.address);
         });
-
-        it("Check Owner: ", async () => {
-            const ownerAddress = await mtvsManager.owner();
-            expect(ownerAddress).to.equal(owner.address);
-        });
-    });
-
-    describe("setAdmin function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
-            await expect(mtvsManager.connect(user1).setAdmin(user2.address, true)).to.be.revertedWith(
-                "Ownable: caller is not the owner"
-            );
-        });
-        it("should set admin success: ", async () => {
-            await mtvsManager.setAdmin(user2.address, true);
-            expect(await mtvsManager.isAdmin(user2.address)).to.equal(true);
-
-            await mtvsManager.setAdmin(user1.address, false);
-            expect(await mtvsManager.isAdmin(user1.address)).to.equal(false);
-
-            await mtvsManager.setAdmin(user2.address, false);
-            expect(await mtvsManager.isAdmin(user2.address)).to.equal(false);
-        });
     });
 
     describe("setMarketplace function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
-            await expect(mtvsManager.connect(user1).setMarketplace(user2.address)).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
+        it("Only admin can call this function", async () => {
+            await expect(mtvsManager.connect(user1).setMarketplace(user2.address)).to.revertedWith(
+                "Caller is not an owner or admin"
             );
         });
+
         it("should revert when address equal to zero address: ", async () => {
-            await expect(mtvsManager.setMarketplace(constants.ZERO_ADDRESS)).to.be.revertedWith(
-                "ERROR: invalid address !"
-            );
+            await expect(mtvsManager.setMarketplace(constants.ZERO_ADDRESS)).to.be.revertedWith("Invalid address");
         });
+
         it("should set marketplace address success: ", async () => {
             await mtvsManager.setMarketplace(user2.address);
             expect(await mtvsManager.marketplace()).to.equal(user2.address);
@@ -113,11 +190,16 @@ describe("Metaversus Manager:", () => {
     });
 
     describe("setTreasury function:", async () => {
-        it("should revert when caller is not owner or admin: ", async () => {
-            await expect(mtvsManager.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
+        it("Only admin can call this function", async () => {
+            await expect(mtvsManager.connect(user1).setTreasury(user2.address)).to.revertedWith(
+                "Caller is not an owner or admin"
             );
         });
+
+        it("should revert when invalid wallet", async () => {
+            await expect(mtvsManager.setTreasury(constants.ZERO_ADDRESS)).to.revertedWith("Invalid address");
+        });
+
         it("should set treasury success: ", async () => {
             await mtvsManager.setTreasury(treasury.address);
             expect(await mtvsManager.treasury()).to.equal(treasury.address);
