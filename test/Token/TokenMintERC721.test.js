@@ -93,24 +93,6 @@ describe("TokenMintERC721:", () => {
         });
     });
 
-    describe("setAdmin function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
-            await expect(tokenMintERC721.connect(user1).setAdmin(user2.address, true)).to.be.revertedWith(
-                "Ownable: caller is not the owner"
-            );
-        });
-        it("should set admin success: ", async () => {
-            await tokenMintERC721.setAdmin(user2.address, true);
-            expect(await tokenMintERC721.isAdmin(user2.address)).to.equal(true);
-
-            await tokenMintERC721.setAdmin(user1.address, false);
-            expect(await tokenMintERC721.isAdmin(user1.address)).to.equal(false);
-
-            await tokenMintERC721.setAdmin(user2.address, false);
-            expect(await tokenMintERC721.isAdmin(user2.address)).to.equal(false);
-        });
-    });
-
     describe("tokenURI function:", async () => {
         it("should revert when invalid tokenID params: ", async () => {
             await expect(tokenMintERC721.tokenURI(2)).to.be.revertedWith(
