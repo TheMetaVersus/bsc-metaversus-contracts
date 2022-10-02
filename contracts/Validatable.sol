@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165CheckerUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "./interfaces/IAdmin.sol";
 
@@ -13,7 +14,7 @@ contract Validatable is PausableUpgradeable {
     event SetPause(bool indexed isPause);
 
     modifier onlyOwner() {
-        require(admin.isOwner(_msgSender()), "Caller is not an owner");
+        require(admin.owner() == _msgSender(), "Caller is not an owner");
         _;
     }
 
@@ -60,6 +61,11 @@ contract Validatable is PausableUpgradeable {
     }
 
     function __Validatable_init(IAdmin _admin) internal onlyInitializing {
+        require(
+            ERC165CheckerUpgradeable.supportsInterface(address(_admin), type(IAdmin).interfaceId),
+            "Invalid Admin contract"
+        );
+
         __Context_init();
         __Pausable_init();
         // TODO Validate
