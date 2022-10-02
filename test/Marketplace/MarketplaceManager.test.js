@@ -15,58 +15,57 @@ describe("Marketplace Manager:", () => {
         user2 = accounts[2];
         user3 = accounts[3];
 
+        Admin = await ethers.getContractFactory("Admin");
+        admin = await upgrades.deployProxy(Admin, [owner.address]);
+
         Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            owner.address,
-            "Vetaversus Token",
+            user1.address,
+            "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
             treasury.address,
+            admin.address,
         ]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            owner.address,
             "NFT Metaversus",
             "nMTVS",
             treasury.address,
             250,
+            admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [owner.address, treasury.address, 250]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, [
-            owner.address,
             "NFT test",
             "NFT",
             token.address,
             treasury.address,
             250,
             PRICE,
+            admin.address,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, treasury.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
-            owner.address,
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
             treasury.address,
             mkpManager.address,
+            admin.address,
         ]);
-        await tokenMintERC721.setAdmin(mtvsManager.address, true);
-        await tokenMintERC1155.setAdmin(mtvsManager.address, true);
-        await mkpManager.setAdmin(mtvsManager.address, true);
-        await mtvsManager.setPause(false);
-        await mkpManager.setPause(false);
         await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
         await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
         await mkpManager.setPermitedNFT(nftTest.address, true);
@@ -76,34 +75,30 @@ describe("Marketplace Manager:", () => {
     });
 
     describe("Deployment:", async () => {
-        it("Check all address token were set: ", async () => {
-            expect(await mkpManager.treasury()).to.equal(treasury.address);
-        });
-        it("Check Owner: ", async () => {
-            const ownerAddress = await mkpManager.owner();
-            expect(ownerAddress).to.equal(owner.address);
-        });
-    });
-
-    describe("setAdmin function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
-            await expect(mkpManager.connect(user1).setAdmin(user2.address, true)).to.be.revertedWith(
-                "Ownable: caller is not the owner"
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(upgrades.deployProxy(MkpManager, [treasury.address, constants.ZERO_ADDRESS])).to.revertedWith(
+                "Invalid Admin contract"
+            );
+            await expect(upgrades.deployProxy(MkpManager, [treasury.address, user1.address])).to.revertedWith(
+                "Invalid Admin contract"
+            );
+            await expect(upgrades.deployProxy(MkpManager, [treasury.address, treasury.address])).to.revertedWith(
+                "Invalid Admin contract"
             );
         });
-        it("should set admin success: ", async () => {
-            await mkpManager.setAdmin(user2.address, true);
-            expect(await mkpManager.isAdmin(user2.address)).to.equal(true);
 
-            await mkpManager.setAdmin(user1.address, false);
-            expect(await mkpManager.isAdmin(user1.address)).to.equal(false);
-
-            await mkpManager.setAdmin(user2.address, false);
-            expect(await mkpManager.isAdmin(user2.address)).to.equal(false);
+        it("Check all address token were set: ", async () => {
+            expect(await mkpManager.treasury()).to.equal(treasury.address);
         });
     });
 
     describe("setPermitedNFT function:", async () => {
+        it("Only admin can call this function", async () => {
+            await expect(mkpManager.connect(user1).setPermitedNFT(tokenMintERC721.address, true)).to.revertedWith(
+                "Caller is not an owner or admin"
+            );
+        });
+
         it("should set permited token success: ", async () => {
             await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
             expect(await mkpManager.isPermitedNFT(tokenMintERC721.address)).to.equal(true);
@@ -117,11 +112,12 @@ describe("Marketplace Manager:", () => {
     });
 
     describe("setTreasury function:", async () => {
-        it("should revert when caller is not owner or admin: ", async () => {
-            await expect(mkpManager.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
+        it("Only admin can call this function", async () => {
+            await expect(mkpManager.connect(user1).setTreasury(treasury.address)).to.revertedWith(
+                "Caller is not an owner or admin"
             );
         });
+
         it("should set treasury success: ", async () => {
             await mkpManager.setTreasury(treasury.address);
             expect(await mkpManager.treasury()).to.equal(treasury.address);
@@ -407,11 +403,15 @@ describe("Marketplace Manager:", () => {
     });
 
     describe("setPermitedPaymentToken function", async () => {
-        it("should revert when caller is not owner or admin", async () => {
-            await expect(mkpManager.connect(user1).setPermitedPaymentToken(token.address, true)).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
-            );
+        it("Only admin can call this function", async () => {
+            await expect(
+                mkpManager.connect(user1).setPermitedPaymentToken(constants.ZERO_ADDRESS, false)
+            ).to.revertedWith("Caller is not an owner or admin");
+            await expect(
+                mkpManager.connect(user1).setPermitedPaymentToken(tokenMintERC721.address, false)
+            ).to.revertedWith("Caller is not an owner or admin");
         });
+
         it("should add new payment token success", async () => {
             await mkpManager.setPermitedPaymentToken(token.address, true);
             expect(await mkpManager.isPermitedPaymentToken(token.address)).to.equal(true);
@@ -423,6 +423,7 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setPermitedPaymentToken(tokenMintERC721.address, false);
         });
     });
+
     describe("makeOfferWalletAsset function", async () => {
         it("should revert when payment token is not allowed", async () => {
             const current = await getCurrentTime();
