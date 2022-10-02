@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/IMarketplaceManager.sol";
 import "../interfaces/IPriceConsumerV3.sol";
@@ -22,7 +23,7 @@ import "../Validatable.sol";
  *  @notice This smart contract is the staking pool for staking, earning more MTVS token with standard ERC20
  *          all action which user could stake, unstake, claim them.
  */
-contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IStakingPool {
+contract StakingPool is PausableUpgradeable, Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IStakingPool {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     struct Lazy {
@@ -108,6 +109,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      */
     mapping(address => UserInfo) public users;
 
+    event Toggled(bool isPaused);
     event Staked(address indexed user, uint256 amount);
     event UnStaked(address indexed user, uint256 amount);
     event Claimed(address indexed user, uint256 amount);
@@ -143,6 +145,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
         notZeroAmount(_rewardRate)
         notZeroAmount(_poolDuration)
     {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC165_init();
@@ -158,6 +161,21 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
         pendingTime = 1 days; // default
         acceptableLost = 50; // 50%
         timeStone = 86400;
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     /**

@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/IMetaCitizen.sol";
 import "../Validatable.sol";
@@ -21,6 +22,7 @@ import "../Validatable.sol";
  *          Anyone can mint token by paying a fee, admin or owner can mint without fee.
  */
 contract MetaCitizen is
+    PausableUpgradeable,
     Validatable,
     ERC165Upgradeable,
     ERC721EnumerableUpgradeable,
@@ -56,6 +58,7 @@ contract MetaCitizen is
      */
     string public baseURI;
 
+    event Toggled(bool isPaused);
     event SetPaymentToken(address indexed oldToken, address indexed newToken);
     event SetMintFee(uint256 indexed oldFee, uint256 indexed newFee);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
@@ -71,6 +74,7 @@ contract MetaCitizen is
         uint256 _mintFee,
         IAdmin _admin
     ) public initializer notZeroAddress(_paymentToken) notZeroAddress(_treasury) notZeroAmount(_mintFee) {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC721_init("MetaversusWorld Citizen", "MWC");
@@ -78,6 +82,21 @@ contract MetaCitizen is
         paymentToken = IERC20Upgradeable(_paymentToken);
         treasury = _treasury;
         mintFee = _mintFee;
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     /**

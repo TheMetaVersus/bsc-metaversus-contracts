@@ -5,12 +5,13 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/IStakingPool.sol";
 import "../interfaces/IPoolFactory.sol";
 import "../Validatable.sol";
 
-contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
+contract PoolFactory is PausableUpgradeable, Validatable, ERC165Upgradeable, IPoolFactory {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
 
@@ -26,14 +27,31 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
     mapping(uint256 => PoolInfo) public poolIdToPoolInfos;
     mapping(address => EnumerableSetUpgradeable.UintSet) private _ownerToPoolIds;
 
+    event Toggled(bool isPaused);
     event PoolDeployed(address pool, address deployer);
 
     function initialize(IStakingPool _template, IAdmin _admin) public initializer {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ERC165_init();
 
         template = _template;
         admin = _admin;
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     function create(

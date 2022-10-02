@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "./interfaces/IVesting.sol";
 import "./Validatable.sol";
@@ -15,7 +16,7 @@ import "./Validatable.sol";
  *  @notice Init info about amount of token percentage to users at initial,
  *          user must claim by themselves
  */
-contract Vesting is Validatable, ERC165Upgradeable, IVesting {
+contract Vesting is PausableUpgradeable, Validatable, ERC165Upgradeable, IVesting {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20Upgradeable public token;
@@ -42,13 +43,30 @@ contract Vesting is Validatable, ERC165Upgradeable, IVesting {
         uint256 indexed _cliff,
         uint256 indexed _linear
     );
+    event Toggled(bool isPaused);
     event Claim(address indexed account, uint256 indexed tokenClaimable);
 
     function initialize(IERC20Upgradeable _token, IAdmin _admin) public initializer {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ERC165_init();
 
         token = _token;
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     function claim(address owner_, uint256 nonce) external {

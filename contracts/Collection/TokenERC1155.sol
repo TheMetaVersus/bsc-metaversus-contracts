@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC1155.sol";
 import "../interfaces/ICollection.sol";
@@ -22,6 +23,7 @@ import "../Validatable.sol";
  */
 
 contract TokenERC1155 is
+    PausableUpgradeable,
     Validatable,
     ReentrancyGuardUpgradeable,
     ERC1155Upgradeable,
@@ -48,6 +50,7 @@ contract TokenERC1155 is
      */
     mapping(uint256 => string) public uris;
 
+    event Toggled(bool isPaused);
     event Minted(uint256 indexed tokenId, address indexed to);
     event MintBatch(address indexed receiver, uint256[] tokenIds, uint256[] amounts, string[] uri);
     event SetMaxBatch(uint256 indexed oldMaxBatch, uint256 indexed newMaxBatch);
@@ -63,6 +66,7 @@ contract TokenERC1155 is
         uint96 _feeNumerator,
         address _admin
     ) public initializer {
+        __Pausable_init();
         __Validatable_init(IAdmin(_admin));
 
         name = _name;
@@ -73,6 +77,21 @@ contract TokenERC1155 is
         if (_receiverRoyalty != address(0)) {
             _setDefaultRoyalty(_receiverRoyalty, _feeNumerator);
         }
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     /**

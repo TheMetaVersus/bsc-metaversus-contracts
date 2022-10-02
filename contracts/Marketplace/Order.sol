@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/IMarketplaceManager.sol";
 import "../interfaces/IOrder.sol";
@@ -17,7 +18,7 @@ import "../Validatable.sol";
  *  @notice This smart contract is the part of marketplace for exhange multiple non-fungiable token with standard ERC721 and ERC1155
  *          all action which user could sell, unsell, buy them.
  */
-contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IOrder {
+contract OrderManager is PausableUpgradeable, Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IOrder {
     /**
      *  @notice marketplace store the address of the marketplaceManager contract
      */
@@ -60,6 +61,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         address paymentToken
     );
 
+    event Toggled(bool isPaused);
     event Claimed(uint256 indexed orderId);
     event AcceptedOffer(
         uint256 indexed orderId,
@@ -78,11 +80,27 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *  @notice Initialize new logic contract.
      */
     function initialize(IMarketplaceManager _marketplace, IAdmin _admin) public initializer {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC165_init();
 
         marketplace = _marketplace;
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     /**

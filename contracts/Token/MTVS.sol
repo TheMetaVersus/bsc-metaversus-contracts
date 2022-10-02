@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeabl
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/IMTVS.sol";
 import "../Validatable.sol";
@@ -18,12 +19,13 @@ import "../Validatable.sol";
  *          by the only controllers and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial.
  */
-contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
+contract MTVS is PausableUpgradeable, Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
     /**
      *  @notice controllers mapping from token ID to isComtroller status
      */
     mapping(address => bool) public controllers;
 
+    event Toggled(bool isPaused);
     event SetController(address indexed user, bool allow);
     event Minted(address indexed receiver, uint256 amount);
 
@@ -38,11 +40,27 @@ contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
         address _treasury,
         IAdmin _admin
     ) public initializer notZeroAddress(_curator) notZeroAddress(_treasury) notZeroAmount(_totalSupply) {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ERC20_init(_name, _symbol);
 
         controllers[_curator] = true;
         _mint(_treasury, _totalSupply);
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     /**

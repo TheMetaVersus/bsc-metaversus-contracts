@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC721.sol";
 import "../Validatable.sol";
@@ -21,6 +22,7 @@ import "../Validatable.sol";
  *          The contract here by is implemented to initial some NFT with royalties.
  */
 contract TokenMintERC721 is
+    PausableUpgradeable,
     Validatable,
     ReentrancyGuardUpgradeable,
     ERC721EnumerableUpgradeable,
@@ -46,6 +48,7 @@ contract TokenMintERC721 is
      */
     mapping(uint256 => string) public uris;
 
+    event Toggled(bool isPaused);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
     event MintedBatch(uint256[] tokenIds, address indexed to);
@@ -60,6 +63,7 @@ contract TokenMintERC721 is
         uint96 _feeNumerator,
         IAdmin _admin
     ) public initializer {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC721_init(_name, _symbol);
@@ -67,6 +71,21 @@ contract TokenMintERC721 is
         treasury = _treasury;
         _setDefaultRoyalty(_treasury, _feeNumerator);
         admin = _admin;
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     /**

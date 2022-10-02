@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/ITreasury.sol";
 import "../Validatable.sol";
@@ -18,7 +19,7 @@ import "../Validatable.sol";
  *  @notice This smart contract create the treasury for Operation. This contract initially store
  *          all assets and using for purchase in marketplace operation.
  */
-contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, ITreasury {
+contract Treasury is PausableUpgradeable, Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, ITreasury {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     /**
@@ -26,6 +27,7 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
      */
     EnumerableSetUpgradeable.AddressSet private _permitedTokens;
 
+    event Toggled(bool isPaused);
     event Distributed(address indexed paymentToken, address indexed destination, uint256 indexed amount);
     event SetPaymentToken(address indexed paymentToken, bool indexed allow);
 
@@ -33,8 +35,24 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
      *  @notice Initialize new logic contract.
      */
     function initialize(IAdmin _admin) public initializer {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ERC165_init();
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     receive() external payable {}

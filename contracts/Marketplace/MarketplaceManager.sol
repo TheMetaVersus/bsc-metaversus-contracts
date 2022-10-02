@@ -12,6 +12,7 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../Validatable.sol";
 import "../Struct.sol";
@@ -25,6 +26,7 @@ import "../Struct.sol";
  *          all action which user could sell, unsell, buy them.
  */
 contract MarketPlaceManager is
+    PausableUpgradeable,
     Validatable,
     ReentrancyGuardUpgradeable,
     ERC721HolderUpgradeable,
@@ -114,6 +116,7 @@ contract MarketPlaceManager is
         address paymentToken,
         bytes rootHash
     );
+    event Toggled(bool isPaused);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event SetPermitedNFT(address nftAddress, bool allow);
@@ -128,11 +131,27 @@ contract MarketPlaceManager is
      *  @notice Initialize new logic contract.
      */
     function initialize(address _treasury, IAdmin _admin) public initializer {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
 
         treasury = _treasury;
         listingFee = 25e2; // 2.5%
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     receive() external payable {}

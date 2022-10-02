@@ -6,12 +6,13 @@ import "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/ICollection.sol";
 import "../interfaces/ICollectionFactory.sol";
 import "../Validatable.sol";
 
-contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable {
+contract CollectionFactory is PausableUpgradeable, ICollectionFactory, Validatable, ERC165Upgradeable {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
@@ -37,6 +38,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
     mapping(uint256 => CollectionInfo) public collectionIdToCollectionInfos;
     mapping(address => EnumerableSetUpgradeable.AddressSet) private _ownerToCollectionAddress;
 
+    event Toggled(bool isPaused);
     event CollectionDeployed(address collection, address deployer);
     event SetMaxCollectionPerUser(uint256 indexed oldValue, uint256 indexed newValue);
     event SetMaxtotalSuply(uint256 indexed oldValue, uint256 indexed newValue);
@@ -47,6 +49,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
         ICollection _templateERC1155,
         IAdmin _admin
     ) public initializer {
+        __Pausable_init();
         __ERC165_init();
         __Validatable_init(_admin);
 
@@ -54,6 +57,21 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
         templateERC1155 = _templateERC1155;
         maxCollectionPerUser = 5;
         maxtotalSuply = 100;
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     function create(

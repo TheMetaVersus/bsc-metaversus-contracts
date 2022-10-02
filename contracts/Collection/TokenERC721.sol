@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC721.sol";
 import "../interfaces/ICollection.sol";
@@ -21,6 +22,7 @@ import "../Validatable.sol";
  *          The contract here by is implemented to initial some NFT with royalties.
  */
 contract TokenERC721 is
+    PausableUpgradeable,
     Validatable,
     ReentrancyGuardUpgradeable,
     ERC721EnumerableUpgradeable,
@@ -45,6 +47,7 @@ contract TokenERC721 is
      */
     mapping(uint256 => string) public uris;
 
+    event Toggled(bool isPaused);
     event Minted(uint256 indexed tokenId, address indexed to);
     event MintBatch(address indexed to, uint256[] tokenIds, string[] newUri);
     event SetMaxBatch(uint256 indexed oldMaxBatch, uint256 indexed newMaxBatch);
@@ -60,6 +63,7 @@ contract TokenERC721 is
         uint96 _feeNumerator,
         address _admin
     ) public initializer {
+        __Pausable_init();
         __Validatable_init(IAdmin(_admin));
         __ReentrancyGuard_init();
         __ERC721_init(_name, _symbol);
@@ -72,13 +76,28 @@ contract TokenERC721 is
     }
 
     /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
+    }
+
+    /**
      *  @notice Mint NFT not pay token
      *
      *  @dev    Only owner or admin can call this function.
      */
     function mint(address _receiver, string memory _uri) external onlyAdmin notZeroAddress(_receiver) {
         require(totalSupply() < maxTotalSupply, "Exceeding the totalSupply");
-        
+
         _tokenCounter.increment();
         uint256 _tokenId = _tokenCounter.current();
         uris[_tokenId] = _uri;

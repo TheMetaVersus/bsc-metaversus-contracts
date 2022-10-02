@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC721.sol";
 import "../interfaces/ITokenMintERC1155.sol";
@@ -26,7 +27,13 @@ import "../Validatable.sol";
  *  @notice This smart contract create the token metaversus manager for Operation. These contract using to control
  *          all action which user call and interact for purchasing in marketplace operation.
  */
-contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IMetaversusManager {
+contract MetaversusManager is
+    PausableUpgradeable,
+    Validatable,
+    ReentrancyGuardUpgradeable,
+    ERC165Upgradeable,
+    IMetaversusManager
+{
     using SafeERC20Upgradeable for IERC20Upgradeable;
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
@@ -66,6 +73,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
      */
     address public treasury;
 
+    event Toggled(bool isPaused);
     event BoughtTicket(address indexed to);
     event BoughtTicketEvent(address indexed to, string indexed eventid);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
@@ -94,6 +102,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         notZeroAddress(address(_marketplaceAddr))
         notZeroAddress(address(_collectionFactoryAddr))
     {
+        __Pausable_init();
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC165_init();
@@ -104,6 +113,21 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         tokenMintERC721 = nft721Addr;
         tokenMintERC1155 = nft1155Addr;
         collectionFactory = _collectionFactoryAddr;
+    }
+
+    /**
+     *  @notice Toggle contract interupt
+     *
+     *  @dev    Only owner can execute this function
+     */
+    function toggle() external onlyAdmin {
+        if (paused()) {
+            _unpause();
+        } else {
+            _pause();
+        }
+
+        emit Toggled(paused());
     }
 
     /**
@@ -230,7 +254,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
 
         TypeNft _typeNft = _checkTypeNft(nftAddress);
         require(_typeNft != TypeNft.NONE, "ERROR: Invalid NFT address");
-        
+
         if (_typeNft == TypeNft.ERC721) {
             ITokenMintERC721(nftAddress).mint(address(marketplace), uri);
             uint256 currentId = ITokenMintERC721(nftAddress).getTokenCounter();
