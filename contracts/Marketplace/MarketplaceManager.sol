@@ -142,6 +142,13 @@ contract MarketPlaceManager is
         emit SetPermitedNFT(_nftAddress, allow);
     }
 
+    function setNewRootHash(bytes calldata oldRoot, bytes calldata newRoot) external onlyAdmin {
+        for (uint256 i = 0; i < _rootHashesToMarketItemIds[bytes32(oldRoot)].length(); i++) {
+            _rootHashesToMarketItemIds[bytes32(newRoot)].add(_rootHashesToMarketItemIds[bytes32(oldRoot)].at(i));
+        }
+        delete _rootHashesToMarketItemIds[bytes32(oldRoot)];
+    }
+
     /**
      *  @notice Set permit payment token
      */
