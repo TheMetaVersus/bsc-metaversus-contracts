@@ -37,46 +37,39 @@ describe("Staking Pool:", () => {
         PANCAKE_ROUTER = await deployMockContract(owner, abi);
         await PANCAKE_ROUTER.mock.getAmountsOut.returns([ONE_ETHER, multiply(500, ONE_ETHER)]);
 
+        Admin = await ethers.getContractFactory("Admin");
+        admin = await upgrades.deployProxy(Admin, [owner.address]);
+
         Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            owner.address,
-            "Vetaversus Token",
+            user1.address,
+            "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
             treasury.address,
+            admin.address,
         ]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            owner.address,
             "NFT Metaversus",
             "nMTVS",
             treasury.address,
             250,
+            admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [owner.address, treasury.address, 250]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, treasury.address]);
-
-        MTVSManager = await ethers.getContractFactory("MetaversusManager");
-        mtvsManager = await upgrades.deployProxy(MTVSManager, [
-            owner.address,
-            tokenMintERC721.address,
-            tokenMintERC1155.address,
-            token.address,
-            treasury.address,
-            mkpManager.address,
-        ]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
         Staking = await ethers.getContractFactory("StakingPool");
         staking = await upgrades.deployProxy(Staking, [
-            owner.address,
             token.address,
             token.address,
             mkpManager.address,
@@ -84,17 +77,13 @@ describe("Staking Pool:", () => {
             poolDuration,
             PANCAKE_ROUTER.address,
             USD_TOKEN,
+            USD_TOKEN,
+            admin.address,
         ]);
 
         await staking.deployed();
         CURRENT = await getCurrentTime();
 
-        await mtvsManager.setPause(false);
-        await mkpManager.setPause(false);
-        await tokenMintERC721.setAdmin(mtvsManager.address, true);
-        await tokenMintERC1155.setAdmin(mtvsManager.address, true);
-        await mkpManager.setAdmin(mtvsManager.address, true);
-        await staking.setPause(false);
         await staking.setStartTime(CURRENT);
 
         await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
@@ -105,9 +94,46 @@ describe("Staking Pool:", () => {
     });
 
     describe("Deployment:", async () => {
-        it("should return owner address : ", async () => {
-            const ownerAddress = await staking.owner();
-            expect(ownerAddress).to.equal(owner.address);
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(
+                upgrades.deployProxy(Staking, [
+                    token.address,
+                    token.address,
+                    mkpManager.address,
+                    REWARD_RATE,
+                    poolDuration,
+                    PANCAKE_ROUTER.address,
+                    USD_TOKEN,
+                    USD_TOKEN,
+                    constants.ZERO_ADDRESS,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
+            await expect(
+                upgrades.deployProxy(Staking, [
+                    token.address,
+                    token.address,
+                    mkpManager.address,
+                    REWARD_RATE,
+                    poolDuration,
+                    PANCAKE_ROUTER.address,
+                    USD_TOKEN,
+                    USD_TOKEN,
+                    user1.address,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
+            await expect(
+                upgrades.deployProxy(Staking, [
+                    token.address,
+                    token.address,
+                    mkpManager.address,
+                    REWARD_RATE,
+                    poolDuration,
+                    PANCAKE_ROUTER.address,
+                    USD_TOKEN,
+                    USD_TOKEN,
+                    treasury.address,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
         });
     });
     describe("getStakeToken:", async () => {
