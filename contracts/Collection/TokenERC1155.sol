@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC1155.sol";
+import "../interfaces/ICollection.sol";
 import "../Validatable.sol";
 
 /**
@@ -16,20 +17,25 @@ import "../Validatable.sol";
  *
  *  @author Metaversus Team
  *
- *  @notice This smart contract create the token ERC1155 for Operation. These tokens initially are minted
- *          by the all user and using for purchase in marketplace operation.
+ *  @notice This smart contract create the token ERC1155 for Operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
 
-contract TokenMintERC1155 is
+contract TokenERC1155 is
     Validatable,
     ReentrancyGuardUpgradeable,
     ERC1155Upgradeable,
     ERC2981Upgradeable,
-    ITokenMintERC1155
+    ITokenMintERC1155,
+    ICollection
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
+
+    string public name;
+    string public symbol;
+    uint256 public maxBatch;
+    uint256 public maxTotalSupply;
 
     /**
      *  @notice _tokenCounter uint256 (counter). This is the counter for store
@@ -38,32 +44,35 @@ contract TokenMintERC1155 is
     CountersUpgradeable.Counter private _tokenCounter;
 
     /**
-     *  @notice treasury store the address of the TreasuryManager contract
-     */
-    address public treasury;
-
-    /**
      *  @notice uris mapping from token ID to token uri
      */
     mapping(uint256 => string) public uris;
 
-    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
-    event MintedBatch(uint256[] tokenIds, address indexed to);
+    event MintBatch(address indexed receiver, uint256[] tokenIds, uint256[] amounts, string[] uri);
+    event SetMaxBatch(uint256 indexed oldMaxBatch, uint256 indexed newMaxBatch);
 
     /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _treasury,
+        string memory _name,
+        string memory _symbol,
+        uint256 _totalSuply,
+        address _receiverRoyalty,
         uint96 _feeNumerator,
-        IAdmin _admin
+        address _admin
     ) public initializer {
-        __Validatable_init(_admin);
-        __ERC1155_init("");
+        __Validatable_init(IAdmin(_admin));
 
-        treasury = _treasury;
-        _setDefaultRoyalty(_treasury, _feeNumerator);
+        name = _name;
+        symbol = _symbol;
+        maxBatch = 100;
+        maxTotalSupply = _totalSuply;
+
+        if (_receiverRoyalty != address(0)) {
+            _setDefaultRoyalty(_receiverRoyalty, _feeNumerator);
+        }
     }
 
     /**
@@ -74,65 +83,59 @@ contract TokenMintERC1155 is
     }
 
     /**
-     *  @notice set treasury to change TreasuryManager address.
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
-        address oldTreasury = treasury;
-        treasury = account;
-        emit SetTreasury(oldTreasury, treasury);
-    }
-
-    /**
      *  @notice Mint NFT not pay token
      *
      *  @dev    Only owner or admin can call this function.
      */
     function mint(
-        address receiver,
-        uint256 amount,
-        string memory newuri
-    ) external onlyAdmin notZeroAddress(receiver) notZeroAmount(amount) {
+        address _receiver,
+        uint256 _amount,
+        string memory _newuri
+    ) external onlyAdmin notZeroAddress(_receiver) notZeroAmount(_amount) {
         _tokenCounter.increment();
-        uint256 tokenId = _tokenCounter.current();
+        uint256 _tokenId = _tokenCounter.current();
 
-        uris[tokenId] = newuri;
+        require(_tokenId <= maxTotalSupply, "Exceeding the totalSupply");
 
-        _mint(receiver, tokenId, amount, "");
+        uris[_tokenId] = _newuri;
 
-        emit Minted(tokenId, receiver);
+        _mint(_receiver, _tokenId, _amount, "");
+
+        emit Minted(_tokenId, _receiver);
     }
 
-    /**
-     *  @notice Mint Batch NFT not pay token
-     *
-     *  @dev    Only owner or admin can call this function.
-     *  @dev    Max mint 100 tokens
-     */
     function mintBatch(
-        address receiver,
-        uint256[] memory amounts,
-        string[] memory newUris
-    ) external onlyAdmin notZeroAddress(receiver) {
-        require(newUris.length == amounts.length, "Invalid length");
-        require(newUris.length <= 100, "Exceeded amount of tokens");
+        address _receiver,
+        string[] memory _uri,
+        uint256[] memory _amounts
+    ) external onlyAdmin notZeroAddress(_receiver) {
+        require(_amounts.length > 0 && _amounts.length <= maxBatch, "Must mint fewer in each batch");
+        require(_amounts.length == _uri.length, "Invalid input");
 
-        uint256[] memory tokenIds;
-        for (uint256 i = 0; i < newUris.length; ++i) {
-            uint256 amount = amounts[i];
-            require(amount > 0, "Invalid amount");
+        uint256 _tokenId = _tokenCounter.current();
+        require(_tokenId + _amounts.length <= maxTotalSupply, "Exceeding the totalSupply");
+
+        uint256[] memory _tokenIds = new uint256[](_amounts.length);
+        for (uint256 i; i < _amounts.length; i++) {
+            require(_amounts[i] > 0, "Invalid amount");
 
             _tokenCounter.increment();
-            uint256 tokenId = _tokenCounter.current();
+            _tokenId = _tokenCounter.current();
+            uris[_tokenId] = _uri[i];
+            _tokenIds[i] = _tokenId;
 
-            uris[tokenId] = newUris[i];
-            tokenIds[i] = tokenId;
-
-            _mint(receiver, tokenId, amount, "");
+            _mint(_receiver, _tokenId, _amounts[i], "");
         }
+        emit MintBatch(_receiver, _tokenIds, _amounts, _uri);
+    }
 
-        emit MintedBatch(tokenIds, receiver);
+    /// @notice Set maxBatch value to mint
+    /// @param  _maxBatch that set maxBatch value
+    function setMaxBatch(uint256 _maxBatch) external onlyAdmin {
+        require(_maxBatch > 0, "Invalid maxBatch");
+        uint256 oldMaxBatch = maxBatch;
+        maxBatch = _maxBatch;
+        emit SetMaxBatch(oldMaxBatch, _maxBatch);
     }
 
     /**

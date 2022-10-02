@@ -32,7 +32,12 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     event SetAdmin(address indexed user, bool allow);
 
     modifier validWallet(address _account) {
-        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
+        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallet");
+        _;
+    }
+
+    modifier notZeroAddress(address _account) {
+        require(_account != address(0), "Invalid address");
         _;
     }
 
@@ -64,13 +69,6 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     }
 
     /**
-     *  @notice Check account whether it is the owner role.
-     */
-    function isOwner(address _account) external view virtual returns (bool) {
-        return _account == owner();
-    }
-
-    /**
      *  @notice Check account whether it is the admin role.
      */
     function isAdmin(address _account) external view virtual returns (bool) {
@@ -87,7 +85,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     /**
      *  @notice Check account whether it is the admin order.
      */
-    function setOrder(address _account) external onlyOwner {
+    function setOrder(address _account) external onlyOwner notZeroAddress(_account) {
         order = IOrder(_account);
     }
 

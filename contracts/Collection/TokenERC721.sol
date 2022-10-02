@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC721.sol";
+import "../interfaces/ICollection.sol";
 import "../Validatable.sol";
 
 /**
@@ -16,19 +17,22 @@ import "../Validatable.sol";
  *
  *  @author Metaversus Team
  *
- *  @notice This smart contract create the token ERC721 for Operation. These tokens initially are minted
- *          by the all user and using for purchase in marketplace operation.
+ *  @notice This smart contract create the token ERC721 for Operation.
  *          The contract here by is implemented to initial some NFT with royalties.
  */
-contract TokenMintERC721 is
+contract TokenERC721 is
     Validatable,
     ReentrancyGuardUpgradeable,
     ERC721EnumerableUpgradeable,
     ERC2981Upgradeable,
-    ITokenMintERC721
+    ITokenMintERC721,
+    ICollection
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
+
+    uint256 public maxTotalSupply;
+    uint256 public maxBatch;
 
     /**
      *  @notice _tokenCounter uint256 (counter). This is the counter for store
@@ -37,18 +41,13 @@ contract TokenMintERC721 is
     CountersUpgradeable.Counter private _tokenCounter;
 
     /**
-     *  @notice treasury store the address of the TreasuryManager contract
-     */
-    address public treasury;
-
-    /**
      *  @notice uris mapping from token ID to token uri
      */
     mapping(uint256 => string) public uris;
 
-    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
-    event MintedBatch(uint256[] tokenIds, address indexed to);
+    event MintBatch(address indexed to, uint256[] tokenIds, string[] newUri);
+    event SetMaxBatch(uint256 indexed oldMaxBatch, uint256 indexed newMaxBatch);
 
     /**
      *  @notice Initialize new logic contract.
@@ -56,28 +55,20 @@ contract TokenMintERC721 is
     function initialize(
         string memory _name,
         string memory _symbol,
-        address _treasury,
+        uint256 _totalSuply,
+        address _receiverRoyalty,
         uint96 _feeNumerator,
-        IAdmin _admin
+        address _admin
     ) public initializer {
-        __Validatable_init(_admin);
+        __Validatable_init(IAdmin(_admin));
         __ReentrancyGuard_init();
         __ERC721_init(_name, _symbol);
 
-        treasury = _treasury;
-        _setDefaultRoyalty(_treasury, _feeNumerator);
-        admin = _admin;
-    }
+        maxTotalSupply = _totalSuply;
 
-    /**
-     *  @notice Set treasury to change TreasuryManager address.
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
-        address oldTreasury = treasury;
-        treasury = account;
-        emit SetTreasury(oldTreasury, treasury);
+        if (_receiverRoyalty != address(0)) {
+            _setDefaultRoyalty(_receiverRoyalty, _feeNumerator);
+        }
     }
 
     /**
@@ -85,38 +76,38 @@ contract TokenMintERC721 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function mint(address receiver, string memory uri) external onlyAdmin notZeroAddress(receiver) {
+    function mint(address _receiver, string memory _uri) external onlyAdmin notZeroAddress(_receiver) {
+        require(totalSupply() < maxTotalSupply, "Exceeding the totalSupply");
+        
         _tokenCounter.increment();
-        uint256 tokenId = _tokenCounter.current();
+        uint256 _tokenId = _tokenCounter.current();
+        uris[_tokenId] = _uri;
 
-        uris[tokenId] = uri;
+        _mint(_receiver, _tokenId);
 
-        _mint(receiver, tokenId);
-
-        emit Minted(tokenId, receiver);
+        emit Minted(_tokenId, _receiver);
     }
 
-    /**
-     *  @notice Mint Batch NFT not pay token
-     *
-     *  @dev    Only owner or admin can call this function.
-     *  @dev    Max mint 100 tokens
-     */
-    function mintBatch(address receiver, string[] memory newUris) external onlyAdmin notZeroAddress(receiver) {
-        require(newUris.length <= 100, "Exceeded amount of tokens");
+    function mintBatch(
+        address _receiver,
+        string[] memory _uris,
+        uint256 _times
+    ) external onlyAdmin notZeroAddress(_receiver) {
+        require(_times > 0 && _times <= maxBatch, "Must mint fewer in each batch");
+        require(_times == _uris.length, "Invalid length baseUri");
+        require(totalSupply() + _times <= maxTotalSupply, "Exceeding the totalSupply");
 
-        uint256[] memory tokenIds;
-        for (uint256 i = 0; i < newUris.length; ++i) {
+        uint256[] memory _tokenIds = new uint256[](_times);
+
+        for (uint256 i; i < _times; i++) {
             _tokenCounter.increment();
-            uint256 tokenId = _tokenCounter.current();
+            uint256 _tokenId = _tokenCounter.current();
+            uris[_tokenId] = _uris[i];
+            _tokenIds[i] = _tokenId;
 
-            uris[tokenId] = newUris[i];
-            tokenIds[i] = tokenId;
-
-            _mint(receiver, tokenId);
+            _safeMint(_msgSender(), _tokenId);
         }
-
-        emit MintedBatch(tokenIds, receiver);
+        emit MintBatch(_receiver, _tokenIds, _uris);
     }
 
     /**
@@ -124,6 +115,17 @@ contract TokenMintERC721 is
      */
     function setTokenURI(string memory newURI, uint256 tokenId) external onlyAdmin {
         uris[tokenId] = newURI;
+    }
+
+    /**
+     *  @notice Set maxBatch value to mint
+     *  @param  _maxBatch that set maxBatch value
+     */
+    function setMaxBatch(uint256 _maxBatch) external onlyOwner {
+        require(_maxBatch > 0, "Invalid maxBatch");
+        uint256 oldMaxBatch = maxBatch;
+        maxBatch = _maxBatch;
+        emit SetMaxBatch(oldMaxBatch, _maxBatch);
     }
 
     /**
