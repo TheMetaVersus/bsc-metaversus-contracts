@@ -54,13 +54,12 @@ contract TokenMintERC721 is
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _owner,
         string memory _name,
         string memory _symbol,
         address _treasury,
         uint96 _feeNumerator,
         IAdmin _admin
-    ) public initializer notZeroAddress(_owner) {
+    ) public initializer {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC721_init(_name, _symbol);

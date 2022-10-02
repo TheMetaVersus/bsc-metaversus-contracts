@@ -5,7 +5,7 @@ const { MaxUint256, AddressZero } = ethers.constants;
 const TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
 const MINT_FEE = 1000;
 
-describe.only("MetaCitizen", () => {
+describe("MetaCitizen", () => {
     beforeEach(async () => {
         const accounts = await ethers.getSigners();
         owner = accounts[0];

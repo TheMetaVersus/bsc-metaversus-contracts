@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const { upgrades } = require("hardhat");
 const { getCurrentTime } = require("../utils");
+const { constants } = require("@openzeppelin/test-helpers");
 
 describe("Pool Factory:", () => {
     beforeEach(async () => {
@@ -19,20 +20,25 @@ describe("Pool Factory:", () => {
         user2 = accounts[2];
         user3 = accounts[3];
         treasury = accounts[4];
+
+        Admin = await ethers.getContractFactory("Admin");
+        admin = await upgrades.deployProxy(Admin, [owner.address]);
+
         Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            owner.address,
-            "Vetaversus Token",
+            user1.address,
+            "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
             treasury.address,
+            admin.address,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, treasury.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
         Staking = await ethers.getContractFactory("StakingPool");
         staking = await Staking.deploy();
@@ -40,14 +46,21 @@ describe("Pool Factory:", () => {
         CURRENT = await getCurrentTime();
 
         PoolFactory = await ethers.getContractFactory("PoolFactory");
-        poolFactory = await upgrades.deployProxy(PoolFactory, [staking.address]);
+        poolFactory = await upgrades.deployProxy(PoolFactory, [staking.address, admin.address]);
         await poolFactory.deployed();
     });
 
     describe("Deployment:", async () => {
-        it("should return owner address : ", async () => {
-            const ownerAddress = await poolFactory.owner();
-            expect(ownerAddress).to.equal(owner.address);
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(upgrades.deployProxy(PoolFactory, [staking.address, constants.ZERO_ADDRESS])).to.revertedWith(
+                "Invalid Admin contract"
+            );
+            await expect(upgrades.deployProxy(PoolFactory, [staking.address, user1.address])).to.revertedWith(
+                "Invalid Admin contract"
+            );
+            await expect(upgrades.deployProxy(PoolFactory, [staking.address, treasury.address])).to.revertedWith(
+                "Invalid Admin contract"
+            );
         });
     });
     // GET FUNC

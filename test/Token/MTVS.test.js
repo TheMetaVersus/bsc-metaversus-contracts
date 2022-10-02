@@ -11,34 +11,66 @@ describe("MTVS Token:", () => {
         user2 = accounts[2];
         user3 = accounts[3];
 
+        Admin = await ethers.getContractFactory("Admin");
+        admin = await upgrades.deployProxy(Admin, [owner.address]);
+
         Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            owner.address,
-            "Vetaversus Token",
+            user1.address,
+            "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
             treasury.address,
+            admin.address,
         ]);
     });
 
     describe("Deployment:", async () => {
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(
+                upgrades.deployProxy(Token, [
+                    user1.address,
+                    "Metaversus Token",
+                    "MTVS",
+                    TOTAL_SUPPLY,
+                    treasury.address,
+                    constants.ZERO_ADDRESS,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
+            await expect(
+                upgrades.deployProxy(Token, [
+                    user1.address,
+                    "Metaversus Token",
+                    "MTVS",
+                    TOTAL_SUPPLY,
+                    treasury.address,
+                    user1.address,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
+            await expect(
+                upgrades.deployProxy(Token, [
+                    user1.address,
+                    "Metaversus Token",
+                    "MTVS",
+                    TOTAL_SUPPLY,
+                    treasury.address,
+                    treasury.address,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
+        });
+
         it("Check name, symbol and default state: ", async () => {
             const name = await token.name();
             const symbol = await token.symbol();
             const totalSupply = await token.totalSupply();
             const total = await token.balanceOf(treasury.address);
-            expect(name).to.equal("Vetaversus Token");
+            expect(name).to.equal("Metaversus Token");
             expect(symbol).to.equal("MTVS");
             expect(totalSupply).to.equal(TOTAL_SUPPLY);
             expect(total).to.equal(totalSupply);
-        });
-
-        it("Check Owner: ", async () => {
-            const ownerAddress = await token.owner();
-            expect(ownerAddress).to.equal(owner.address);
         });
     });
 
@@ -52,9 +84,9 @@ describe("MTVS Token:", () => {
 
     describe("setController function:", async () => {
         it("should revert when caller not be owner: ", async () => {
-            await expect(
-                token.connect(user1).setController(user1.address, true)
-            ).to.be.revertedWith("Ownable: caller is not the owner");
+            await expect(token.connect(user1).setController(user1.address, true)).to.be.revertedWith(
+                "Ownable: caller is not the owner"
+            );
         });
         it("should revert when user address equal to zero address: ", async () => {
             await expect(token.setController(constants.ZERO_ADDRESS, true)).to.be.revertedWith(
@@ -77,14 +109,10 @@ describe("MTVS Token:", () => {
             );
         });
         it("should revert when receiver is zero address: ", async () => {
-            await expect(token.mint(constants.ZERO_ADDRESS, 100)).to.be.revertedWith(
-                "ERROR: invalid address !"
-            );
+            await expect(token.mint(constants.ZERO_ADDRESS, 100)).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should revert when amount equal to zero: ", async () => {
-            await expect(token.mint(user1.address, 0)).to.be.revertedWith(
-                "ERROR: Amount equal to zero !"
-            );
+            await expect(token.mint(user1.address, 0)).to.be.revertedWith("ERROR: Amount equal to zero !");
         });
         it("should mint success: ", async () => {
             await token.mint(user1.address, 100);

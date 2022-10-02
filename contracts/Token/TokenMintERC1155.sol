@@ -60,6 +60,7 @@ contract TokenMintERC1155 is
         IAdmin _admin
     ) public initializer {
         __Validatable_init(_admin);
+        __ERC1155_init("");
 
         treasury = _treasury;
         _setDefaultRoyalty(_treasury, _feeNumerator);
