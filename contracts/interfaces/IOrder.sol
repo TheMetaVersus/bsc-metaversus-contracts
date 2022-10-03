@@ -14,6 +14,6 @@ interface IOrder is IERC165Upgradeable {
         uint256 amount,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     ) external;
 }

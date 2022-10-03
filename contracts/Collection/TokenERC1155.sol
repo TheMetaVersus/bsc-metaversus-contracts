@@ -91,7 +91,7 @@ contract TokenERC1155 is
         address _receiver,
         uint256 _amount,
         string memory _newuri
-    ) external onlyAdmin notZeroAddress(_receiver) notZeroAmount(_amount) {
+    ) external onlyAdmin notZeroAddress(_receiver) notZero(_amount) {
         _tokenCounter.increment();
         uint256 _tokenId = _tokenCounter.current();
 
