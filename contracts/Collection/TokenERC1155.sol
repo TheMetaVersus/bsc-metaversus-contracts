@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC1155.sol";
 import "../interfaces/ICollection.sol";
-import "../Validatable.sol";
+import "../Adminable.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -22,16 +22,17 @@ import "../Validatable.sol";
  */
 
 contract TokenERC1155 is
-    Validatable,
+    ITokenMintERC1155,
+    ICollection,
     ReentrancyGuardUpgradeable,
     ERC1155Upgradeable,
     ERC2981Upgradeable,
-    ITokenMintERC1155,
-    ICollection
+    Adminable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
+    address public factory;
     string public name;
     string public symbol;
     uint256 public maxBatch;
@@ -56,15 +57,17 @@ contract TokenERC1155 is
      *  @notice Initialize new logic contract.
      */
     function initialize(
+        address _owner,
         string memory _name,
         string memory _symbol,
         uint256 _totalSuply,
         address _receiverRoyalty,
-        uint96 _feeNumerator,
-        address _admin
+        uint96 _feeNumerator
     ) public initializer {
-        __Validatable_init(IAdmin(_admin));
+        __Adminable_init();
 
+        transferOwnership(_owner);
+        factory = _msgSender();
         name = _name;
         symbol = _symbol;
         maxBatch = 100;
@@ -73,6 +76,11 @@ contract TokenERC1155 is
         if (_receiverRoyalty != address(0)) {
             _setDefaultRoyalty(_receiverRoyalty, _feeNumerator);
         }
+    }
+
+    modifier onlyFactory() {
+        require(_msgSender() == factory, "Caller is not the factory");
+        _;
     }
 
     /**
@@ -91,7 +99,7 @@ contract TokenERC1155 is
         address _receiver,
         uint256 _amount,
         string memory _newuri
-    ) external onlyAdmin notZeroAddress(_receiver) notZero(_amount) {
+    ) external onlyAdmin notZeroAddress(_receiver) notZeroAmount(_amount) {
         _tokenCounter.increment();
         uint256 _tokenId = _tokenCounter.current();
 
@@ -106,8 +114,8 @@ contract TokenERC1155 is
 
     function mintBatch(
         address _receiver,
-        string[] memory _uri,
-        uint256[] memory _amounts
+        uint256[] memory _amounts,
+        string[] memory _uri
     ) external onlyAdmin notZeroAddress(_receiver) {
         require(_amounts.length > 0 && _amounts.length <= maxBatch, "Must mint fewer in each batch");
         require(_amounts.length == _uri.length, "Invalid input");
@@ -129,13 +137,24 @@ contract TokenERC1155 is
         emit MintBatch(_receiver, _tokenIds, _amounts, _uri);
     }
 
-    /// @notice Set maxBatch value to mint
-    /// @param  _maxBatch that set maxBatch value
+    /**
+     *  @notice Set maxBatch value to mint
+     *  @param  _maxBatch that set maxBatch value
+     */
     function setMaxBatch(uint256 _maxBatch) external onlyAdmin {
         require(_maxBatch > 0, "Invalid maxBatch");
         uint256 oldMaxBatch = maxBatch;
         maxBatch = _maxBatch;
         emit SetMaxBatch(oldMaxBatch, _maxBatch);
+    }
+
+    /**
+     *  @notice Replace the admin role by another address.
+     *
+     *  @dev    Only factory can call this function.
+     */
+    function setAdminByFactory(address _user, bool _allow) public override onlyFactory {
+        _setAdmin(_user, _allow);
     }
 
     /**

@@ -10,7 +10,9 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC721.sol";
 import "../interfaces/ICollection.sol";
-import "../Validatable.sol";
+import "../Adminable.sol";
+
+import "hardhat/console.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -21,16 +23,17 @@ import "../Validatable.sol";
  *          The contract here by is implemented to initial some NFT with royalties.
  */
 contract TokenERC721 is
-    Validatable,
+    ITokenMintERC721,
+    ICollection,
     ReentrancyGuardUpgradeable,
     ERC721EnumerableUpgradeable,
     ERC2981Upgradeable,
-    ITokenMintERC721,
-    ICollection
+    Adminable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
+    address public factory;
     uint256 public maxTotalSupply;
     uint256 public maxBatch;
 
@@ -53,22 +56,30 @@ contract TokenERC721 is
      *  @notice Initialize new logic contract.
      */
     function initialize(
+        address _owner,
         string memory _name,
         string memory _symbol,
         uint256 _totalSuply,
         address _receiverRoyalty,
-        uint96 _feeNumerator,
-        address _admin
+        uint96 _feeNumerator
     ) public initializer {
-        __Validatable_init(IAdmin(_admin));
+        __Adminable_init();
         __ReentrancyGuard_init();
         __ERC721_init(_name, _symbol);
 
+        transferOwnership(_owner);
+        factory = _msgSender();
         maxTotalSupply = _totalSuply;
+        maxBatch = 100;
 
         if (_receiverRoyalty != address(0)) {
             _setDefaultRoyalty(_receiverRoyalty, _feeNumerator);
         }
+    }
+
+    modifier onlyFactory() {
+        require(_msgSender() == factory, "Caller is not the factory");
+        _;
     }
 
     /**
@@ -78,7 +89,7 @@ contract TokenERC721 is
      */
     function mint(address _receiver, string memory _uri) external onlyAdmin notZeroAddress(_receiver) {
         require(totalSupply() < maxTotalSupply, "Exceeding the totalSupply");
-        
+
         _tokenCounter.increment();
         uint256 _tokenId = _tokenCounter.current();
         uris[_tokenId] = _uri;
@@ -88,24 +99,19 @@ contract TokenERC721 is
         emit Minted(_tokenId, _receiver);
     }
 
-    function mintBatch(
-        address _receiver,
-        string[] memory _uris,
-        uint256 _times
-    ) external onlyAdmin notZeroAddress(_receiver) {
-        require(_times > 0 && _times <= maxBatch, "Must mint fewer in each batch");
-        require(_times == _uris.length, "Invalid length baseUri");
-        require(totalSupply() + _times <= maxTotalSupply, "Exceeding the totalSupply");
+    function mintBatch(address _receiver, string[] memory _uris) external onlyAdmin notZeroAddress(_receiver) {
+        require(_uris.length > 0 && _uris.length <= maxBatch, "Must mint fewer in each batch");
+        require(totalSupply() + _uris.length <= maxTotalSupply, "Exceeding the totalSupply");
 
-        uint256[] memory _tokenIds = new uint256[](_times);
+        uint256[] memory _tokenIds = new uint256[](_uris.length);
 
-        for (uint256 i; i < _times; i++) {
+        for (uint256 i; i < _uris.length; i++) {
             _tokenCounter.increment();
             uint256 _tokenId = _tokenCounter.current();
             uris[_tokenId] = _uris[i];
             _tokenIds[i] = _tokenId;
 
-            _safeMint(_msgSender(), _tokenId);
+            _safeMint(_receiver, _tokenId);
         }
         emit MintBatch(_receiver, _tokenIds, _uris);
     }
@@ -121,11 +127,20 @@ contract TokenERC721 is
      *  @notice Set maxBatch value to mint
      *  @param  _maxBatch that set maxBatch value
      */
-    function setMaxBatch(uint256 _maxBatch) external onlyOwner {
+    function setMaxBatch(uint256 _maxBatch) external onlyAdmin {
         require(_maxBatch > 0, "Invalid maxBatch");
         uint256 oldMaxBatch = maxBatch;
         maxBatch = _maxBatch;
         emit SetMaxBatch(oldMaxBatch, _maxBatch);
+    }
+
+    /**
+     *  @notice Replace the admin role by another address.
+     *
+     *  @dev    Only factory can call this function.
+     */
+    function setAdminByFactory(address _user, bool _allow) public override onlyFactory {
+        _setAdmin(_user, _allow);
     }
 
     /**

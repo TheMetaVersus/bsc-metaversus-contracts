@@ -5,11 +5,13 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeab
 
 interface ICollection is IERC165Upgradeable {
     function initialize(
+        address _owner,
         string memory _name,
         string memory _symbol,
         uint256 _totalSuply,
         address _receiverRoyalty,
-        uint96 _feeNumerator,
-        address _admin
+        uint96 _feeNumerator
     ) external;
+
+    function setAdminByFactory(address _user, bool _allow) external;
 }

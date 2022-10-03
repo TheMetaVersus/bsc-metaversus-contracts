@@ -46,6 +46,16 @@ describe("Metaversus Manager:", () => {
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
+        // Collection
+        TokenERC721 = await ethers.getContractFactory("TokenERC721");
+        tokenERC721 = await TokenERC721.deploy();
+
+        TokenERC1155 = await ethers.getContractFactory("TokenERC1155");
+        tokenERC1155 = await TokenERC1155.deploy();
+
+        CollectionFactory = await ethers.getContractFactory("CollectionFactory");
+        collectionFactory = await upgrades.deployProxy(CollectionFactory, [tokenERC721.address, tokenERC1155.address, admin.address, mkpManager.address, user1.address]);
+
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
             tokenMintERC721.address,
@@ -53,7 +63,8 @@ describe("Metaversus Manager:", () => {
             token.address,
             treasury.address,
             mkpManager.address,
-            admin.address,
+            collectionFactory.address,
+            admin.address
         ]);
 
         await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
@@ -219,6 +230,93 @@ describe("Metaversus Manager:", () => {
                 token.address
             ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });
+        it("should create NFT success: ", async () => {
+            await token.mint(user2.address, AMOUNT);
+
+            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
+
+            await mkpManager.setAdmin(mtvsManager.address, true);
+
+            await tokenMintERC721.setAdmin(mtvsManager.address, true);
+
+            await mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 0, 0, 0, token.address, false);
+
+            // check owner nft
+            expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
+
+            let allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
+            expect(allItems[0].status).to.equal(0); // 0 is FREE
+
+            await tokenMintERC1155.setAdmin(mtvsManager.address, true);
+            const blockNumAfter = await ethers.provider.getBlockNumber();
+            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+            const current = blockAfter.timestamp;
+            const time = current + 30 * 24 * 60 * 60; // sale 30 ngay
+            await mtvsManager.connect(user2).createNFT(1, 100, "this_uri", 0, time, time + 10000, token.address, false);
+
+            allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
+            expect(allItems[1].status).to.equal(0);
+            expect(parseInt(allItems[1].endTime)).lessThan(current);
+        });
+        it("should create and sale NFT success: ", async () => {
+            await token.mint(user2.address, AMOUNT);
+
+            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
+
+            await mkpManager.setAdmin(mtvsManager.address, true);
+
+            await tokenMintERC721.setAdmin(mtvsManager.address, true);
+            const blockNumAfter = await ethers.provider.getBlockNumber();
+            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
+            const current = blockAfter.timestamp;
+            const time = current + 30 * 24 * 60 * 60; // sale 30 ngay
+            await mtvsManager
+                .connect(user2)
+                .createNFT(0, 1, "this_uri", 1000, time, time + 10000, token.address, false);
+
+            // check owner nft
+            expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
+            const allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
+            expect(allItems[0].status).to.equal(0);
+            expect(parseInt(allItems[0].endTime)).greaterThan(current);
+        });
+    });
+
+    describe("createNFT limit function:", async () => {
+        beforeEach(async () => {
+            await collectionFactory.setPause(false);
+            await collectionFactory
+                .create(
+                    0,
+                    "NFT",
+                    "NFT",
+                    user1.address,
+                    250
+                );
+
+            await collectionFactory
+                .create(
+                    1,
+                    "NFT1155",
+                    "NFT1155",
+                    user1.address,
+                    250
+                );
+
+            collection_1 = await collectionFactory.getCollectionInfo(1);
+            collection_2 = await collectionFactory.getCollectionInfo(2);
+
+            
+            console.log("collection_1", collection_1.collectionAddress);
+        });
+
+        it.only("should revert when amount equal to zero amount: ", async () => {
+            await expect(
+                mtvsManager.connect(user1).createNFTLimit(collection_1.collectionAddress, 0, "this_uri", ONE_ETHER, 0, 0, token.address, Buffer.),
+                token.address
+            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
+        });
+
         it("should create NFT success: ", async () => {
             await token.mint(user2.address, AMOUNT);
 
