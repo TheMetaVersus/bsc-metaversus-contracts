@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
 
-describe.only("TokenERC721:", () => {
+describe("TokenERC721:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         ONE_ETHER = ethers.utils.parseEther("1");

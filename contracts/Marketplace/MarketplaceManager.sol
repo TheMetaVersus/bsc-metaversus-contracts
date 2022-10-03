@@ -15,6 +15,7 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgrad
 import "../interfaces/IMarketplaceManager.sol";
 import "../Validatable.sol";
 import "../Struct.sol";
+import "hardhat/console.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -150,6 +151,9 @@ contract MarketPlaceManager is
         emit SetPermitedNFT(_nftAddress, allow);
     }
 
+    /**
+     *  @notice Update to change roothash
+     */
     function setNewRootHash(bytes calldata oldRoot, bytes calldata newRoot) external onlyAdmin {
         for (uint256 i = 0; i < _rootHashesToMarketItemIds[bytes32(oldRoot)].length(); i++) {
             _rootHashesToMarketItemIds[bytes32(newRoot)].add(_rootHashesToMarketItemIds[bytes32(oldRoot)].at(i));
@@ -209,11 +213,11 @@ contract MarketPlaceManager is
         orderIdToOrderInfo[orderId] = newBid;
 
         _orderOfOwner[_msgSender()].add(orderId);
-        address caller = marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller;
-        _orderIdFromAssetOfOwner[caller].add(orderId);
+        address sender = marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller;
+        _orderIdFromAssetOfOwner[sender].add(orderId);
 
         // send offer money
-        extTransferCall(paymentToken, bidPrice, _msgSender(), address(this));
+        // extTransferCall(paymentToken, bidPrice, caller, address(this));
         emit MadeOffer(orderId);
     }
 
@@ -246,6 +250,8 @@ contract MarketPlaceManager is
         address from,
         address to
     ) public payable onlyOrder {
+        console.log("ext:", from, to, address(this));
+        console.log("msg.value:", msg.value);
         if (paymentToken == address(0)) {
             if (to == address(this)) {
                 require(msg.value == amount, "Failed to send into contract");
@@ -255,9 +261,12 @@ contract MarketPlaceManager is
             }
         } else {
             if (to == address(this)) {
+                console.log("ext: alo");
                 IERC20Upgradeable(paymentToken).safeTransferFrom(from, to, amount);
             } else {
+                console.log("ext: blo");
                 IERC20Upgradeable(paymentToken).transfer(to, amount);
+                // IERC20Upgradeable(paymentToken).safeTransferFrom(from, to, amount);
             }
         }
     }
@@ -283,10 +292,10 @@ contract MarketPlaceManager is
     /**
      *  @notice Check ruyalty without error when not support function supportsInterface
      */
-    function isRoyalty(address _contract) private returns (bool) {
-        (bool success, ) = _contract.call(abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC2981));
+    function isRoyalty(address _contract) public view returns (bool) {
+        // (bool success, ) = _contract.call(abi.encodeWithSignature("supportsInterface(bytes4)", _INTERFACE_ID_ERC2981));
 
-        return success && IERC2981Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
+        return IERC2981Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
     }
 
     /**
@@ -303,39 +312,39 @@ contract MarketPlaceManager is
         return NftStandard.NONE;
     }
 
-    /**
-     *  @notice Transfers royalties to the rightsowner if applicable and return the remaining amount
-     *  @param nftContractAddress is address contract of nft
-     *  @param tokenId is token id of nft
-     *  @param grossSaleValue is price of nft that is listed
-     *  @param paymentToken is token for payment
-     */
-    function deduceRoyalties(
-        address nftContractAddress,
-        uint256 tokenId,
-        uint256 grossSaleValue,
-        address paymentToken
-    ) external payable returns (uint256 netSaleAmount) {
-        // Get amount of royalties to pays and recipient
-        if (isRoyalty(nftContractAddress)) {
-            (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
-                nftContractAddress,
-                tokenId,
-                grossSaleValue
-            );
+    // /**
+    //  *  @notice Transfers royalties to the rightsowner if applicable and return the remaining amount
+    //  *  @param nftContractAddress is address contract of nft
+    //  *  @param tokenId is token id of nft
+    //  *  @param grossSaleValue is price of nft that is listed
+    //  *  @param paymentToken is token for payment
+    //  */
+    // function deduceRoyalties(
+    //     address nftContractAddress,
+    //     uint256 tokenId,
+    //     uint256 grossSaleValue,
+    //     address paymentToken
+    // ) external payable returns (uint256 netSaleAmount) {
+    //     // Get amount of royalties to pays and recipient
+    //     if (isRoyalty(nftContractAddress)) {
+    //         (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
+    //             nftContractAddress,
+    //             tokenId,
+    //             grossSaleValue
+    //         );
 
-            // Deduce royalties from sale value
-            uint256 netSaleValue = grossSaleValue - royaltiesAmount;
-            // Transfer royalties to rightholder if not zero
-            if (royaltiesAmount > 0) {
-                extTransferCall(paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
-            }
-            // Broadcast royalties payment
-            emit RoyaltiesPaid(tokenId, royaltiesAmount);
-            return netSaleValue;
-        }
-        return grossSaleValue;
-    }
+    //         // Deduce royalties from sale value
+    //         uint256 netSaleValue = grossSaleValue - royaltiesAmount;
+    //         // Transfer royalties to rightholder if not zero
+    //         if (royaltiesAmount > 0) {
+    //             extTransferCall(paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
+    //         }
+    //         // Broadcast royalties payment
+    //         emit RoyaltiesPaid(tokenId, royaltiesAmount);
+    //         return netSaleValue;
+    //     }
+    //     return grossSaleValue;
+    // }
 
     /**
      *  @notice Create market info with data
@@ -659,7 +668,10 @@ contract MarketPlaceManager is
     /**
      *  @notice set market item info at market item ID
      */
-    function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value) external {
+    function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value)
+        external
+        validateId(marketItemId)
+    {
         marketItemIdToMarketItem[marketItemId] = value;
     }
 

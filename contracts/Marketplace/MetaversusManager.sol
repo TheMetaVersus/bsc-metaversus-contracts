@@ -230,7 +230,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
 
         TypeNft _typeNft = _checkTypeNft(nftAddress);
         require(_typeNft != TypeNft.NONE, "ERROR: Invalid NFT address");
-        
+
         if (_typeNft == TypeNft.ERC721) {
             ITokenMintERC721(nftAddress).mint(address(marketplace), uri);
             uint256 currentId = ITokenMintERC721(nftAddress).getTokenCounter();
@@ -262,29 +262,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         }
 
         emit Created(uint256(_typeNft), _msgSender(), amount);
-    }
-
-    /**
-     *  @notice Get all params
-     */
-    function getAllParams()
-        external
-        view
-        returns (
-            address,
-            address,
-            address,
-            address,
-            address
-        )
-    {
-        return (
-            treasury,
-            address(marketplace),
-            address(tokenMintERC1155),
-            address(tokenMintERC721),
-            address(paymentToken)
-        );
     }
 
     /**

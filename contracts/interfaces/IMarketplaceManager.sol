@@ -68,12 +68,12 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     function getListingFee(uint256 amount) external view returns (uint256);
 
-    function deduceRoyalties(
-        address nftContractAddress,
-        uint256 tokenId,
-        uint256 grossSaleValue,
-        address paymentToken
-    ) external payable returns (uint256);
+    // function deduceRoyalties(
+    //     address nftContractAddress,
+    //     uint256 tokenId,
+    //     uint256 grossSaleValue,
+    //     address paymentToken
+    // ) external payable returns (uint256);
 
     function extTransferCall(
         address paymentToken,
@@ -95,4 +95,12 @@ interface IMarketplaceManager is IERC165Upgradeable {
     function getCurrentMarketItem() external view returns (uint256);
 
     function getCurrentOrder() external view returns (uint256);
+
+    function getRoyaltyInfo(
+        address _nftAddr,
+        uint256 _tokenId,
+        uint256 _salePrice
+    ) external view returns (address, uint256);
+
+    function isRoyalty(address _contract) external view returns (bool);
 }
