@@ -16,28 +16,28 @@ library NFTHelper {
     /**
      *  @notice Check ERC721 contract without error when not support function supportsInterface
      */
-    function isERC721(address _account) internal view returns (bool) {
+    function isERC721(address _account) public view returns (bool) {
         return ERC165CheckerUpgradeable.supportsInterface(_account, type(IERC721Upgradeable).interfaceId);
     }
 
     /**
      *  @notice Check ERC1155 contract without error when not support function supportsInterface
      */
-    function isERC1155(address _account) internal view returns (bool) {
+    function isERC1155(address _account) public view returns (bool) {
         return ERC165CheckerUpgradeable.supportsInterface(_account, type(IERC1155Upgradeable).interfaceId);
     }
 
     /**
      *  @notice Check royalty without error when not support function supportsInterface
      */
-    function isRoyalty(address _account) internal view returns (bool) {
+    function isRoyalty(address _account) public view returns (bool) {
         return ERC165CheckerUpgradeable.supportsInterface(_account, type(IERC2981Upgradeable).interfaceId);
     }
 
     /**
      *  @notice Check standard of nft contract address
      */
-    function getType(address _account) internal view returns (Type) {
+    function getType(address _account) public view returns (Type) {
         if (isERC721(_account)) return Type.ERC721;
         if (isERC1155(_account)) return Type.ERC1155;
 
@@ -53,7 +53,7 @@ library NFTHelper {
         uint256 amount,
         address from,
         address to
-    ) internal {
+    ) external {
         NFTHelper.Type nftType = getType(nftContractAddress);
         require(nftType != NFTHelper.Type.NONE, "ERROR: NFT address is incompatible!");
 

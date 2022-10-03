@@ -108,6 +108,7 @@ contract MarketPlaceManager is
     event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event SetPermitedNFT(address nftAddress, bool allow);
+    event SetPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
     event MadeOffer(uint256 indexed orderId);
 
     modifier validId(uint256 _id) {
