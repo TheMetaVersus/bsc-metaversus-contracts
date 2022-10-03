@@ -185,7 +185,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         address nftContractAddress,
         uint256 tokenId,
         uint256 grossSaleValue,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     ) internal returns (uint256 netSaleAmount) {
         // Get amount of royalties to pays and recipient
         if (marketplace.isRoyalty(nftContractAddress)) {
@@ -326,10 +326,10 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         address from,
         address to
     ) internal {
-        NftStandard nftType = marketplace.checkNftStandard(nftContractAddress);
-        require(nftType != NftStandard.NONE, "ERROR: NFT address is compatible !");
+        NFTHelper.Type nftType = NFTHelper.getType(nftContractAddress);
+        require(nftType != NFTHelper.Type.NONE, "ERROR: NFT address is compatible !");
 
-        if (nftType == NftStandard.ERC721) {
+        if (nftType == NFTHelper.Type.ERC721) {
             IERC721Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId);
         } else {
             IERC1155Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId, amount, "");
@@ -509,14 +509,14 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *  @notice Transfer call
      */
     function _internalTransferCall(
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 amount,
         address from,
         address to
     ) internal {
         console.log("order ext:", from, to, address(this));
         console.log("order msg.value:", msg.value);
-        if (paymentToken == address(0)) {
+        if (address(paymentToken) == address(0)) {
             if (to == address(this)) {
                 require(msg.value == amount, "Failed to send into contract in order");
             } else {

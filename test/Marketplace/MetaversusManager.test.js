@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
 const { add } = require("js-big-decimal");
+const { generateMerkleTree, generateLeaf } = require("../utils");
 
 describe("Metaversus Manager:", () => {
     beforeEach(async () => {
@@ -54,7 +55,13 @@ describe("Metaversus Manager:", () => {
         tokenERC1155 = await TokenERC1155.deploy();
 
         CollectionFactory = await ethers.getContractFactory("CollectionFactory");
-        collectionFactory = await upgrades.deployProxy(CollectionFactory, [tokenERC721.address, tokenERC1155.address, admin.address, mkpManager.address, user1.address]);
+        collectionFactory = await upgrades.deployProxy(CollectionFactory, [
+            tokenERC721.address,
+            tokenERC1155.address,
+            admin.address,
+            mkpManager.address,
+            user1.address,
+        ]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
@@ -64,11 +71,11 @@ describe("Metaversus Manager:", () => {
             treasury.address,
             mkpManager.address,
             collectionFactory.address,
-            admin.address
+            admin.address,
         ]);
 
-        await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
-        await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
+        await admin.setPermittedNFT(tokenMintERC721.address, true);
+        await admin.setPermittedNFT(tokenMintERC1155.address, true);
     });
 
     describe("Deployment:", async () => {
@@ -285,34 +292,30 @@ describe("Metaversus Manager:", () => {
     describe("createNFT limit function:", async () => {
         beforeEach(async () => {
             await collectionFactory.setPause(false);
-            await collectionFactory
-                .create(
-                    0,
-                    "NFT",
-                    "NFT",
-                    user1.address,
-                    250
-                );
+            await collectionFactory.create(0, "NFT", "NFT", user1.address, 250);
 
-            await collectionFactory
-                .create(
-                    1,
-                    "NFT1155",
-                    "NFT1155",
-                    user1.address,
-                    250
-                );
+            await collectionFactory.create(1, "NFT1155", "NFT1155", user1.address, 250);
 
             collection_1 = await collectionFactory.getCollectionInfo(1);
             collection_2 = await collectionFactory.getCollectionInfo(2);
 
-            
-            console.log("collection_1", collection_1.collectionAddress);
+            const merkleTree = generateMerkleTree([user1.address, user2.address]);
         });
 
         it.only("should revert when amount equal to zero amount: ", async () => {
             await expect(
-                mtvsManager.connect(user1).createNFTLimit(collection_1.collectionAddress, 0, "this_uri", ONE_ETHER, 0, 0, token.address, Buffer.),
+                mtvsManager
+                    .connect(user1)
+                    .createNFTLimit(
+                        collection_1.collectionAddress,
+                        0,
+                        "this_uri",
+                        ONE_ETHER,
+                        0,
+                        0,
+                        token.address,
+                        merkleTree.getHexRoot()
+                    ),
                 token.address
             ).to.be.revertedWith("ERROR: amount must be greater than zero !");
         });

@@ -545,6 +545,10 @@ contract MarketPlaceManager is
         return this.onERC1155Received.selector;
     }
 
+    function isRoyalty(address _contract) external view returns (bool) {
+        return NFTHelper.isRoyalty(_contract);
+    }
+
     /**
      *  @notice get order info from order ID
      */
@@ -576,10 +580,7 @@ contract MarketPlaceManager is
     /**
      *  @notice set market item info at market item ID
      */
-    function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value)
-        external
-        validateId(marketItemId)
-    {
+    function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value) external validId(marketItemId) {
         marketItemIdToMarketItem[marketItemId] = value;
     }
 
