@@ -8,11 +8,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
-import "../interfaces/ITokenMintERC721.sol";
-import "../interfaces/ICollection.sol";
+import "../interfaces/Collection/ITokenERC721.sol";
+import "../interfaces/Collection/ICollection.sol";
 import "../Adminable.sol";
-
-import "hardhat/console.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -23,7 +21,7 @@ import "hardhat/console.sol";
  *          The contract here by is implemented to initial some NFT with royalties.
  */
 contract TokenERC721 is
-    ITokenMintERC721,
+    ITokenERC721,
     ICollection,
     ReentrancyGuardUpgradeable,
     ERC721EnumerableUpgradeable,
@@ -49,7 +47,8 @@ contract TokenERC721 is
     mapping(uint256 => string) public uris;
 
     event Minted(uint256 indexed tokenId, address indexed to);
-    event MintBatch(address indexed to, uint256[] tokenIds, string[] newUri);
+    event MintBatch(address indexed to, uint256[] tokenIds);
+    event MintBatchWithUri(address indexed to, uint256[] tokenIds, string[] newUri);
     event SetMaxBatch(uint256 indexed oldMaxBatch, uint256 indexed newMaxBatch);
 
     /**
@@ -99,7 +98,7 @@ contract TokenERC721 is
         emit Minted(_tokenId, _receiver);
     }
 
-    function mintBatch(address _receiver, string[] memory _uris) external onlyAdmin notZeroAddress(_receiver) {
+    function mintBatchWithUri(address _receiver, string[] memory _uris) external onlyAdmin notZeroAddress(_receiver) {
         require(_uris.length > 0 && _uris.length <= maxBatch, "Must mint fewer in each batch");
         require(totalSupply() + _uris.length <= maxTotalSupply, "Exceeding the totalSupply");
 
@@ -113,7 +112,23 @@ contract TokenERC721 is
 
             _safeMint(_receiver, _tokenId);
         }
-        emit MintBatch(_receiver, _tokenIds, _uris);
+        emit MintBatchWithUri(_receiver, _tokenIds, _uris);
+    }
+
+    function mintBatch(address _receiver, uint256 _times) external onlyAdmin notZeroAddress(_receiver) {
+        require(_times > 0 && _times <= maxBatch, "Must mint fewer in each batch");
+        require(totalSupply() + _times <= maxTotalSupply, "Exceeding the totalSupply");
+
+        uint256[] memory _tokenIds = new uint256[](_times);
+
+        for (uint256 i; i < _times; i++) {
+            _tokenCounter.increment();
+            uint256 _tokenId = _tokenCounter.current();
+            _tokenIds[i] = _tokenId;
+
+            _safeMint(_receiver, _tokenId);
+        }
+        emit MintBatch(_receiver, _tokenIds);
     }
 
     /**
@@ -189,6 +204,6 @@ contract TokenERC721 is
         override(ERC721EnumerableUpgradeable, ERC2981Upgradeable, IERC165Upgradeable)
         returns (bool)
     {
-        return interfaceId == type(ITokenMintERC721).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == type(ITokenERC721).interfaceId || super.supportsInterface(interfaceId);
     }
 }

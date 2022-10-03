@@ -7,8 +7,8 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import "../interfaces/ICollection.sol";
-import "../interfaces/ICollectionFactory.sol";
+import "../interfaces/Collection/ICollection.sol";
+import "../interfaces/Collection/ICollectionFactory.sol";
 import "../Validatable.sol";
 
 contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable {

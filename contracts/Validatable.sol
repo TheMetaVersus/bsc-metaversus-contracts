@@ -3,13 +3,14 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165CheckerUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 
 import "./interfaces/IAdmin.sol";
 import "./interfaces/ITokenMintERC721.sol";
 import "./interfaces/ITokenMintERC1155.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IMarketplaceManager.sol";
-import "./interfaces/ICollectionFactory.sol";
+import "./interfaces/Collection/ICollectionFactory.sol";
 import "./interfaces/IStakingPool.sol";
 import "./interfaces/IOrder.sol";
 
@@ -143,5 +144,21 @@ contract Validatable is PausableUpgradeable {
      */
     function isPaused() public view returns (bool) {
         return super.paused();
+    }
+
+    /**
+     *  @notice Check whether merkle tree proof is valid
+     *
+     *  @param  _proof      Proof data of leaf node
+     *  @param  _root       Root data of merkle tree
+     *  @param  _account    Address of an account to verify
+     */
+    function isValidProof(
+        bytes32[] memory _proof,
+        bytes32 _root,
+        address _account
+    ) public pure returns (bool) {
+        bytes32 leaf = keccak256(abi.encodePacked(_account));
+        return MerkleProofUpgradeable.verify(_proof, _root, leaf);
     }
 }
