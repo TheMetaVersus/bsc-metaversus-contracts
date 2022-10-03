@@ -1,5 +1,8 @@
 const Big = require("big.js");
 const { subtract, compareTo } = require("js-big-decimal");
+const { MerkleTree } = require("merkletreejs");
+const keccak256 = require("keccak256");
+
 const skipTime = async seconds => {
   await network.provider.send("evm_increaseTime", [seconds]);
   await network.provider.send("evm_mine");
@@ -48,6 +51,17 @@ const getCurrentTime = async () => {
   return block.timestamp;
 };
 
+
+const generateMerkleTree = (accounts) => {
+  const leaves = [user1.address, user2.address].map(value => keccak256(value));
+  return new MerkleTree(leaves, keccak256, { sort: true });
+}
+
+const generateLeaf = (account) => {
+  return keccak256(account);
+}
+
+
 module.exports = {
   skipTime,
   setTime,
@@ -56,5 +70,7 @@ module.exports = {
   skipBlock,
   getCurrentBlock,
   acceptable,
-  getCurrentTime
+  getCurrentTime,
+  generateMerkleTree,
+  generateLeaf
 };

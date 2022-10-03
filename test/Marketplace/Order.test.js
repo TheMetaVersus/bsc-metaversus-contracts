@@ -6,7 +6,7 @@ const { getCurrentTime, skipTime } = require("../utils");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 
-describe.only("OrderManager:", () => {
+describe("OrderManager:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000");
         PRICE = ethers.utils.parseEther("1");

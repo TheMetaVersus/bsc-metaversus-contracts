@@ -17,6 +17,7 @@ import "../lib/NFTHelper.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../Validatable.sol";
 import "../Struct.sol";
+import "hardhat/console.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -168,11 +169,11 @@ contract MarketPlaceManager is
         orderIdToOrderInfo[orderId] = newBid;
 
         _orderOfOwner[_msgSender()].add(orderId);
-        address caller = marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller;
-        _orderIdFromAssetOfOwner[caller].add(orderId);
+        address sender = marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller;
+        _orderIdFromAssetOfOwner[sender].add(orderId);
 
         // send offer money
-        extTransferCall(paymentToken, bidPrice, _msgSender(), address(this));
+        // extTransferCall(paymentToken, bidPrice, caller, address(this));
         emit MadeOffer(orderId);
     }
 
@@ -544,6 +545,10 @@ contract MarketPlaceManager is
         return this.onERC1155Received.selector;
     }
 
+    function isRoyalty(address _contract) external view returns (bool) {
+        return NFTHelper.isRoyalty(_contract);
+    }
+
     /**
      *  @notice get order info from order ID
      */
@@ -575,7 +580,7 @@ contract MarketPlaceManager is
     /**
      *  @notice set market item info at market item ID
      */
-    function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value) external {
+    function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value) external validId(marketItemId) {
         marketItemIdToMarketItem[marketItemId] = value;
     }
 

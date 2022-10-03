@@ -94,4 +94,12 @@ interface IMarketplaceManager is IERC165Upgradeable {
     function getCurrentMarketItem() external view returns (uint256);
 
     function getCurrentOrder() external view returns (uint256);
+
+    function getRoyaltyInfo(
+        address _nftAddr,
+        uint256 _tokenId,
+        uint256 _salePrice
+    ) external view returns (address, uint256);
+
+    function isRoyalty(address _contract) external view returns (bool);
 }

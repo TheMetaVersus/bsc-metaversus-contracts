@@ -66,7 +66,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      *  @notice Replace the admin role by another address.
      *  @dev    Only owner can call this function.
      */
-    function setAdmin(address user, bool allow) external onlyOwner validWallet(user) {
+    function setAdmin(address user, bool allow) external onlyOwner {
         admins[user] = allow;
         emit SetAdmin(user, allow);
     }
