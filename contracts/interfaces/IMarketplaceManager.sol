@@ -47,7 +47,7 @@ interface IMarketplaceManager is IERC165Upgradeable {
     function removeMarketItemOfOwner(address owner, uint256 marketItemId) external;
 
     function externalMakeOffer(
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         uint256 time,
         uint256 amount,
@@ -63,7 +63,7 @@ interface IMarketplaceManager is IERC165Upgradeable {
         address _seller,
         uint256 _startTime,
         uint256 _endTime,
-        address _paymentToken,
+        IERC20Upgradeable _paymentToken,
         bytes calldata rootHash
     ) external;
 
@@ -73,11 +73,11 @@ interface IMarketplaceManager is IERC165Upgradeable {
         address nftContractAddress,
         uint256 tokenId,
         uint256 grossSaleValue,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     ) external payable returns (uint256);
 
     function extTransferCall(
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 amount,
         address from,
         address to

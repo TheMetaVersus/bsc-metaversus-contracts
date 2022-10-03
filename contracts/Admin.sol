@@ -3,6 +3,9 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+
+import "./lib/NFTHelper.sol";
 import "./interfaces/IAdmin.sol";
 import "./interfaces/ITokenMintERC721.sol";
 import "./interfaces/ITokenMintERC1155.sol";
@@ -18,12 +21,26 @@ import "./interfaces/IOrder.sol";
  *  @notice This smart contract is contract to control access and role to call function
  */
 contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
+
     /**
      *  @notice mapping from token ID to isAdmin status
      */
     mapping(address => bool) public admins;
 
+    /**
+     *  @notice _permitedNFTs mapping from token address to isPermited status
+     */
+    EnumerableSetUpgradeable.AddressSet private _permitedNFTs;
+
+    /**
+     *  @notice _permitedPaymentToken mapping from token address to payment
+     */
+    EnumerableSetUpgradeable.AddressSet private _permitedPaymentToken;
+
     event SetAdmin(address indexed user, bool allow);
+    event SetPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
+    event SetPermitedNFT(address nftAddress, bool allow);
 
     modifier validWallet(address _account) {
         require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallet");
@@ -55,6 +72,38 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     }
 
     /**
+     *  @notice Set permit NFT
+     */
+    function setPermitedNFT(address _nftAddress, bool _allow) external {
+        require(isAdmin(_msgSender()), "Caller is not an owner or admin");
+
+        require(NFTHelper.getType(_nftAddress) != NFTHelper.Type.NONE, "ERROR: Invalid NFT address");
+
+        if (_allow) {
+            _permitedNFTs.add(_nftAddress);
+        } else if (isPermitedNFT(_nftAddress)) {
+            _permitedNFTs.remove(_nftAddress);
+        }
+
+        emit SetPermitedNFT(_nftAddress, _allow);
+    }
+
+    /**
+     *  @notice Set permit payment token
+     */
+    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool _allow) external {
+        require(isAdmin(_msgSender()), "Caller is not an owner or admin");
+
+        if (_allow) {
+            _permitedPaymentToken.add(address(_paymentToken));
+        } else if (isPermitedPaymentToken(_paymentToken)) {
+            _permitedPaymentToken.remove(address(_paymentToken));
+        }
+
+        emit SetPermitedPaymentToken(_paymentToken, _allow);
+    }
+
+    /**
      * @notice Get owner of this contract
      * @dev Using in related contracts
      */
@@ -65,8 +114,50 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     /**
      *  @notice Check account whether it is the admin role.
      */
-    function isAdmin(address _account) external view virtual returns (bool) {
+    function isAdmin(address _account) public view virtual returns (bool) {
         return admins[_account] || _account == owner();
+    }
+
+    /**
+     *  @notice Return permit token status
+     */
+    function getPermitedNFT(uint256 _index) external view returns (address) {
+        return _permitedNFTs.at(_index);
+    }
+
+    /**
+     *  @notice Return permit token payment
+     */
+    function getPermitedPaymentToken(uint256 _index) external view returns (IERC20Upgradeable) {
+        return IERC20Upgradeable(_permitedPaymentToken.at(_index));
+    }
+
+    /**
+     *  @notice Return permit token status
+     */
+    function isPermitedNFT(address _nftAddress) public view returns (bool) {
+        return _permitedNFTs.contains(_nftAddress);
+    }
+
+    /**
+     *  @notice Return permit token payment
+     */
+    function isPermitedPaymentToken(IERC20Upgradeable token) public view returns (bool) {
+        return _permitedPaymentToken.contains(address(token));
+    }
+
+    /**
+     *  @notice Return permit token status
+     */
+    function numPermitedNFTs() external view returns (uint256) {
+        return _permitedNFTs.length();
+    }
+
+    /**
+     *  @notice Return permit token payment
+     */
+    function numPermitedPaymentTokens() external view returns (uint256) {
+        return _permitedPaymentToken.length();
     }
 
     /**

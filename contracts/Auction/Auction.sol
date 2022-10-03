@@ -50,7 +50,7 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
     struct AuctionInfo {
         address owner;
         address tokenAddress;
-        address paymentToken;
+        IERC20Upgradeable paymentToken;
         uint256 tokenId;
         uint256 startPrice;
         uint256 endPrice;
@@ -61,7 +61,7 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
 
     struct BidAuction {
         address bidder;
-        address paymentToken;
+        IERC20Upgradeable paymentToken;
         address tokenAddress;
         uint256 tokenId;
         uint256 auctionId;
@@ -73,7 +73,7 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
     /**
      *  @notice permitedPaymentToken is mapping address to bool
      */
-    mapping(address => bool) public permitedPaymentToken;
+    mapping(IERC20Upgradeable => bool) public permitedPaymentToken;
 
     /**
      *  @notice auctions is mapping auctionId to AuctionInfo
@@ -89,7 +89,7 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
     /**
      *  @notice adminHoldPayment is mapping address payment token to amount
      */
-    mapping(address => uint256) public adminHoldPayment;
+    mapping(IERC20Upgradeable => uint256) public adminHoldPayment;
 
     /**
      *  @notice userJoinAuction is mapping auctionId => address user => bool
@@ -112,14 +112,14 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
         address indexed _tokenAddress,
         uint256 indexed _tokenId,
         uint256 _price,
-        address _paymentToken
+        IERC20Upgradeable _paymentToken
     );
     event BidAuctionEdited(uint256 indexed _bidAuctionId, uint256 indexed _oldBidAuctionId, uint256 _price);
     event AuctionCanceled(uint256 indexed _auctionId);
     event BidAuctionCanceled(uint256 indexed _bidAuctionId);
     event BidAuctionAccepted(uint256 indexed _bidAuctionId);
     event AuctionReclaimed(uint256 indexed _auctionId);
-    event PermitedPaymentTokenChanged(address indexed _paymentToken, bool _accepted);
+    event PermitedPaymentTokenChanged(IERC20Upgradeable indexed _paymentToken, bool _accepted);
     event FundsWithdrawed(address indexed _tokenAddress, uint256 _amount);
     event SystemFeeChanged(uint256 _fee);
     event TreasuryChanged(address _oldValue, address _newValue);
@@ -162,7 +162,7 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
     /**
      *  @notice Set permit payment token
      */
-    function setPermitedPaymentToken(address _token, bool _status) external onlyOwner {
+    function setPermitedPaymentToken(IERC20Upgradeable _token, bool _status) external onlyOwner {
         require(_status != permitedPaymentToken[_token], "PermitedPaymentToken is already set up");
         permitedPaymentToken[_token] = _status;
         emit PermitedPaymentTokenChanged(_token, _status);
@@ -225,11 +225,11 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
      *  @notice paid amount
      */
     function _paid(
-        address _token,
+        IERC20Upgradeable _token,
         address _to,
         uint256 _amount
     ) internal {
-        if (_token == address(0)) {
+        if (address(_token) == address(0)) {
             payable(_to).sendValue(_amount);
         } else {
             IERC20Upgradeable(_token).safeTransfer(_to, _amount);
@@ -253,7 +253,7 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
     function _payBidAuction(uint256 _bidAuctionId) internal {
         BidAuction memory bidAuction = bidAuctions[_bidAuctionId];
 
-        address _paymentToken = bidAuction.paymentToken;
+        IERC20Upgradeable _paymentToken = bidAuction.paymentToken;
         uint256 _bidPrice = bidAuction.bidPrice;
         uint256 _netValue = 0;
 
@@ -284,7 +284,7 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
     function _payAuction(uint256 _auctionId, uint256 _amount) internal {
         AuctionInfo memory auction = auctions[_auctionId];
 
-        address _paymentToken = auction.paymentToken;
+        IERC20Upgradeable _paymentToken = auction.paymentToken;
         uint256 _netValue = 0;
 
         if (isRoyalty(auction.tokenAddress)) {
@@ -364,7 +364,7 @@ contract Auction is ManagerAuction {
      */
     function createAuction(
         address _tokenAddress,
-        address _paymentToken,
+        IERC20Upgradeable _paymentToken,
         uint256 _tokenId,
         uint256 _startPrice,
         uint256 _endPrice,
@@ -418,7 +418,7 @@ contract Auction is ManagerAuction {
 
         uint256 _amount = currentPriceAuction(_auctionId);
 
-        if (currentAuction.paymentToken == address(0)) {
+        if (address(currentAuction.paymentToken) == address(0)) {
             require(msg.value >= _amount, "Invalid amount");
         } else {
             IERC20Upgradeable(currentAuction.paymentToken).safeTransferFrom(msg.sender, address(this), _amount);
@@ -465,7 +465,7 @@ contract Auction is ManagerAuction {
      */
     function bidAuction(
         address _tokenAddress,
-        address _paymentToken,
+        IERC20Upgradeable _paymentToken,
         uint256 _tokenId,
         uint256 _auctionId,
         uint256 _price
@@ -497,7 +497,7 @@ contract Auction is ManagerAuction {
         newBidAuction.isOwnerAccepted = false;
         newBidAuction.paymentToken = _paymentToken;
 
-        if (_paymentToken == address(0)) {
+        if (address(_paymentToken) == address(0)) {
             require(msg.value >= _price, "Invalid amount");
         } else {
             IERC20Upgradeable(newBidAuction.paymentToken).safeTransferFrom(newBidAuction.bidder, address(this), _price);
@@ -541,19 +541,15 @@ contract Auction is ManagerAuction {
 
         if (!isExcess) {
             adminHoldPayment[objEditBidAuction.paymentToken] += amount;
-            if (objEditBidAuction.paymentToken != address(0)) {
-                IERC20Upgradeable(objEditBidAuction.paymentToken).safeTransferFrom(
-                    objEditBidAuction.bidder,
-                    address(this),
-                    amount
-                );
+            if (address(objEditBidAuction.paymentToken) != address(0)) {
+                objEditBidAuction.paymentToken.safeTransferFrom(objEditBidAuction.bidder, address(this), amount);
             } else {
                 require(msg.value >= amount, "Invalid amount");
             }
         } else {
             adminHoldPayment[objEditBidAuction.paymentToken] -= amount;
-            if (objEditBidAuction.paymentToken != address(0)) {
-                IERC20Upgradeable(objEditBidAuction.paymentToken).safeTransfer(objEditBidAuction.bidder, amount);
+            if (address(objEditBidAuction.paymentToken) != address(0)) {
+                objEditBidAuction.paymentToken.safeTransfer(objEditBidAuction.bidder, amount);
             } else {
                 payable(msg.sender).sendValue(amount);
             }
@@ -614,14 +610,10 @@ contract Auction is ManagerAuction {
         adminHoldPayment[currentBid.paymentToken] -= currentBid.bidPrice;
 
         currentBid.status = false;
-        if (currentBid.paymentToken == address(0)) {
+        if (address(currentBid.paymentToken) == address(0)) {
             payable(currentBid.bidder).sendValue(currentBid.bidPrice);
         } else {
-            IERC20Upgradeable(currentBid.paymentToken).safeTransferFrom(
-                address(this),
-                currentBid.bidder,
-                currentBid.bidPrice
-            );
+            currentBid.paymentToken.safeTransferFrom(address(this), currentBid.bidder, currentBid.bidPrice);
         }
 
         emit BidAuctionCanceled(_bidAuctionId);
@@ -675,9 +667,9 @@ contract Auction is ManagerAuction {
      *  @dev    this method can called by owner contract
      *  @param  _paymentToken  payment token
      */
-    function withdrawSystemFee(address _paymentToken) external onlyOwner notZeroAddress(treasury) {
+    function withdrawSystemFee(IERC20Upgradeable _paymentToken) external onlyOwner notZeroAddress(treasury) {
         uint256 feeAmount;
-        if (_paymentToken == address(0)) {
+        if (address(_paymentToken) == address(0)) {
             feeAmount = address(this).balance - adminHoldPayment[_paymentToken];
             payable(treasury).sendValue(feeAmount);
         } else {

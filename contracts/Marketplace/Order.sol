@@ -33,7 +33,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 nftType,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     );
     event CanceledSelling(
         uint256 indexed marketItemId,
@@ -45,7 +45,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 nftType,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     );
     event Bought(
         uint256 indexed marketItemId,
@@ -57,14 +57,14 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 nftType,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     );
 
     event Claimed(uint256 indexed orderId);
     event AcceptedOffer(
         uint256 indexed orderId,
         address bidder,
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         uint256 marketItemId,
         address owner,
@@ -127,7 +127,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                     );
                 }
 
-                order.paymentToken = address(paymentToken);
+                order.paymentToken = paymentToken;
                 order.bidPrice = bidPrice;
                 order.expiredOrder = time;
                 order.amount = amount;
@@ -140,7 +140,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
         WalletAsset memory newWalletAsset = WalletAsset(owner, nftAddress, tokenId);
 
-        marketplace.externalMakeOffer(address(paymentToken), bidPrice, time, amount, 0, newWalletAsset);
+        marketplace.externalMakeOffer(paymentToken, bidPrice, time, amount, 0, newWalletAsset);
     }
 
     /**
@@ -172,7 +172,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                         _msgSender()
                     );
                 }
-                order.paymentToken = address(paymentToken);
+                order.paymentToken = paymentToken;
                 order.bidPrice = bidPrice;
                 order.expiredOrder = time;
                 marketplace.setOrderIdToOrderInfo(order.orderId, order);
@@ -184,7 +184,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
         WalletAsset memory newWalletAsset;
 
-        marketplace.externalMakeOffer(address(paymentToken), bidPrice, time, 0, marketItemId, newWalletAsset);
+        marketplace.externalMakeOffer(paymentToken, bidPrice, time, 0, marketItemId, newWalletAsset);
     }
 
     /**
@@ -306,7 +306,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 amount,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     ) external nonReentrant notZero(price) whenNotPaused {
         MarketItem memory item = marketplace.getMarketItemIdToMarketItem(marketItemId);
         require(item.endTime < block.timestamp, "ERROR: market item is not free !");
@@ -367,7 +367,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         bytes calldata rootHash
     ) external nonReentrant notZero(amount) notZero(price) whenNotPaused {
         require(endTime > block.timestamp, "ERROR: Only sell");

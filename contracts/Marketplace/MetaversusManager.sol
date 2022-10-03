@@ -148,7 +148,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        address payment,
+        IERC20Upgradeable payment,
         bytes calldata rootHash
     ) external whenNotPaused nonReentrant notZero(amount) notZero(price) {
         if (typeNft == NFTHelper.Type.ERC721) {
@@ -207,7 +207,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        address payment,
+        IERC20Upgradeable payment,
         bytes calldata rootHash
     ) external nonReentrant notZero(amount) notZero(price) whenNotPaused {
         require(collectionFactory.checkCollectionOfUser(_msgSender(), nftAddress), "User is not create collection");
@@ -257,7 +257,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         uint256[] calldata amounts,
         uint256[] calldata prices,
         bytes calldata rootHash,
-        address payment,
+        IERC20Upgradeable payment,
         uint256 startTime,
         uint256 endTime
     ) public nonReentrant {

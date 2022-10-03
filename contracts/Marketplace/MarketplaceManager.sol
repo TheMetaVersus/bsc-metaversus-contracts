@@ -36,7 +36,6 @@ contract MarketPlaceManager is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     using AddressUpgradeable for address;
     CountersUpgradeable.Counter private _marketItemIds;
     CountersUpgradeable.Counter private _orderCounter;
@@ -45,16 +44,6 @@ contract MarketPlaceManager is
     bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
     bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
     uint256 public constant DENOMINATOR = 1e5;
-
-    /**
-     *  @notice _permitedNFTs mapping from token address to isPermited status
-     */
-    EnumerableSetUpgradeable.AddressSet private _permitedNFTs;
-
-    /**
-     *  @notice _permitedPaymentToken mapping from token address to payment
-     */
-    EnumerableSetUpgradeable.AddressSet private _permitedPaymentToken;
 
     /**
      *  @notice treasury store the address of the TreasuryManager contract
@@ -106,20 +95,19 @@ contract MarketPlaceManager is
         uint256 nftType,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     );
     event MarketItemUpdated(
         uint256 indexed marketItemId,
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         bytes rootHash
     );
     event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event SetPermitedNFT(address nftAddress, bool allow);
-    event SetPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
     event MadeOffer(uint256 indexed orderId);
 
     modifier validId(uint256 _id) {
@@ -141,34 +129,6 @@ contract MarketPlaceManager is
     receive() external payable {}
 
     /**
-     *  @notice Set permit NFT
-     */
-    function setPermitedNFT(address _nftAddress, bool _allow) external onlyAdmin {
-        require(NFTHelper.getType(_nftAddress) != NFTHelper.Type.NONE, "ERROR: Invalid NFT address");
-
-        if (_allow) {
-            _permitedNFTs.add(_nftAddress);
-        } else if (isPermitedNFT(_nftAddress)) {
-            _permitedNFTs.remove(_nftAddress);
-        }
-
-        emit SetPermitedNFT(_nftAddress, _allow);
-    }
-
-    /**
-     *  @notice Set permit payment token
-     */
-    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool _allow) external onlyAdmin {
-        if (_allow) {
-            _permitedPaymentToken.add(address(_paymentToken));
-        } else if (isPermitedPaymentToken(_paymentToken)) {
-            _permitedPaymentToken.remove(address(_paymentToken));
-        }
-
-        emit SetPermitedPaymentToken(_paymentToken, _allow);
-    }
-
-    /**
      *  @notice set treasury to change TreasuryManager address.
      *
      *  @dev    Only owner or admin can call this function.
@@ -183,7 +143,7 @@ contract MarketPlaceManager is
      * @dev makeOffer external function for handle store and update data
      */
     function externalMakeOffer(
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         uint256 time,
         uint256 amount,
@@ -232,12 +192,12 @@ contract MarketPlaceManager is
      *  @notice Transfer call
      */
     function extTransferCall(
-        address _paymentToken,
+        IERC20Upgradeable _paymentToken,
         uint256 _amount,
         address _from,
         address _to
     ) public payable validOrder(IOrder(_msgSender())) {
-        if (_paymentToken == address(0)) {
+        if (address(_paymentToken) == address(0)) {
             if (_to == address(this)) {
                 require(msg.value == _amount, "Failed to send into contract");
             } else {
@@ -264,7 +224,7 @@ contract MarketPlaceManager is
         address _nftContractAddress,
         uint256 _tokenId,
         uint256 _grossSaleValue,
-        address _paymentToken
+        IERC20Upgradeable _paymentToken
     ) external payable returns (uint256 netSaleAmount) {
         // Get amount of royalties to pays and recipient
         if (NFTHelper.isRoyalty(_nftContractAddress)) {
@@ -300,7 +260,7 @@ contract MarketPlaceManager is
         address _seller,
         uint256 _startTime,
         uint256 _endTime,
-        address _paymentToken,
+        IERC20Upgradeable _paymentToken,
         bytes calldata rootHash
     ) external {
         require(_msgSender().isContract(), "ERROR: only allow contract call !");
@@ -323,7 +283,7 @@ contract MarketPlaceManager is
             MarketItemStatus.LISTING,
             _startTime >= block.timestamp ? _startTime : 0,
             _endTime >= _startTime ? _endTime : 0,
-            _permitedPaymentToken.contains(_paymentToken) ? _paymentToken : address(0)
+            admin.isPermitedPaymentToken(_paymentToken) ? _paymentToken : IERC20Upgradeable(address(0))
         );
 
         _marketItemOfOwner[_seller].add(marketItemId);
@@ -352,19 +312,24 @@ contract MarketPlaceManager is
         uint256 _price,
         uint256 _startTime,
         uint256 _endTime,
-        address _paymentToken,
+        IERC20Upgradeable _paymentToken,
         bytes calldata rootHash
     ) external validId(_marketItemId) notZero(_price) {
         require(_msgSender().isContract(), "ERROR: only allow contract call !");
         require(_endTime > _startTime, "Invalid time");
-        require(_permitedPaymentToken.contains(_paymentToken) || _paymentToken == address(0), "Invalid payment token");
+        require(
+            admin.isPermitedPaymentToken(_paymentToken) || address(_paymentToken) == address(0),
+            "Invalid payment token"
+        );
 
         MarketItem memory marketItem = marketItemIdToMarketItem[_marketItemId];
 
         marketItem.price = _price;
         marketItem.startTime = _startTime;
         marketItem.endTime = _endTime;
-        marketItem.paymentToken = _permitedPaymentToken.contains(_paymentToken) ? _paymentToken : address(0);
+        marketItem.paymentToken = admin.isPermitedPaymentToken(_paymentToken)
+            ? _paymentToken
+            : IERC20Upgradeable(address(0));
 
         _rootHashesToMarketItemIds[bytes32(rootHash)].add(_marketItemId);
 
@@ -435,9 +400,9 @@ contract MarketPlaceManager is
      *  @notice Fetch all permited nft
      */
     function fetchAllPermitedNFTs() external view returns (address[] memory) {
-        address[] memory nfts = new address[](_permitedNFTs.length());
-        for (uint256 i = 0; i < _permitedNFTs.length(); i++) {
-            nfts[i] = _permitedNFTs.at(i);
+        address[] memory nfts = new address[](admin.numPermitedNFTs());
+        for (uint256 i = 0; i < admin.numPermitedNFTs(); i++) {
+            nfts[i] = admin.getPermitedNFT(i);
         }
 
         return nfts;
@@ -488,14 +453,14 @@ contract MarketPlaceManager is
      *  @notice Return permit token status
      */
     function isPermitedNFT(address _nftAddress) public view returns (bool) {
-        return _permitedNFTs.contains(_nftAddress);
+        return admin.isPermitedNFT(_nftAddress);
     }
 
     /**
      *  @notice Return permit token payment
      */
     function isPermitedPaymentToken(IERC20Upgradeable token) public view returns (bool) {
-        return _permitedPaymentToken.contains(address(token));
+        return admin.isPermitedPaymentToken(token);
     }
 
     /**
@@ -676,5 +641,9 @@ contract MarketPlaceManager is
         require(_marketItemId > 0, "Invalid market item ID");
         bytes32 root = MerkleProofUpgradeable.processProof(_proof, _leaf);
         return _rootHashesToMarketItemIds[root].contains(_marketItemId);
+    }
+
+    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow) external override {
+        admin.setPermitedPaymentToken(_paymentToken, allow);
     }
 }

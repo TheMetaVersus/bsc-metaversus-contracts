@@ -67,10 +67,10 @@ contract MetaCitizen is
      */
     function initialize(
         ITreasury _treasury,
-        address _paymentToken,
+        IERC20Upgradeable _paymentToken,
         uint256 _mintFee,
         IAdmin _admin
-    ) public initializer notZeroAddress(_paymentToken) validTreasury(_treasury) notZero(_mintFee) {
+    ) public initializer notZeroAddress(address(_paymentToken)) validTreasury(_treasury) notZero(_mintFee) {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC721_init("MetaversusWorld Citizen", "MWC");
