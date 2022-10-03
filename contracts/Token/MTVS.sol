@@ -35,14 +35,14 @@ contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
         string memory _name,
         string memory _symbol,
         uint256 _totalSupply,
-        address _treasury,
+        ITreasury _treasury,
         IAdmin _admin
-    ) public initializer notZeroAddress(_curator) notZeroAddress(_treasury) notZero(_totalSupply) {
+    ) public initializer notZeroAddress(_curator) validTreasury(_treasury) notZero(_totalSupply) {
         __Validatable_init(_admin);
         __ERC20_init(_name, _symbol);
 
         controllers[_curator] = true;
-        _mint(_treasury, _totalSupply);
+        _mint(address(_treasury), _totalSupply);
     }
 
     /**

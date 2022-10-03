@@ -10,6 +10,7 @@ import "./interfaces/ITokenMintERC1155.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IMarketplaceManager.sol";
 import "./interfaces/ICollectionFactory.sol";
+import "./interfaces/IStakingPool.sol";
 import "./interfaces/IOrder.sol";
 
 contract Validatable is PausableUpgradeable {
@@ -100,6 +101,14 @@ contract Validatable is PausableUpgradeable {
         require(
             ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ICollectionFactory).interfaceId),
             "Invalid CollectionFactory contract"
+        );
+        _;
+    }
+
+    modifier validStakingPool(IStakingPool _account) {
+        require(
+            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IStakingPool).interfaceId),
+            "Invalid StakingPool contract"
         );
         _;
     }

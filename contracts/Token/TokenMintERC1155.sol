@@ -40,14 +40,14 @@ contract TokenMintERC1155 is
     /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
-    address public treasury;
+    ITreasury public treasury;
 
     /**
      *  @notice uris mapping from token ID to token uri
      */
     mapping(uint256 => string) public uris;
 
-    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
+    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
     event MintedBatch(uint256[] tokenIds, address indexed to);
 
@@ -55,7 +55,7 @@ contract TokenMintERC1155 is
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _treasury,
+        ITreasury _treasury,
         uint96 _feeNumerator,
         IAdmin _admin
     ) public initializer {
@@ -63,7 +63,7 @@ contract TokenMintERC1155 is
         __ERC1155_init("");
 
         treasury = _treasury;
-        _setDefaultRoyalty(_treasury, _feeNumerator);
+        _setDefaultRoyalty(address(_treasury), _feeNumerator);
     }
 
     /**
@@ -78,9 +78,9 @@ contract TokenMintERC1155 is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
-        address oldTreasury = treasury;
-        treasury = account;
+    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
+        ITreasury oldTreasury = treasury;
+        treasury = _account;
         emit SetTreasury(oldTreasury, treasury);
     }
 

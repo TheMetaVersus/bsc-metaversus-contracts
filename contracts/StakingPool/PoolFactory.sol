@@ -28,7 +28,7 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
 
     event PoolDeployed(address pool, address deployer);
 
-    function initialize(IStakingPool _template, IAdmin _admin) public initializer {
+    function initialize(IStakingPool _template, IAdmin _admin) public initializer validStakingPool(_template) {
         __Validatable_init(_admin);
         __ERC165_init();
 
@@ -37,14 +37,14 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
     }
 
     function create(
-        address stakeToken,
-        address rewardToken,
-        address mkpManagerAddrress,
-        uint256 rewardRate,
-        uint256 poolDuration,
-        address pancakeRouter,
-        address busdToken,
-        address aggregatorProxyBUSD_USD
+        IERC20Upgradeable _stakeToken,
+        IERC20Upgradeable _rewardToken,
+        IMarketplaceManager _mkpManagerAddrress,
+        uint256 _rewardRate,
+        uint256 _poolDuration,
+        address _pancakeRouter,
+        address _busdToken,
+        address _aggregatorProxyBUSD_USD
     ) external onlyAdmin whenNotPaused {
         _poolCounter.increment();
         uint256 currentId = _poolCounter.current();
@@ -58,14 +58,14 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
 
         // initialize
         pool.initialize(
-            stakeToken,
-            rewardToken,
-            mkpManagerAddrress,
-            rewardRate,
-            poolDuration,
-            pancakeRouter,
-            busdToken,
-            aggregatorProxyBUSD_USD,
+            _stakeToken,
+            _rewardToken,
+            _mkpManagerAddrress,
+            _rewardRate,
+            _poolDuration,
+            _pancakeRouter,
+            _busdToken,
+            _aggregatorProxyBUSD_USD,
             admin
         );
 

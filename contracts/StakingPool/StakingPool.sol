@@ -81,7 +81,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
     /**
      *  @notice mkpManager is address of Marketplace Manager
      */
-    address public mkpManager;
+    IMarketplaceManager public mkpManager;
 
     /**
      *  @notice busdToken is address that price of token equal to one USD
@@ -125,9 +125,9 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _stakeToken,
-        address _rewardToken,
-        address _mkpManagerAddrress,
+        IERC20Upgradeable _stakeToken,
+        IERC20Upgradeable _rewardToken,
+        IMarketplaceManager _mkpManagerAddrress,
         uint256 _rewardRate,
         uint256 _poolDuration,
         address _pancakeRouter,
@@ -137,9 +137,9 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
     )
         external
         initializer
-        notZeroAddress(_stakeToken)
-        notZeroAddress(_rewardToken)
-        notZeroAddress(_mkpManagerAddrress)
+        notZeroAddress(address(_stakeToken))
+        notZeroAddress(address(_rewardToken))
+        validMarketplaceManager(_mkpManagerAddrress)
         notZero(_rewardRate)
         notZero(_poolDuration)
     {
