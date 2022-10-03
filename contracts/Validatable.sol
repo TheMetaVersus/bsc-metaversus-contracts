@@ -10,7 +10,7 @@ import "./interfaces/ITokenMintERC721.sol";
 import "./interfaces/ITokenMintERC1155.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IMarketplaceManager.sol";
-import "./interfaces/ICollectionFactory.sol";
+import "./interfaces/Collection/ICollectionFactory.sol";
 import "./interfaces/IStakingPool.sol";
 import "./interfaces/IOrder.sol";
 

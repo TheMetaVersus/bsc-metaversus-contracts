@@ -302,7 +302,7 @@ describe("Metaversus Manager:", () => {
             const merkleTree = generateMerkleTree([user1.address, user2.address]);
         });
 
-        it.only("should revert when amount equal to zero amount: ", async () => {
+        it("should revert when amount equal to zero amount: ", async () => {
             await expect(
                 mtvsManager
                     .connect(user1)
@@ -322,53 +322,46 @@ describe("Metaversus Manager:", () => {
 
         it("should create NFT success: ", async () => {
             await token.mint(user2.address, AMOUNT);
-
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
 
-            await mkpManager.setAdmin(mtvsManager.address, true);
-
-            await tokenMintERC721.setAdmin(mtvsManager.address, true);
-
-            await mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 0, 0, 0, token.address, false);
+            await mtvsManager
+                .connect(user2)
+                .createNFTLimit(
+                    nft_721.address,
+                    1,
+                    "this_uri",
+                    ONE_ETHER,
+                    0,
+                    0,
+                    token.address,
+                    formatBytes32String("0x1234")
+                );
 
             // check owner nft
-            expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
+            expect(await nft_721.ownerOf(1)).to.equal(mkpManager.address);
 
             let allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
             expect(allItems[0].status).to.equal(0); // 0 is FREE
 
-            await tokenMintERC1155.setAdmin(mtvsManager.address, true);
-            const blockNumAfter = await ethers.provider.getBlockNumber();
-            const blockAfter = await ethers.provider.getBlock(blockNumAfter);
-            const current = blockAfter.timestamp;
-            const time = current + 30 * 24 * 60 * 60; // sale 30 ngay
-            await mtvsManager.connect(user2).createNFT(1, 100, "this_uri", 0, time, time + 10000, token.address, false);
-
-            allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
-            expect(allItems[1].status).to.equal(0);
-            expect(parseInt(allItems[1].endTime)).lessThan(current);
-        });
-        it("should create and sale NFT success: ", async () => {
-            await token.mint(user2.address, AMOUNT);
-
-            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
-
-            await mkpManager.setAdmin(mtvsManager.address, true);
-
-            await tokenMintERC721.setAdmin(mtvsManager.address, true);
             const blockNumAfter = await ethers.provider.getBlockNumber();
             const blockAfter = await ethers.provider.getBlock(blockNumAfter);
             const current = blockAfter.timestamp;
             const time = current + 30 * 24 * 60 * 60; // sale 30 ngay
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, time, time + 10000, token.address, false);
+                .createNFTLimit(
+                    nft_1155.address,
+                    100,
+                    "this_uri",
+                    ONE_ETHER,
+                    time,
+                    time + 10000,
+                    token.address,
+                    formatBytes32String("0x1234")
+                );
 
-            // check owner nft
-            expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
-            const allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
-            expect(allItems[0].status).to.equal(0);
-            expect(parseInt(allItems[0].endTime)).greaterThan(current);
+            allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
+            expect(allItems[1].status).to.equal(0);
         });
     });
 
