@@ -249,23 +249,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
     }
 
     /**
-     *  @notice Get all params
-     */
-    function getAllParams()
-        external
-        view
-        returns (
-            ITreasury,
-            IMarketplaceManager,
-            ITokenMintERC1155,
-            ITokenMintERC721,
-            IERC20Upgradeable
-        )
-    {
-        return (treasury, marketplace, tokenMintERC1155, tokenMintERC721, paymentToken);
-    }
-
-    /**
      *  @notice Import collection into marketplace
      */
     function importCollection(
@@ -282,7 +265,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         require(NFTHelper.getType(nftAddress) != NFTHelper.Type.NONE, "ERROR: Invalid NFT address");
 
         for (uint256 i = 0; i < ids.length; i++) {
-            _transferNFTCall(nftAddress, ids[i], amounts[i], _msgSender(), address(marketplace));
+            NFTHelper.transferNFTCall(nftAddress, ids[i], amounts[i], _msgSender(), address(marketplace));
             marketplace.extCreateMarketInfo(
                 nftAddress,
                 ids[i],
@@ -295,6 +278,23 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
                 rootHash
             );
         }
+    }
+
+    /**
+     *  @notice Get all params
+     */
+    function getAllParams()
+        external
+        view
+        returns (
+            ITreasury,
+            IMarketplaceManager,
+            ITokenMintERC1155,
+            ITokenMintERC721,
+            IERC20Upgradeable
+        )
+    {
+        return (treasury, marketplace, tokenMintERC1155, tokenMintERC721, paymentToken);
     }
 
     /**
@@ -313,25 +313,5 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         returns (bool)
     {
         return interfaceId == type(IMetaversusManager).interfaceId || super.supportsInterface(interfaceId);
-    }
-
-    /**
-     *  @notice Transfer nft call
-     */
-    function _transferNFTCall(
-        address nftContractAddress,
-        uint256 tokenId,
-        uint256 amount,
-        address from,
-        address to
-    ) internal {
-        NFTHelper.Type nftType = NFTHelper.getType(nftContractAddress);
-        require(nftType != NFTHelper.Type.NONE, "ERROR: NFT address is compatible !");
-
-        if (nftType == NFTHelper.Type.ERC721) {
-            IERC721Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId);
-        } else {
-            IERC1155Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId, amount, "");
-        }
     }
 }

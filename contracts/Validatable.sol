@@ -10,6 +10,7 @@ import "./interfaces/ITokenMintERC1155.sol";
 import "./interfaces/ITreasury.sol";
 import "./interfaces/IMarketplaceManager.sol";
 import "./interfaces/ICollectionFactory.sol";
+import "./interfaces/IOrder.sol";
 
 contract Validatable is PausableUpgradeable {
     /**
@@ -18,6 +19,8 @@ contract Validatable is PausableUpgradeable {
     IAdmin public admin;
 
     event SetPause(bool indexed isPause);
+
+    /*------------------Check Admins------------------*/
 
     modifier onlyOwner() {
         require(admin.owner() == _msgSender(), "Caller is not an owner");
@@ -39,6 +42,8 @@ contract Validatable is PausableUpgradeable {
         _;
     }
 
+    /*------------------Common Checking------------------*/
+
     modifier notZeroAddress(address _account) {
         require(_account != address(0), "Invalid address");
         _;
@@ -49,7 +54,7 @@ contract Validatable is PausableUpgradeable {
         _;
     }
 
-    /******************Validate Contracts*******************/
+    /*------------------Validate Contracts------------------*/
 
     modifier validAdmin(IAdmin _account) {
         require(
@@ -99,6 +104,18 @@ contract Validatable is PausableUpgradeable {
         _;
     }
 
+    /*------------------Initializer------------------*/
+
+    function __Validatable_init(IAdmin _admin) internal onlyInitializing validAdmin(_admin) {
+        __Context_init();
+        __Pausable_init();
+
+        admin = _admin;
+        _pause();
+    }
+
+    /*------------------Contract Interupts------------------*/
+
     /**
      *  @notice Set pause action
      */
@@ -114,13 +131,5 @@ contract Validatable is PausableUpgradeable {
      */
     function isPaused() public view returns (bool) {
         return super.paused();
-    }
-
-    function __Validatable_init(IAdmin _admin) internal onlyInitializing validAdmin(_admin) {
-        __Context_init();
-        __Pausable_init();
-
-        admin = _admin;
-        _pause();
     }
 }

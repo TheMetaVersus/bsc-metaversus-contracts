@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 
 import "../interfaces/IMarketplaceManager.sol";
-import "../interfaces/IOrder.sol";
+import "../lib/NFTHelper.sol";
 import "../Validatable.sol";
 
 /**
@@ -89,7 +89,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      * @dev make Offer with any NFT in wallet
      */
     function makeOfferWalletAsset(
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         address owner,
         address nftAddress,
@@ -123,7 +123,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                     );
                 }
 
-                order.paymentToken = paymentToken;
+                order.paymentToken = address(paymentToken);
                 order.bidPrice = bidPrice;
                 order.expiredOrder = time;
                 order.amount = amount;
@@ -136,7 +136,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
         WalletAsset memory newWalletAsset = WalletAsset(owner, nftAddress, tokenId);
 
-        marketplace.externalMakeOffer(paymentToken, bidPrice, time, amount, 0, newWalletAsset);
+        marketplace.externalMakeOffer(address(paymentToken), bidPrice, time, amount, 0, newWalletAsset);
     }
 
     /**
@@ -144,7 +144,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      */
     function makeOffer(
         uint256 marketItemId,
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         uint256 time
     ) external payable nonReentrant {
@@ -168,7 +168,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                         _msgSender()
                     );
                 }
-                order.paymentToken = paymentToken;
+                order.paymentToken = address(paymentToken);
                 order.bidPrice = bidPrice;
                 order.expiredOrder = time;
                 marketplace.setOrderIdToOrderInfo(order.orderId, order);
@@ -180,7 +180,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
         WalletAsset memory newWalletAsset;
 
-        marketplace.externalMakeOffer(paymentToken, bidPrice, time, 0, marketItemId, newWalletAsset);
+        marketplace.externalMakeOffer(address(paymentToken), bidPrice, time, 0, marketItemId, newWalletAsset);
     }
 
     /**
@@ -380,11 +380,11 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             rootHash
         );
         // check and update offer
-        NftStandard nftType = marketplace.checkNftStandard(nftContractAddress);
+        NFTHelper.Type nftType = NFTHelper.getType(nftContractAddress);
         // 1. check sell all
         if (
-            nftType == NftStandard.ERC721 ||
-            (nftType == NftStandard.ERC1155 &&
+            nftType == NFTHelper.Type.ERC721 ||
+            (nftType == NFTHelper.Type.ERC1155 &&
                 IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) == amount)
         ) {
             for (uint256 i = 0; i < marketplace.getLengthOrderIdFromAssetOfOwner(_msgSender()); i++) {
