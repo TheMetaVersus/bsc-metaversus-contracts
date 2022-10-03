@@ -49,7 +49,7 @@ contract MetaCitizen is
     /**
      *  @notice treasury address that receive all mint fee
      */
-    address public treasury;
+    ITreasury public treasury;
 
     /**
      *  @notice baseURI is base uri of collection
@@ -58,7 +58,7 @@ contract MetaCitizen is
 
     event SetPaymentToken(address indexed oldToken, address indexed newToken);
     event SetMintFee(uint256 indexed oldFee, uint256 indexed newFee);
-    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
+    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to);
     event Minted(uint256 indexed tokenId, address indexed to);
 
@@ -66,11 +66,11 @@ contract MetaCitizen is
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _treasury,
+        ITreasury _treasury,
         address _paymentToken,
         uint256 _mintFee,
         IAdmin _admin
-    ) public initializer notZeroAddress(_paymentToken) notZeroAddress(_treasury) notZeroAmount(_mintFee) {
+    ) public initializer notZeroAddress(_paymentToken) validTreasury(_treasury) notZero(_mintFee) {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC721_init("MetaversusWorld Citizen", "MWC");
@@ -105,8 +105,8 @@ contract MetaCitizen is
      *  @dev Only owner or admin can call this function.
      *  @param _account new base URI that need to replace
      */
-    function setTreasury(address _account) external onlyOwner notZeroAddress(_account) {
-        address oldTreasury = treasury;
+    function setTreasury(ITreasury _account) external onlyOwner validTreasury(_account) {
+        ITreasury oldTreasury = treasury;
         treasury = _account;
         emit SetTreasury(oldTreasury, _account);
     }
@@ -116,7 +116,7 @@ contract MetaCitizen is
      *  @dev Only owner or admin can call this function.
      *  @param _newFee new minting fee that need to replace
      */
-    function setMintFee(uint256 _newFee) external onlyOwner notZeroAmount(_newFee) {
+    function setMintFee(uint256 _newFee) external onlyOwner notZero(_newFee) {
         uint256 oldFee = mintFee;
         mintFee = _newFee;
         emit SetMintFee(oldFee, _newFee);
@@ -132,7 +132,7 @@ contract MetaCitizen is
         tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
 
-        paymentToken.safeTransferFrom(_msgSender(), treasury, mintFee);
+        paymentToken.safeTransferFrom(_msgSender(), address(treasury), mintFee);
 
         _mint(_msgSender(), tokenId);
 
