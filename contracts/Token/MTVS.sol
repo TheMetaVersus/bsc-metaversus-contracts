@@ -37,7 +37,7 @@ contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
         uint256 _totalSupply,
         address _treasury,
         IAdmin _admin
-    ) public initializer notZeroAddress(_curator) notZeroAddress(_treasury) notZeroAmount(_totalSupply) {
+    ) public initializer notZeroAddress(_curator) notZeroAddress(_treasury) notZero(_totalSupply) {
         __Validatable_init(_admin);
         __ERC20_init(_name, _symbol);
 
@@ -60,7 +60,7 @@ contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
      *
      *  @dev    Only controllers can call this function.
      */
-    function mint(address receiver, uint256 amount) external onlyAdmin notZeroAddress(receiver) notZeroAmount(amount) {
+    function mint(address receiver, uint256 amount) external onlyAdmin notZeroAddress(receiver) notZero(amount) {
         _mint(receiver, amount);
 
         emit Minted(receiver, amount);
@@ -71,7 +71,7 @@ contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
      *
      *  @dev   All caller can call this function.
      */
-    function burn(uint256 amount) external notZeroAmount(amount) {
+    function burn(uint256 amount) external notZero(amount) {
         _burn(_msgSender(), amount);
     }
 

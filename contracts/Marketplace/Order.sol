@@ -303,7 +303,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 startTime,
         uint256 endTime,
         address paymentToken
-    ) external nonReentrant notZeroAmount(price) whenNotPaused {
+    ) external nonReentrant notZero(price) whenNotPaused {
         MarketItem memory item = marketplace.getMarketItemIdToMarketItem(marketItemId);
         require(item.endTime < block.timestamp, "ERROR: market item is not free !");
         require(item.seller == _msgSender(), "ERROR: sender is not owner this NFT");
@@ -365,7 +365,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 endTime,
         address paymentToken,
         bytes calldata rootHash
-    ) external nonReentrant notZeroAmount(amount) notZeroAmount(price) whenNotPaused {
+    ) external nonReentrant notZero(amount) notZero(price) whenNotPaused {
         require(endTime > block.timestamp, "ERROR: Only sell");
         // create market item to store data selling
         marketplace.extCreateMarketInfo(

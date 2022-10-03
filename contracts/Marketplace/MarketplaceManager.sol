@@ -397,7 +397,7 @@ contract MarketPlaceManager is
         uint256 _endTime,
         address _paymentToken,
         bytes calldata rootHash
-    ) external validateId(marketItemId) notZeroAmount(_price) {
+    ) external validateId(marketItemId) notZero(_price) {
         require(_msgSender().isContract(), "ERROR: only allow contract call !");
         require(_endTime > _startTime, "Invalid time");
         require(_permitedPaymentToken.contains(_paymentToken) || _paymentToken == address(0), "Invalid payment token");

@@ -93,7 +93,7 @@ contract TokenMintERC1155 is
         address receiver,
         uint256 amount,
         string memory newuri
-    ) external onlyAdmin notZeroAddress(receiver) notZeroAmount(amount) {
+    ) external onlyAdmin notZeroAddress(receiver) notZero(amount) {
         _tokenCounter.increment();
         uint256 tokenId = _tokenCounter.current();
 

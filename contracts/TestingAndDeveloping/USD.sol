@@ -39,7 +39,7 @@ contract USD is Validatable, ERC20Upgradeable {
         uint256 _totalSupply,
         address _treasury,
         IAdmin _admin
-    ) public initializer notZeroAddress(_curator) notZeroAddress(_treasury) notZeroAmount(_totalSupply) {
+    ) public initializer notZeroAddress(_curator) notZeroAddress(_treasury) notZero(_totalSupply) {
         __Validatable_init(_admin);
         __ERC20_init(_name, _symbol);
 
@@ -66,7 +66,7 @@ contract USD is Validatable, ERC20Upgradeable {
         external
         // onlyControllers
         notZeroAddress(receiver)
-        notZeroAmount(amount)
+        notZero(amount)
     {
         _mint(receiver, amount);
 
@@ -78,7 +78,7 @@ contract USD is Validatable, ERC20Upgradeable {
      *
      *  @dev   All caller can call this function.
      */
-    function burn(uint256 amount) external notZeroAmount(amount) {
+    function burn(uint256 amount) external notZero(amount) {
         _burn(_msgSender(), amount);
     }
 

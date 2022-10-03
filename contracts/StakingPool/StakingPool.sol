@@ -140,8 +140,8 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
         notZeroAddress(_stakeToken)
         notZeroAddress(_rewardToken)
         notZeroAddress(_mkpManagerAddrress)
-        notZeroAmount(_rewardRate)
-        notZeroAmount(_poolDuration)
+        notZero(_rewardRate)
+        notZero(_poolDuration)
     {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
@@ -194,7 +194,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *
      *  @dev    Only user has NFT can call this function.
      */
-    function stake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
+    function stake(uint256 _amount) external notZero(_amount) nonReentrant whenNotPaused {
         require(block.timestamp > startTime, "ERROR: not time for stake !");
         require(getAmountOutWith(_amount) >= 5e20, "Must stake more than 500$");
         require(startTime + poolDuration > block.timestamp, "ERROR: staking pool for NFT had been expired !");
@@ -251,7 +251,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
     /**
      *  @notice Unstake amount of rewards caller request.
      */
-    function unstake(uint256 _amount) external notZeroAmount(_amount) nonReentrant whenNotPaused {
+    function unstake(uint256 _amount) external notZero(_amount) nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
         require(startTime + poolDuration <= block.timestamp, "ERROR: staking pool for NFT has not expired yet !");
         require(
@@ -332,7 +332,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *
      *  @dev    Only owner can call this function.
      */
-    function setRewardRate(uint256 _rewardRate) external notZeroAmount(rewardRate) onlyAdmin {
+    function setRewardRate(uint256 _rewardRate) external notZero(rewardRate) onlyAdmin {
         rewardRate = _rewardRate;
         emit SetRewardRate(rewardRate);
     }
@@ -342,7 +342,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *
      *  @dev    Only owner can call this function.
      */
-    function setPendingTime(uint256 _pendingTime) external notZeroAmount(_pendingTime) onlyAdmin {
+    function setPendingTime(uint256 _pendingTime) external notZero(_pendingTime) onlyAdmin {
         pendingTime = _pendingTime;
         emit SetPendingTime(pendingTime);
     }
@@ -352,7 +352,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *
      *  @dev    Only owner can call this function.
      */
-    function setPoolDuration(uint256 _poolDuration) external notZeroAmount(poolDuration) onlyAdmin {
+    function setPoolDuration(uint256 _poolDuration) external notZero(poolDuration) onlyAdmin {
         poolDuration = _poolDuration;
         emit SetDuration(poolDuration);
     }

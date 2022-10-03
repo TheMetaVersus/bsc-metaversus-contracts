@@ -70,7 +70,7 @@ contract MetaCitizen is
         address _paymentToken,
         uint256 _mintFee,
         IAdmin _admin
-    ) public initializer notZeroAddress(_paymentToken) notZeroAddress(_treasury) notZeroAmount(_mintFee) {
+    ) public initializer notZeroAddress(_paymentToken) notZeroAddress(_treasury) notZero(_mintFee) {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC721_init("MetaversusWorld Citizen", "MWC");
@@ -116,7 +116,7 @@ contract MetaCitizen is
      *  @dev Only owner or admin can call this function.
      *  @param _newFee new minting fee that need to replace
      */
-    function setMintFee(uint256 _newFee) external onlyOwner notZeroAmount(_newFee) {
+    function setMintFee(uint256 _newFee) external onlyOwner notZero(_newFee) {
         uint256 oldFee = mintFee;
         mintFee = _newFee;
         emit SetMintFee(oldFee, _newFee);

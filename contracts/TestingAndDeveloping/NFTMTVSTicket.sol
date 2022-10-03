@@ -98,7 +98,7 @@ contract NFTMTVSTicket is Validatable, ReentrancyGuardUpgradeable, ERC721Enumera
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setPrice(uint256 newPrice) external onlyAdmin notZeroAmount(newPrice) {
+    function setPrice(uint256 newPrice) external onlyAdmin notZero(newPrice) {
         uint256 oldPrice = price;
         price = newPrice;
         emit SetPrice(oldPrice, price);
