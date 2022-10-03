@@ -37,12 +37,13 @@ const config = {
     testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545/",
       accounts: [process.env.DEPLOY_ACCOUNT]
+    },
+    mainnet: {
+      url: "https://bsc-dataseed1.ninicoin.io",
+      accounts: [process.env.DEPLOY_ACCOUNT],
+      gas: 2100000,
+      gasPrice: 8000000000
     }
-    // mainnet: {
-    //   url: 'https://bsc-dataseed1.ninicoin.io',
-    //   accounts: [process.env.DEPLOY_ACCOUNT],
-    //   gas: 2100000, gasPrice: 8000000000
-    // },
   },
   etherscan: {
     apiKey: process.env.BINANCE_API_KEY

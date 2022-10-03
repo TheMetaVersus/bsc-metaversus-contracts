@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "hardhat/console.sol";
 
 import "../interfaces/IMarketplaceManager.sol";
-import "../interfaces/IOrder.sol";
+import "../lib/NFTHelper.sol";
 import "../Validatable.sol";
 
 /**
@@ -38,7 +38,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 nftType,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     );
     event CanceledSelling(
         uint256 indexed marketItemId,
@@ -50,7 +50,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 nftType,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     );
     event Bought(
         uint256 indexed marketItemId,
@@ -62,14 +62,14 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 nftType,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
+        IERC20Upgradeable paymentToken
     );
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event Claimed(uint256 indexed orderId);
     event AcceptedOffer(
         uint256 indexed orderId,
         address bidder,
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         uint256 marketItemId,
         address owner,
@@ -82,7 +82,11 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(IMarketplaceManager _marketplace, IAdmin _admin) public initializer {
+    function initialize(IMarketplaceManager _marketplace, IAdmin _admin)
+        public
+        initializer
+        validMarketplaceManager(_marketplace)
+    {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC165_init();
@@ -94,7 +98,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      * @dev make Offer with any NFT in wallet
      */
     function makeOfferWalletAsset(
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         address owner,
         address nftAddress,
@@ -140,7 +144,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      */
     function makeOffer(
         uint256 marketItemId,
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         uint256 time
     ) external payable nonReentrant {
@@ -343,8 +347,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 amount,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken
-    ) external nonReentrant notZeroAmount(price) whenNotPaused {
+        IERC20Upgradeable paymentToken
+    ) external nonReentrant notZero(price) whenNotPaused {
         MarketItem memory item = marketplace.getMarketItemIdToMarketItem(marketItemId);
         require(item.endTime < block.timestamp, "ERROR: market item is not free !");
         require(item.seller == _msgSender(), "ERROR: sender is not owner this NFT");
@@ -404,9 +408,9 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         bytes calldata rootHash
-    ) external nonReentrant notZeroAmount(amount) notZeroAmount(price) whenNotPaused {
+    ) external nonReentrant notZero(amount) notZero(price) whenNotPaused {
         require(endTime > block.timestamp, "ERROR: Only sell");
         // create market item to store data selling
         marketplace.extCreateMarketInfo(
@@ -421,11 +425,11 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             rootHash
         );
         // check and update offer
-        NftStandard nftType = marketplace.checkNftStandard(nftContractAddress);
+        NFTHelper.Type nftType = NFTHelper.getType(nftContractAddress);
         // 1. check sell all
         if (
-            nftType == NftStandard.ERC721 ||
-            (nftType == NftStandard.ERC1155 &&
+            nftType == NFTHelper.Type.ERC721 ||
+            (nftType == NFTHelper.Type.ERC1155 &&
                 IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) == amount)
         ) {
             for (uint256 i = 0; i < marketplace.getLengthOrderIdFromAssetOfOwner(_msgSender()); i++) {

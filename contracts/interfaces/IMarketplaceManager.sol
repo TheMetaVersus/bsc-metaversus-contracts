@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "../Struct.sol";
 
@@ -24,9 +25,9 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     // Payment token
 
-    function setPermitedPaymentToken(address _paymentToken, bool allow) external;
+    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow) external;
 
-    function isPermitedPaymentToken(address token) external view returns (bool);
+    function isPermitedPaymentToken(IERC20Upgradeable token) external view returns (bool);
 
     // AssetOfOwner
     function getOrderIdFromAssetOfOwner(address owner, uint256 index) external view returns (uint256);
@@ -46,7 +47,7 @@ interface IMarketplaceManager is IERC165Upgradeable {
     function removeMarketItemOfOwner(address owner, uint256 marketItemId) external;
 
     function externalMakeOffer(
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         uint256 time,
         uint256 amount,
@@ -62,21 +63,21 @@ interface IMarketplaceManager is IERC165Upgradeable {
         address _seller,
         uint256 _startTime,
         uint256 _endTime,
-        address _paymentToken,
+        IERC20Upgradeable _paymentToken,
         bytes calldata rootHash
     ) external;
 
     function getListingFee(uint256 amount) external view returns (uint256);
 
-    // function deduceRoyalties(
-    //     address nftContractAddress,
-    //     uint256 tokenId,
-    //     uint256 grossSaleValue,
-    //     address paymentToken
-    // ) external payable returns (uint256);
+    function deduceRoyalties(
+        address nftContractAddress,
+        uint256 tokenId,
+        uint256 grossSaleValue,
+        IERC20Upgradeable paymentToken
+    ) external payable returns (uint256);
 
     function extTransferCall(
-        address paymentToken,
+        IERC20Upgradeable paymentToken,
         uint256 amount,
         address from,
         address to
@@ -89,8 +90,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
         address from,
         address to
     ) external;
-
-    function checkNftStandard(address contractAddr) external returns (NftStandard);
 
     function getCurrentMarketItem() external view returns (uint256);
 

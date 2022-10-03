@@ -26,8 +26,8 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
      */
     EnumerableSetUpgradeable.AddressSet private _permitedTokens;
 
-    event Distributed(address indexed paymentToken, address indexed destination, uint256 indexed amount);
-    event SetPaymentToken(address indexed paymentToken, bool indexed allow);
+    event Distributed(IERC20Upgradeable indexed paymentToken, address indexed destination, uint256 indexed amount);
+    event SetPaymentToken(IERC20Upgradeable indexed paymentToken, bool indexed allow);
 
     /**
      *  @notice Initialize new logic contract.
@@ -42,15 +42,15 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
     /**
      *  @notice Set pernit payment token
      */
-    function setPermitedPaymentToken(address _paymentToken, bool allow)
+    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow)
         external
         onlyAdmin
-        notZeroAddress(_paymentToken)
+        notZeroAddress(address(_paymentToken))
     {
         if (allow) {
-            _permitedTokens.add(_paymentToken);
+            _permitedTokens.add(address(_paymentToken));
         } else if (isPermitedToken(_paymentToken)) {
-            _permitedTokens.remove(_paymentToken);
+            _permitedTokens.remove(address(_paymentToken));
         }
 
         emit SetPaymentToken(_paymentToken, allow);
@@ -60,15 +60,15 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
      *  @notice Distribute reward depend on tokenomic.
      */
     function distribute(
-        address _paymentToken,
+        IERC20Upgradeable _paymentToken,
         address _destination,
         uint256 _amount
     )
         external
         onlyAdmin
-        notZeroAddress(_paymentToken)
+        notZeroAddress(address(_paymentToken))
         notZeroAddress(_destination)
-        notZeroAmount(_amount)
+        notZero(_amount)
         nonReentrant
     {
         require(isPermitedToken(_paymentToken), "ERROR: token is not permit !");
@@ -98,7 +98,7 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
     /**
      *  @notice Return permit token status
      */
-    function isPermitedToken(address _paymentToken) public view returns (bool) {
-        return _permitedTokens.contains(_paymentToken);
+    function isPermitedToken(IERC20Upgradeable _paymentToken) public view returns (bool) {
+        return _permitedTokens.contains(address(_paymentToken));
     }
 }

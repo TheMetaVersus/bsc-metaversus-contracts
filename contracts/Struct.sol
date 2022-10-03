@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+
 enum NftStandard {
     ERC721,
     ERC1155,
@@ -23,7 +25,7 @@ struct MarketItem {
     MarketItemStatus status;
     uint256 startTime;
     uint256 endTime;
-    address paymentToken;
+    IERC20Upgradeable paymentToken;
 }
 struct WalletAsset {
     address owner;
@@ -34,7 +36,7 @@ struct WalletAsset {
 struct Order {
     uint256 orderId;
     address bidder;
-    address paymentToken;
+    IERC20Upgradeable paymentToken;
     uint256 bidPrice;
     uint256 marketItemId;
     WalletAsset walletAsset;

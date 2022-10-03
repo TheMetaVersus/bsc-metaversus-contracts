@@ -43,7 +43,7 @@ contract NFTMTVSTicket is Validatable, ReentrancyGuardUpgradeable, ERC721Enumera
     /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
-    address public treasury;
+    ITreasury public treasury;
 
     /**
      *  @notice baseURI is base uri of collection
@@ -56,7 +56,7 @@ contract NFTMTVSTicket is Validatable, ReentrancyGuardUpgradeable, ERC721Enumera
     bool public isLocked;
 
     event SetPrice(uint256 oldPrice, uint256 price);
-    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
+    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to);
     event Minted(uint256 indexed tokenId, address indexed to);
     event SetLocked(bool indexed status);
@@ -67,8 +67,8 @@ contract NFTMTVSTicket is Validatable, ReentrancyGuardUpgradeable, ERC721Enumera
     function initialize(
         string memory _name,
         string memory _symbol,
-        address _paymentToken,
-        address _treasury,
+        IERC20Upgradeable _paymentToken,
+        ITreasury _treasury,
         uint96 _feeNumerator,
         uint256 _price,
         IAdmin _admin
@@ -76,10 +76,10 @@ contract NFTMTVSTicket is Validatable, ReentrancyGuardUpgradeable, ERC721Enumera
         __Validatable_init(_admin);
         __ERC721_init(_name, _symbol);
 
-        paymentToken = IERC20Upgradeable(_paymentToken);
+        paymentToken = _paymentToken;
         treasury = _treasury;
         price = _price;
-        _setDefaultRoyalty(_treasury, _feeNumerator);
+        _setDefaultRoyalty(address(_treasury), _feeNumerator);
     }
 
     /**
@@ -87,9 +87,9 @@ contract NFTMTVSTicket is Validatable, ReentrancyGuardUpgradeable, ERC721Enumera
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
-        address oldTreasury = treasury;
-        treasury = account;
+    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
+        ITreasury oldTreasury = treasury;
+        treasury = _account;
         emit SetTreasury(oldTreasury, treasury);
     }
 
@@ -98,7 +98,7 @@ contract NFTMTVSTicket is Validatable, ReentrancyGuardUpgradeable, ERC721Enumera
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setPrice(uint256 newPrice) external onlyAdmin notZeroAmount(newPrice) {
+    function setPrice(uint256 newPrice) external onlyAdmin notZero(newPrice) {
         uint256 oldPrice = price;
         price = newPrice;
         emit SetPrice(oldPrice, price);
@@ -124,7 +124,7 @@ contract NFTMTVSTicket is Validatable, ReentrancyGuardUpgradeable, ERC721Enumera
         tokenCounter.increment();
         uint256 tokenId = tokenCounter.current();
 
-        paymentToken.safeTransferFrom(_msgSender(), treasury, price);
+        paymentToken.safeTransferFrom(_msgSender(), address(treasury), price);
 
         _mint(_msgSender(), tokenId);
 
