@@ -42,7 +42,7 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
     /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
-    address public treasury;
+    ITreasury public treasury;
 
     /**
      *  @notice uris mapping from token ID to token uri
@@ -50,7 +50,7 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
     mapping(uint256 => string) public uris;
 
     event SetPrice(uint256 oldPrice, uint256 price);
-    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
+    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to);
 
     /**
@@ -59,19 +59,19 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
     function initialize(
         string memory _name,
         string memory _symbol,
-        address _paymentToken,
-        address _treasury,
+        IERC20Upgradeable _paymentToken,
+        ITreasury _treasury,
         uint96 _feeNumerator,
         uint256 _price,
         IAdmin _admin
-    ) public initializer {
+    ) public initializer validTreasury(_treasury) {
         __Validatable_init(_admin);
         __ERC721_init(_name, _symbol);
 
-        paymentToken = IERC20Upgradeable(_paymentToken);
+        paymentToken = _paymentToken;
         treasury = _treasury;
         price = _price;
-        _setDefaultRoyalty(_treasury, _feeNumerator);
+        _setDefaultRoyalty(address(_treasury), _feeNumerator);
     }
 
     /**
@@ -79,9 +79,9 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setTreasury(address account) external onlyAdmin notZeroAddress(account) {
-        address oldTreasury = treasury;
-        treasury = account;
+    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
+        ITreasury oldTreasury = treasury;
+        treasury = _account;
         emit SetTreasury(oldTreasury, treasury);
     }
 
@@ -90,7 +90,7 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setPrice(uint256 newPrice) external onlyAdmin notZeroAmount(newPrice) {
+    function setPrice(uint256 newPrice) external onlyAdmin notZero(newPrice) {
         uint256 oldPrice = price;
         price = newPrice;
         emit SetPrice(oldPrice, price);
@@ -107,7 +107,7 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
 
         uris[tokenId] = uri;
         _mint(_msgSender(), tokenId);
-        paymentToken.safeTransferFrom(_msgSender(), treasury, price);
+        paymentToken.safeTransferFrom(_msgSender(), address(treasury), price);
 
         emit Bought(tokenId, _msgSender());
     }

@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "../Struct.sol";
 
@@ -24,9 +25,9 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     // Payment token
 
-    function setPermitedPaymentToken(address _paymentToken, bool allow) external;
+    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow) external;
 
-    function isPermitedPaymentToken(address token) external view returns (bool);
+    function isPermitedPaymentToken(IERC20Upgradeable token) external view returns (bool);
 
     // AssetOfOwner
     function getOrderIdFromAssetOfOwner(address owner, uint256 index) external view returns (uint256);
@@ -89,8 +90,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
         address from,
         address to
     ) external;
-
-    function checkNftStandard(address contractAddr) external returns (NftStandard);
 
     function getCurrentMarketItem() external view returns (uint256);
 

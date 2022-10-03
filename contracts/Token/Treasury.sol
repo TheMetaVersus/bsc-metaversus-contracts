@@ -63,14 +63,7 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
         address _paymentToken,
         address _destination,
         uint256 _amount
-    )
-        external
-        onlyAdmin
-        notZeroAddress(_paymentToken)
-        notZeroAddress(_destination)
-        notZeroAmount(_amount)
-        nonReentrant
-    {
+    ) external onlyAdmin notZeroAddress(_paymentToken) notZeroAddress(_destination) notZero(_amount) nonReentrant {
         require(isPermitedToken(_paymentToken), "ERROR: token is not permit !");
         IERC20Upgradeable(_paymentToken).safeTransfer(_destination, _amount);
 
