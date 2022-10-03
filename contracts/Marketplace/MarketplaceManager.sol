@@ -236,7 +236,7 @@ contract MarketPlaceManager is
         uint256 _amount,
         address _from,
         address _to
-    ) public payable onlyOrder {
+    ) public payable validOrder(IOrder(_msgSender())) {
         if (_paymentToken == address(0)) {
             if (_to == address(this)) {
                 require(msg.value == _amount, "Failed to send into contract");

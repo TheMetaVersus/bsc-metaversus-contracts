@@ -33,11 +33,6 @@ contract Validatable is PausableUpgradeable {
         _;
     }
 
-    modifier onlyOrder() {
-        require(admin.isOrder(_msgSender()), "Caller is not an order contract");
-        _;
-    }
-
     modifier validWallet(address _account) {
         require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
         _;
@@ -109,6 +104,14 @@ contract Validatable is PausableUpgradeable {
         require(
             ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IStakingPool).interfaceId),
             "Invalid StakingPool contract"
+        );
+        _;
+    }
+
+    modifier validOrder(IOrder _account) {
+        require(
+            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IOrder).interfaceId),
+            "Invalid Order contract"
         );
         _;
     }

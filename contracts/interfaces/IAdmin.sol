@@ -6,7 +6,5 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeab
 interface IAdmin is IERC165Upgradeable {
     function isAdmin(address _account) external view returns (bool);
 
-    function isOrder(address _account) external view returns (bool);
-
     function owner() external view returns (address);
 }

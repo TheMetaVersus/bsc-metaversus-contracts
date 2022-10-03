@@ -77,7 +77,11 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(IMarketplaceManager _marketplace, IAdmin _admin) public initializer {
+    function initialize(IMarketplaceManager _marketplace, IAdmin _admin)
+        public
+        initializer
+        validMarketplaceManager(_marketplace)
+    {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC165_init();

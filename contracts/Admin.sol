@@ -23,12 +23,6 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      */
     mapping(address => bool) public admins;
 
-    ITokenMintERC721 public tokenMintERC721;
-    ITokenMintERC1155 public tokenMintERC1155;
-    IMarketplaceManager public marketplaceManager;
-    IStakingPool public stakingPool;
-    IOrder public order;
-
     event SetAdmin(address indexed user, bool allow);
 
     modifier validWallet(address _account) {
@@ -73,20 +67,6 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      */
     function isAdmin(address _account) external view virtual returns (bool) {
         return admins[_account] || _account == owner();
-    }
-
-    /**
-     *  @notice Check account whether it is the admin order.
-     */
-    function isOrder(address _account) external view virtual returns (bool) {
-        return address(order) == _account;
-    }
-
-    /**
-     *  @notice Check account whether it is the admin order.
-     */
-    function setOrder(address _account) external onlyOwner notZeroAddress(_account) {
-        order = IOrder(_account);
     }
 
     /**
