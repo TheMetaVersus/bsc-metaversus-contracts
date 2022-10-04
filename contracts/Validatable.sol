@@ -13,6 +13,8 @@ import "./interfaces/IMarketplaceManager.sol";
 import "./interfaces/Collection/ICollectionFactory.sol";
 import "./interfaces/IStakingPool.sol";
 import "./interfaces/IOrder.sol";
+import "./interfaces/Collection/ITokenERC721.sol";
+import "./interfaces/Collection/ITokenERC1155.sol";
 
 contract Validatable is PausableUpgradeable {
     /**
@@ -113,6 +115,22 @@ contract Validatable is PausableUpgradeable {
         require(
             ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IOrder).interfaceId),
             "Invalid Order contract"
+        );
+        _;
+    }
+
+    modifier validTokenCollectionERC721(ITokenERC721 _account) {
+        require(
+            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenERC721).interfaceId),
+            "Invalid TokenCollectionERC721 contract"
+        );
+        _;
+    }
+
+    modifier validTokenCollectionERC1155(ITokenERC1155 _account) {
+        require(
+            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenERC1155).interfaceId),
+            "Invalid TokenCollectionERC1155 contract"
         );
         _;
     }
