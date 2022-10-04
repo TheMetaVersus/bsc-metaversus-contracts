@@ -160,7 +160,7 @@ contract MetaDrop is Validatable {
         require(_drop.maxSupply > 0, "Invalid minting supply");
 
         if (address(_drop.paymentToken) != address(0)) {
-            require(mvtsAdmin.isPermitedPaymentToken(_drop.paymentToken), "Invalid payment token");
+            require(mvtsAdmin.isPermittedPaymentToken(_drop.paymentToken), "Invalid payment token");
         }
 
         _dropCounter.increment();
@@ -194,7 +194,7 @@ contract MetaDrop is Validatable {
         require(_newDrop.maxSupply > 0, "Invalid minting supply");
 
         if (address(_newDrop.paymentToken) != address(0)) {
-            require(mvtsAdmin.isPermitedPaymentToken(_newDrop.paymentToken), "Invalid payment token");
+            require(mvtsAdmin.isPermittedPaymentToken(_newDrop.paymentToken), "Invalid payment token");
         }
 
         drops[_dropId] = _newDrop;

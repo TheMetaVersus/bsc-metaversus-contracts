@@ -42,7 +42,7 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
     /**
      *  @notice Set pernit payment token
      */
-    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow)
+    function setPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow)
         external
         onlyAdmin
         notZeroAddress(address(_paymentToken))

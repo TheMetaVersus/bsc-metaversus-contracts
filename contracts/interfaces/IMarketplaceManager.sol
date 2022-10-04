@@ -10,7 +10,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
     function wasBuyer(address account) external view returns (bool);
 
     // order
-
     function getOrderIdToOrderInfo(uint256 orderId) external view returns (Order memory);
 
     function setOrderIdToOrderInfo(uint256 orderId, Order memory value) external;
@@ -18,16 +17,9 @@ interface IMarketplaceManager is IERC165Upgradeable {
     function removeOrderIdToOrderInfo(uint256 orderId) external;
 
     // Market Item
-
     function getMarketItemIdToMarketItem(uint256 marketItemId) external view returns (MarketItem memory);
 
     function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value) external;
-
-    // Payment token
-
-    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow) external;
-
-    function isPermitedPaymentToken(IERC20Upgradeable token) external view returns (bool);
 
     // AssetOfOwner
     function getOrderIdFromAssetOfOwner(address owner, uint256 index) external view returns (uint256);

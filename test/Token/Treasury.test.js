@@ -50,31 +50,31 @@ describe("Treasury:", () => {
         });
     });
 
-    describe("setPermitedPaymentToken function:", async () => {
+    describe("setPermittedPaymentToken function:", async () => {
         it("should revert when caller not be an owner or admin: ", async () => {
-            await expect(
-                treasury.connect(user1).setPermitedPaymentToken(token.address, true)
-            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
+            await expect(treasury.connect(user1).setPermittedPaymentToken(token.address, true)).to.be.revertedWith(
+                "Adminable: caller is not an owner or admin"
+            );
         });
         it("should revert when payment token is invalid address: ", async () => {
-            await expect(
-                treasury.setPermitedPaymentToken(constants.ZERO_ADDRESS, true)
-            ).to.be.revertedWith("ERROR: invalid address !");
+            await expect(treasury.setPermittedPaymentToken(constants.ZERO_ADDRESS, true)).to.be.revertedWith(
+                "ERROR: invalid address !"
+            );
         });
         it("should set payment token success: ", async () => {
-            await treasury.setPermitedPaymentToken(token.address, true);
+            await treasury.setPermittedPaymentToken(token.address, true);
             expect(await treasury.isPermitedToken(token.address)).to.equal(true);
 
-            await treasury.setPermitedPaymentToken(token.address, false);
+            await treasury.setPermittedPaymentToken(token.address, false);
             expect(await treasury.isPermitedToken(token.address)).to.equal(false);
         });
     });
 
     describe("distribute function:", async () => {
         it("should revert when caller not be an owner or admin: ", async () => {
-            await expect(
-                treasury.connect(user1).distribute(token.address, user1.address, 10)
-            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
+            await expect(treasury.connect(user1).distribute(token.address, user1.address, 10)).to.be.revertedWith(
+                "Adminable: caller is not an owner or admin"
+            );
         });
         it("should revert when payment token is not permit: ", async () => {
             await expect(treasury.distribute(token.address, user1.address, 10)).to.be.revertedWith(
@@ -83,28 +83,28 @@ describe("Treasury:", () => {
         });
         it("should revert when payment token is invalid address: ", async () => {
             await token.mint(treasury.address, 100);
-            await treasury.setPermitedPaymentToken(token.address, true);
-            await expect(
-                treasury.distribute(constants.ZERO_ADDRESS, user1.address, 10)
-            ).to.be.revertedWith("ERROR: invalid address !");
+            await treasury.setPermittedPaymentToken(token.address, true);
+            await expect(treasury.distribute(constants.ZERO_ADDRESS, user1.address, 10)).to.be.revertedWith(
+                "ERROR: invalid address !"
+            );
         });
         it("should revert when destination address is invalid address: ", async () => {
             await token.mint(treasury.address, 100);
-            await treasury.setPermitedPaymentToken(token.address, true);
-            await expect(
-                treasury.distribute(token.address, constants.ZERO_ADDRESS, 10)
-            ).to.be.revertedWith("ERROR: invalid address !");
+            await treasury.setPermittedPaymentToken(token.address, true);
+            await expect(treasury.distribute(token.address, constants.ZERO_ADDRESS, 10)).to.be.revertedWith(
+                "ERROR: invalid address !"
+            );
         });
         it("should revert when token amount equal to zero: ", async () => {
             await token.mint(treasury.address, 100);
-            await treasury.setPermitedPaymentToken(token.address, true);
+            await treasury.setPermittedPaymentToken(token.address, true);
             await expect(treasury.distribute(token.address, user1.address, 0)).to.be.revertedWith(
                 "ERROR: amount must be greater than zero !"
             );
         });
         it("should distribute token success: ", async () => {
             await token.mint(treasury.address, 100);
-            await treasury.setPermitedPaymentToken(token.address, true);
+            await treasury.setPermittedPaymentToken(token.address, true);
             await treasury.distribute(token.address, user1.address, 10);
             expect(await token.balanceOf(user1.address)).to.equal(10);
         });
