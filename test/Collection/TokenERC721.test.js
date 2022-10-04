@@ -87,7 +87,7 @@ describe("TokenERC721:", () => {
         });
 
         it("should revert when exceeding total supply: ", async () => {
-            for(let i = 0; i < MAX_TOTAL_SUPPLY_NFT; i++) {
+            for (let i = 0; i < MAX_TOTAL_SUPPLY_NFT; i++) {
                 await tokenERC721.mint(owner.address, "this_uri");
             }
 
@@ -128,7 +128,7 @@ describe("TokenERC721:", () => {
         });
 
         it("should revert when exceeding total supply: ", async () => {
-            for(let i = 0; i < MAX_TOTAL_SUPPLY_NFT; i++) {
+            for (let i = 0; i < MAX_TOTAL_SUPPLY_NFT; i++) {
                 await tokenERC721.mint(owner.address, "this_uri");
             }
 
@@ -140,6 +140,41 @@ describe("TokenERC721:", () => {
         it("should mint success: ", async () => {
             await tokenERC721.mintBatch(mkpManager.address, 3);
             expect(await tokenERC721.balanceOf(mkpManager.address)).to.equal(3);
+        });
+    });
+
+    describe("batch mint with uri function:", async () => {
+        it("should revert when aller is not an owner or admin: ", async () => {
+            await expect(
+                tokenERC721.connect(user1).mintBatchWithUri(mkpManager.address, ["this_uri", "this_uri_1", "this_uri_2"])
+            ).to.be.revertedWith("Caller is not an owner or admin");
+        });
+
+        it("should revert when receiver address equal to zero address: ", async () => {
+            await expect(
+                tokenERC721.mintBatchWithUri(constants.ZERO_ADDRESS, ["this_uri", "this_uri_1", "this_uri_2"])
+            ).to.be.revertedWith("Invalid address");
+        });
+
+        it("should revert when mint fewer in each batch: ", async () => {
+            const max_batch = await tokenERC721.maxBatch();
+
+            await expect(tokenERC721.mintBatchWithUri(mkpManager.address, Array(Number(max_batch.add(1))).fill("this_uri"))).to.be.revertedWith(
+                "Must mint fewer in each batch"
+            );
+        });
+
+        it("should revert when amount of tokens is exceeded: ", async () => {
+            const max_batch = await tokenERC721.maxBatch();
+            await tokenERC721.mintBatchWithUri(mkpManager.address, Array(Number(max_batch)).fill("this_uri"));
+
+            await expect(tokenERC721.mintBatchWithUri(mkpManager.address, ["this_uri"])).to.be.revertedWith(
+                "Exceeding the totalSupply"
+            );
+        });
+
+        it("should mint success: ", async () => {
+            await expect(() => tokenERC721.mintBatchWithUri(user1.address, ["this_uri", "this_uri_1", "this_uri_2"])).to.changeTokenBalance(tokenERC721, user1, 3);
         });
     });
 });
