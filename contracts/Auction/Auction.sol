@@ -162,7 +162,7 @@ contract ManagerAuction is Initializable, OwnableUpgradeable, PausableUpgradeabl
     /**
      *  @notice Set permit payment token
      */
-    function setPermitedPaymentToken(IERC20Upgradeable _token, bool _status) external onlyOwner {
+    function setPermittedPaymentToken(IERC20Upgradeable _token, bool _status) external onlyOwner {
         require(_status != permitedPaymentToken[_token], "PermitedPaymentToken is already set up");
         permitedPaymentToken[_token] = _status;
         emit PermitedPaymentTokenChanged(_token, _status);

@@ -232,9 +232,9 @@ async function main() {
   await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
   await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
 
-  await mkpManager.setPermitedPaymentToken(process.env.ZERO_ADDRESS, true);
-  await mkpManager.setPermitedPaymentToken(contract.mtvs, true);
-  await mkpManager.setPermitedPaymentToken(contract.usd, true);
+  await mkpManager.setPermittedPaymentToken(process.env.ZERO_ADDRESS, true);
+  await mkpManager.setPermittedPaymentToken(contract.mtvs, true);
+  await mkpManager.setPermittedPaymentToken(contract.usd, true);
   await mkpManager.setAdmin(mtvsManager.address, true);
   await mkpManager.setPause(false);
 

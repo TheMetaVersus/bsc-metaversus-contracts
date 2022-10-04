@@ -90,8 +90,8 @@ describe("Marketplace Manager:", () => {
         await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
         await mkpManager.setPermitedNFT(nftTest.address, true);
 
-        await mkpManager.setPermitedPaymentToken(token.address, true);
-        await mkpManager.setPermitedPaymentToken(constants.ZERO_ADDRESS, true);
+        await mkpManager.setPermittedPaymentToken(token.address, true);
+        await mkpManager.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
 
         await orderManager.setPause(false);
         await mtvsManager.setPause(false);
@@ -177,7 +177,7 @@ describe("Marketplace Manager:", () => {
         });
     });
 
-    describe("sellAvaiableInMarketplace function:", async () => {
+    describe("sellAvailableInMarketplace function:", async () => {
         it("should revert when market Item ID invalid: ", async () => {
             let typeNft = 0; // ERC721
             let amount = 1;
@@ -192,7 +192,7 @@ describe("Marketplace Manager:", () => {
                 .createNFT(typeNft, amount, uri, price, startTime, endTime, token.address, rootHash);
 
             await expect(
-                orderManager.connect(user1).sellAvaiableInMarketplace(0, 1, 1, ONE_WEEK, ONE_WEEK, token.address)
+                orderManager.connect(user1).sellAvailableInMarketplace(0, 1, 1, ONE_WEEK, ONE_WEEK, token.address)
             ).to.be.revertedWith("ERROR: sender is not owner this NFT");
         });
         it("should revert when price equal to zero: ", async () => {
@@ -213,7 +213,7 @@ describe("Marketplace Manager:", () => {
                 .connect(user1)
                 .createNFT(typeNft, amount, uri, price, startTime, endTime, token.address, rootHash);
             await expect(
-                orderManager.sellAvaiableInMarketplace(1, 0, 1, current, current + ONE_WEEK, token.address)
+                orderManager.sellAvailableInMarketplace(1, 0, 1, current, current + ONE_WEEK, token.address)
             ).to.be.revertedWith("Invalid amount");
         });
         it("should revert when caller is not owner: ", async () => {
@@ -235,10 +235,10 @@ describe("Marketplace Manager:", () => {
                 .connect(user1)
                 .createNFT(typeNft, amount, uri, price, startTime, endTime, token.address, rootHash);
             await expect(
-                orderManager.sellAvaiableInMarketplace(1, price + 1000, 1, current, current + ONE_WEEK, token.address)
+                orderManager.sellAvailableInMarketplace(1, price + 1000, 1, current, current + ONE_WEEK, token.address)
             ).to.be.revertedWith("ERROR: sender is not owner this NFT");
         });
-        it("should sellAvaiableInMarketplace success and return marketItemId: ", async () => {
+        it("should sellAvailableInMarketplace success and return marketItemId: ", async () => {
             await token.mint(user1.address, ONE_ETHER);
             await token.mint(owner.address, ONE_ETHER);
             await token.approve(user1.address, ethers.constants.MaxUint256);
@@ -260,7 +260,7 @@ describe("Marketplace Manager:", () => {
             const current = await getCurrentTime();
             await orderManager
                 .connect(user1)
-                .sellAvaiableInMarketplace(
+                .sellAvailableInMarketplace(
                     latest_1[0].marketItemId.toString(),
                     10005,
                     amount,
@@ -284,7 +284,7 @@ describe("Marketplace Manager:", () => {
             const latest_2 = await mkpManager.getLatestMarketItemByTokenId(tokenMintERC1155.address, 1);
             await orderManager
                 .connect(user1)
-                .sellAvaiableInMarketplace(
+                .sellAvailableInMarketplace(
                     latest_2[0].marketItemId.toString(),
                     100056,
                     amount,
@@ -479,25 +479,25 @@ describe("Marketplace Manager:", () => {
         });
     });
 
-    describe("setPermitedPaymentToken function", async () => {
+    describe("setPermittedPaymentToken function", async () => {
         it("Only admin can call this function", async () => {
             await expect(
-                mkpManager.connect(user1).setPermitedPaymentToken(constants.ZERO_ADDRESS, false)
+                mkpManager.connect(user1).setPermittedPaymentToken(constants.ZERO_ADDRESS, false)
             ).to.revertedWith("Caller is not an owner or admin");
             await expect(
-                mkpManager.connect(user1).setPermitedPaymentToken(tokenMintERC721.address, false)
+                mkpManager.connect(user1).setPermittedPaymentToken(tokenMintERC721.address, false)
             ).to.revertedWith("Caller is not an owner or admin");
         });
 
         it("should add new payment token success", async () => {
-            await mkpManager.setPermitedPaymentToken(token.address, true);
-            expect(await mkpManager.isPermitedPaymentToken(token.address)).to.equal(true);
-            await mkpManager.setPermitedPaymentToken(tokenMintERC1155.address, true);
-            expect(await mkpManager.isPermitedPaymentToken(tokenMintERC1155.address)).to.equal(true);
-            await mkpManager.setPermitedPaymentToken(constants.ZERO_ADDRESS, true);
-            expect(await mkpManager.isPermitedPaymentToken(constants.ZERO_ADDRESS)).to.equal(true);
-            await mkpManager.setPermitedPaymentToken(constants.ZERO_ADDRESS, false);
-            await mkpManager.setPermitedPaymentToken(tokenMintERC721.address, false);
+            await mkpManager.setPermittedPaymentToken(token.address, true);
+            expect(await mkpManager.isPermittedPaymentToken(token.address)).to.equal(true);
+            await mkpManager.setPermittedPaymentToken(tokenMintERC1155.address, true);
+            expect(await mkpManager.isPermittedPaymentToken(tokenMintERC1155.address)).to.equal(true);
+            await mkpManager.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
+            expect(await mkpManager.isPermittedPaymentToken(constants.ZERO_ADDRESS)).to.equal(true);
+            await mkpManager.setPermittedPaymentToken(constants.ZERO_ADDRESS, false);
+            await mkpManager.setPermittedPaymentToken(tokenMintERC721.address, false);
         });
     });
 

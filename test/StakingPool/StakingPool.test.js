@@ -89,8 +89,8 @@ describe("Staking Pool:", () => {
         await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
         await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
 
-        await mkpManager.setPermitedPaymentToken(token.address, true);
-        await mkpManager.setPermitedPaymentToken(constants.ZERO_ADDRESS, true);
+        await mkpManager.setPermittedPaymentToken(token.address, true);
+        await mkpManager.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
     });
 
     describe("Deployment:", async () => {

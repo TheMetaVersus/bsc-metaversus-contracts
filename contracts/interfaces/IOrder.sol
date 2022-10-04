@@ -8,7 +8,7 @@ import "../interfaces/IAdmin.sol";
 interface IOrder is IERC165Upgradeable {
     function initialize(IMarketplaceManager _marketplace, IAdmin _admin) external;
 
-    function sellAvaiableInMarketplace(
+    function sellAvailableInMarketplace(
         uint256 marketItemId,
         uint256 price,
         uint256 amount,

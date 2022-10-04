@@ -106,10 +106,11 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 amount,
         uint256 time
     ) external payable nonReentrant {
-        require(marketplace.isPermitedPaymentToken(paymentToken), "ERROR: payment token is not supported !");
+        require(admin.isPermittedPaymentToken(paymentToken), "ERROR: payment token is not supported !");
         // check is Exist Offer
         for (uint256 i = 0; i < marketplace.getLengthOrderOfOwner(_msgSender()); i++) {
             Order memory order = marketplace.getOrderIdToOrderInfo(marketplace.getOrderOfOwner(_msgSender(), i));
+
             if (
                 order.walletAsset.nftAddress == nftAddress &&
                 order.walletAsset.tokenId == tokenId &&
@@ -135,7 +136,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
         WalletAsset memory newWalletAsset = WalletAsset(owner, nftAddress, tokenId);
 
-        marketplace.externalMakeOffer(paymentToken, bidPrice, time, amount, 0, newWalletAsset);
+        marketplace.externalMakeOffer(paymentToken, _msgSender(), bidPrice, time, amount, 0, newWalletAsset);
         _internalTransferCall(paymentToken, bidPrice, _msgSender(), address(this));
     }
 
@@ -148,7 +149,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 bidPrice,
         uint256 time
     ) external payable nonReentrant {
-        require(marketplace.isPermitedPaymentToken(paymentToken), "ERROR: payment token is not supported !");
+        require(admin.isPermittedPaymentToken(paymentToken), "ERROR: payment token is not supported !");
         // check is Exist Offer
         for (uint256 i = 0; i < marketplace.getLengthOrderOfOwner(_msgSender()); i++) {
             Order memory order = marketplace.getOrderIdToOrderInfo(marketplace.getOrderOfOwner(_msgSender(), i));
@@ -170,7 +171,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
         WalletAsset memory newWalletAsset;
 
-        marketplace.externalMakeOffer(paymentToken, bidPrice, time, 0, marketItemId, newWalletAsset);
+        marketplace.externalMakeOffer(paymentToken, _msgSender(), bidPrice, time, 0, marketItemId, newWalletAsset);
         _internalTransferCall(paymentToken, bidPrice, _msgSender(), address(this));
     }
 
@@ -211,9 +212,10 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
     /**
      *  @notice accept Offer
      */
-    function acceptOffer(uint256 orderId) external payable nonReentrant {
-        Order memory orderInfo = marketplace.getOrderIdToOrderInfo(orderId);
+    function acceptOffer(uint256 _orderId) external payable nonReentrant {
+        Order memory orderInfo = marketplace.getOrderIdToOrderInfo(_orderId);
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(orderInfo.marketItemId);
+
         require(orderInfo.expiredOrder >= block.timestamp, "ERROR: Overtime !");
         if (orderInfo.marketItemId == 0) {
             require(_msgSender() == orderInfo.walletAsset.owner, "ERROR: Invalid owner of asset !");
@@ -238,7 +240,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             marketItem.status = MarketItemStatus.SOLD;
             marketItem.buyer = orderInfo.bidder;
             marketplace.setMarketItemIdToMarketItem(marketItem.marketItemId, marketItem);
-            _internalTransferNFTCall(
+
+            marketplace.extTransferNFTCall(
                 marketItem.nftContractAddress,
                 marketItem.tokenId,
                 marketItem.amount,
@@ -282,7 +285,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
         marketplace.removeOrderIdToOrderInfo(orderInfo.orderId);
         emit AcceptedOffer(
-            orderId,
+            _orderId,
             orderInfo.bidder,
             orderInfo.paymentToken,
             orderInfo.bidPrice,
@@ -341,7 +344,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *
      *  @dev    All caller can call this function.
      */
-    function sellAvaiableInMarketplace(
+    function sellAvailableInMarketplace(
         uint256 marketItemId,
         uint256 price,
         uint256 amount,
@@ -484,7 +487,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         }
 
         // transfer nft back seller
-        _internalTransferNFTCall(
+        marketplace.extTransferNFTCall(
             item.nftContractAddress,
             item.tokenId,
             item.amount,
@@ -514,8 +517,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         address from,
         address to
     ) internal {
-        console.log("order ext:", from, to, address(this));
-        console.log("order msg.value:", msg.value);
+        // console.log("order ext:", from, to, address(this));
+        // console.log("order msg.value:", msg.value);
         if (address(paymentToken) == address(0)) {
             if (to == address(this)) {
                 require(msg.value == amount, "Failed to send into contract in order");
@@ -525,10 +528,10 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             }
         } else {
             if (to == address(this)) {
-                console.log("order ext: alo");
+                // console.log("order ext: alo");
                 IERC20Upgradeable(paymentToken).safeTransferFrom(from, to, amount);
             } else {
-                console.log("order ext: blo");
+                // console.log("order ext: blo");
                 IERC20Upgradeable(paymentToken).transfer(to, amount);
                 // IERC20Upgradeable(paymentToken).safeTransferFrom(from, to, amount);
             }
@@ -568,7 +571,14 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         // pay 97.5% of the amount actually received to seller
         _internalTransferCall(data.paymentToken, netSaleValue, address(this), data.seller);
 
-        // transfer nft_internalTransferNFTCall(data.nftContractAddress, data.tokenId, data.amount, address(marketplace), _msgSender());
+        // transfer nft
+        marketplace.extTransferNFTCall(
+            data.nftContractAddress,
+            data.tokenId,
+            data.amount,
+            address(marketplace),
+            _msgSender()
+        );
 
         emit Bought(
             marketItemId,

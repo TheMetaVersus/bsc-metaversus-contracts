@@ -11,7 +11,7 @@ interface IAdmin is IERC165Upgradeable {
 
     function setPermitedNFT(address _nftAddress, bool _allow) external;
 
-    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool _allow) external;
+    function setPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool _allow) external;
 
     function getPermitedNFT(uint256 _index) external view returns (address);
 
@@ -19,7 +19,7 @@ interface IAdmin is IERC165Upgradeable {
 
     function isPermitedNFT(address _nftAddress) external view returns (bool);
 
-    function isPermitedPaymentToken(IERC20Upgradeable token) external view returns (bool);
+    function isPermittedPaymentToken(IERC20Upgradeable token) external view returns (bool);
 
     function numPermitedNFTs() external view returns (uint256);
 

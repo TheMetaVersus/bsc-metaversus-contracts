@@ -39,7 +39,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     EnumerableSetUpgradeable.AddressSet private _permitedPaymentToken;
 
     event SetAdmin(address indexed user, bool allow);
-    event SetPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
+    event SetPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
     event SetPermitedNFT(address nftAddress, bool allow);
 
     modifier validWallet(address _account) {
@@ -91,16 +91,16 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     /**
      *  @notice Set permit payment token
      */
-    function setPermitedPaymentToken(IERC20Upgradeable _paymentToken, bool _allow) external {
+    function setPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool _allow) external {
         require(isAdmin(_msgSender()), "Caller is not an owner or admin");
 
         if (_allow) {
             _permitedPaymentToken.add(address(_paymentToken));
-        } else if (isPermitedPaymentToken(_paymentToken)) {
+        } else if (isPermittedPaymentToken(_paymentToken)) {
             _permitedPaymentToken.remove(address(_paymentToken));
         }
 
-        emit SetPermitedPaymentToken(_paymentToken, _allow);
+        emit SetPermittedPaymentToken(_paymentToken, _allow);
     }
 
     /**
@@ -142,7 +142,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     /**
      *  @notice Return permit token payment
      */
-    function isPermitedPaymentToken(IERC20Upgradeable token) public view returns (bool) {
+    function isPermittedPaymentToken(IERC20Upgradeable token) public view returns (bool) {
         return _permitedPaymentToken.contains(address(token));
     }
 
