@@ -281,23 +281,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
     }
 
     /**
-     *  @notice Get all params
-     */
-    function getAllParams()
-        external
-        view
-        returns (
-            ITreasury,
-            IMarketplaceManager,
-            ITokenMintERC1155,
-            ITokenMintERC721,
-            IERC20Upgradeable
-        )
-    {
-        return (treasury, marketplace, tokenMintERC1155, tokenMintERC721, paymentToken);
-    }
-
-    /**
      * @dev Returns true if this contract implements the interface defined by
      * `interfaceId`. See the corresponding
      * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
