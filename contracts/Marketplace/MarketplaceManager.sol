@@ -181,8 +181,6 @@ contract MarketPlaceManager is
         address sender = marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller;
         _orderIdFromAssetOfOwner[sender].add(orderId);
 
-        // send offer money
-        // extTransferCall(paymentToken, bidPrice, caller, address(this));
         emit MadeOffer(orderId);
     }
 

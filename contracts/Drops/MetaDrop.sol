@@ -5,11 +5,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-// import "../Marketplace/MetaversusManager.sol";
-import "../interfaces/IMetaversusManager.sol";
 import "../Validatable.sol";
-
 import "../interfaces/ITokenMintERC721.sol";
+import "hardhat/console.sol";
 
 /**
  *  @title  MetaVersus NFT Drop
@@ -43,7 +41,7 @@ contract MetaDrop is Validatable {
         /**
          *  @notice Address of mintting payment token.
          */
-        address paymentToken;
+        IERC20Upgradeable paymentToken;
         /**
          *  @notice Address of receving minting fee.
          */
@@ -106,19 +104,14 @@ contract MetaDrop is Validatable {
     mapping(address => mapping(uint256 => uint256)) public publicHistories;
 
     /**
-     *  @notice minting payment token validator
-     */
-    mapping(address => bool) public paymentTokens;
-
-    /**
-     *  @notice address of MetaVersus Manager
-     */
-    IMetaversusManager public metaversusManager;
-
-    /**
      *  @notice address of Meta Citizen NFT
      */
     IERC721Upgradeable public metaCitizen;
+
+    /**
+     *  @notice address of Metaversus Admin
+     */
+    IAdmin public mvtsAdmin;
 
     /**
      *  @notice address of Metaversus treasury
@@ -128,7 +121,6 @@ contract MetaDrop is Validatable {
     event CreatedDrop(DropRecord drop);
     event UpdatedDrop(DropRecord oldDrop, DropRecord newDrop);
     event MintedToken(uint256 dropId, address indexed account, uint256 indexed amount);
-    event MetaversusManagerRegistration(address indexed metaversusManager);
 
     modifier validDrop(uint256 _dropId) {
         require(_dropId > 0 && _dropId <= _dropCounter.current(), "Invalid drop");
@@ -139,29 +131,15 @@ contract MetaDrop is Validatable {
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _treasury,
-        address _metaCitizen,
-        address[] memory _paymentTokens,
-        IMetaversusManager _mtvsManager
+        IERC721Upgradeable _metaCitizen,
+        IAdmin _mvtsAdmin,
+        address _treasury
     ) public initializer notZeroAddress(_treasury) {
-        for (uint256 i = 0; i < _paymentTokens.length; i++) {
-            require(_paymentTokens[i] != address(0), "Invalid payment token");
-            paymentTokens[_paymentTokens[i]] = true;
-        }
-        treasury = _treasury;
-        metaversusManager = _mtvsManager;
-        metaCitizen = IERC721Upgradeable(_metaCitizen);
-    }
+        __Validatable_init(_mvtsAdmin);
 
-    /**
-     *  @notice Register a Metaversus Manager for some restricted function.
-     *
-     *  @dev    This can only be called once.
-     */
-    function registerMetaversusManager() external {
-        require(address(metaversusManager) == address(0), "Drop: The MetaVersus Manager has already been registered.");
-        metaversusManager = IMetaversusManager(_msgSender());
-        emit MetaversusManagerRegistration(address(metaversusManager));
+        metaCitizen = _metaCitizen;
+        mvtsAdmin = _mvtsAdmin;
+        treasury = _treasury;
     }
 
     /**
@@ -172,17 +150,17 @@ contract MetaDrop is Validatable {
      *  @param  _drop     All drop information that need to create
      */
     function create(DropRecord memory _drop) external {
+        require(_drop.root != 0, "Invalid root");
         require(_drop.owner == _msgSender(), "Invalid Drop owner");
-        require(_drop.nft != address(0), "Invalid NFT address");
         require(_drop.fundingReceiver != address(0), "Invalid funding receiver");
         require(_drop.privateStartTime > block.timestamp, "Invalid private sale start time");
         require(_drop.publicStartTime > _drop.privateStartTime, "Invalid public sale start time");
         require(_drop.publicEndTime > _drop.publicStartTime, "Invalid public sale end time");
-        require(_drop.mintedTotal == 0, "Minted must be zero");
+        require(_drop.mintedTotal == 0, "Minted total must be zero");
         require(_drop.maxSupply > 0, "Invalid minting supply");
 
-        if (_drop.paymentToken != address(0)) {
-            require(paymentTokens[_drop.paymentToken], "Invalid payment token");
+        if (address(_drop.paymentToken) != address(0)) {
+            require(mvtsAdmin.isPermitedPaymentToken(_drop.paymentToken), "Invalid payment token");
         }
 
         _dropCounter.increment();
@@ -206,6 +184,7 @@ contract MetaDrop is Validatable {
 
         require(oldDrop.owner == _msgSender(), "Only Drop owner can call this function");
         require(_newDrop.owner == oldDrop.owner, "Invalid Drop owner");
+        require(_newDrop.root != 0, "Invalid root");
         require(_newDrop.nft != address(0), "Invalid NFT address");
         require(_newDrop.fundingReceiver != address(0), "Invalid funding receiver");
         require(_newDrop.privateStartTime > 0, "Invalid private sale start time");
@@ -214,8 +193,8 @@ contract MetaDrop is Validatable {
         require(_newDrop.mintedTotal == oldDrop.mintedTotal, "Invalid minted total");
         require(_newDrop.maxSupply > 0, "Invalid minting supply");
 
-        if (_newDrop.paymentToken != address(0)) {
-            require(paymentTokens[_newDrop.paymentToken], "Invalid payment token");
+        if (address(_newDrop.paymentToken) != address(0)) {
+            require(mvtsAdmin.isPermitedPaymentToken(_newDrop.paymentToken), "Invalid payment token");
         }
 
         drops[_dropId] = _newDrop;
@@ -233,15 +212,19 @@ contract MetaDrop is Validatable {
      *  @param  _dropId     Id of drop
      *  @param  _amount     Amount of token that user want to mint
      */
-    function mint(uint256 _dropId, uint256 _amount) external validDrop(_dropId) {
-        bool canBuy = canBuyToken(_dropId, _msgSender());
+    function mint(
+        uint256 _dropId,
+        bytes32[] memory _proof,
+        uint256 _amount
+    ) external validDrop(_dropId) {
+        bool canBuy = canBuyToken(_dropId, _msgSender(), _proof);
         require(canBuy, "Not permitted to mint token at the moment");
 
         uint256 mintable = mintableAmount(_dropId, _msgSender());
         require(mintable >= _amount, "Mint more than allocated portion");
 
         drops[_dropId].mintedTotal += _amount;
-        require(drops[_dropId].mintedTotal <= drops[_dropId].maxSupply, "Mint more tokens than available.");
+        require(drops[_dropId].mintedTotal <= drops[_dropId].maxSupply, "Mint more tokens than available");
 
         // record minted history
         if (isPrivateRound(_dropId)) {
@@ -254,7 +237,7 @@ contract MetaDrop is Validatable {
         uint256 fee = estimateMintFee(_dropId, _amount);
         mintPayment(_msgSender(), _dropId, fee);
 
-        // TODO: Mint tokens for user
+        // Mint tokens for user
         // ITokenMintERC721(drops[_dropId].nft).mintBatch(_msgSender(), _amount);
 
         emit MintedToken(_dropId, _msgSender(), _amount);
@@ -274,10 +257,10 @@ contract MetaDrop is Validatable {
         uint256 _dropId,
         uint256 _fee
     ) private {
-        address paymentToken = drops[_dropId].paymentToken;
+        IERC20Upgradeable paymentToken = drops[_dropId].paymentToken;
 
-        if (paymentToken != address(0)) {
-            IERC20Upgradeable(paymentToken).safeTransferFrom(_account, drops[_dropId].fundingReceiver, _fee);
+        if (address(paymentToken) != address(0)) {
+            paymentToken.safeTransferFrom(_account, drops[_dropId].fundingReceiver, _fee);
         } else {
             (bool sent, ) = drops[_dropId].fundingReceiver.call{ value: _fee }("");
             require(sent, "Failed to send native");
@@ -335,14 +318,28 @@ contract MetaDrop is Validatable {
      *  @param  _dropId     Id of drop
      *  @param  _account    Address of an account to query with
      */
-    function canBuyToken(uint256 _dropId, address _account) public view returns (bool) {
-        if (isDropEnded(_dropId)) return false;
+    function canBuyToken(
+        uint256 _dropId,
+        address _account,
+        bytes32[] memory _proof
+    ) public view returns (bool) {
+        if (metaCitizen.balanceOf(_account) == 0) return false;
+
+        if (!isDropStarted(_dropId) || isDropEnded(_dropId)) return false;
         if (isPrivateRound(_dropId)) {
-            // TODO: must verify whether is in merkle tree in whitelist
-            // return merkle.verify(root, leaf));
+            return Validatable.isValidProof(_proof, drops[_dropId].root, _account);
         }
 
-        return metaCitizen.balanceOf(_account) > 0;
+        return true;
+    }
+
+    /**
+     *  @notice Check if the Drop has started and anyone can buy tokens from the Drop.
+     *
+     *  @param  _dropId     Id of drop
+     */
+    function isDropStarted(uint256 _dropId) private view returns (bool) {
+        return block.timestamp >= drops[_dropId].privateStartTime; // solhint-disable-line not-rely-on-time
     }
 
     /**
@@ -363,5 +360,12 @@ contract MetaDrop is Validatable {
         return
             block.timestamp >= drops[_dropId].privateStartTime && // solhint-disable-line not-rely-on-time
             block.timestamp < drops[_dropId].publicStartTime; // solhint-disable-line not-rely-on-time
+    }
+
+    /**
+     *  @notice Get current drop counter
+     */
+    function getCurrentCounter() external view returns (uint256) {
+        return _dropCounter.current();
     }
 }
