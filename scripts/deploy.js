@@ -229,8 +229,6 @@ async function main() {
   await tokenMintERC721.setAdmin(mtvsManager.address, true);
   await tokenMintERC1155.setAdmin(mtvsManager.address, true);
   await mtvsManager.setPause(false);
-  await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
-  await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
 
   await mkpManager.setPermittedPaymentToken(process.env.ZERO_ADDRESS, true);
   await mkpManager.setPermittedPaymentToken(contract.mtvs, true);

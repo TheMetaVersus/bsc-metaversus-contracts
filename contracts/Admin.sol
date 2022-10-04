@@ -29,18 +29,12 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     mapping(address => bool) public admins;
 
     /**
-     *  @notice _permitedNFTs mapping from token address to isPermited status
-     */
-    EnumerableSetUpgradeable.AddressSet private _permitedNFTs;
-
-    /**
      *  @notice _permitedPaymentToken mapping from token address to payment
      */
     EnumerableSetUpgradeable.AddressSet private _permitedPaymentToken;
 
     event SetAdmin(address indexed user, bool allow);
     event SetPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
-    event SetPermitedNFT(address nftAddress, bool allow);
 
     modifier validWallet(address _account) {
         require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallet");
@@ -69,23 +63,6 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     function setAdmin(address user, bool allow) external onlyOwner {
         admins[user] = allow;
         emit SetAdmin(user, allow);
-    }
-
-    /**
-     *  @notice Set permit NFT
-     */
-    function setPermitedNFT(address _nftAddress, bool _allow) external {
-        require(isAdmin(_msgSender()), "Caller is not an owner or admin");
-
-        require(NFTHelper.getType(_nftAddress) != NFTHelper.Type.NONE, "ERROR: Invalid NFT address");
-
-        if (_allow) {
-            _permitedNFTs.add(_nftAddress);
-        } else if (isPermitedNFT(_nftAddress)) {
-            _permitedNFTs.remove(_nftAddress);
-        }
-
-        emit SetPermitedNFT(_nftAddress, _allow);
     }
 
     /**
@@ -119,13 +96,6 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     }
 
     /**
-     *  @notice Return permit token status
-     */
-    function getPermitedNFT(uint256 _index) external view returns (address) {
-        return _permitedNFTs.at(_index);
-    }
-
-    /**
      *  @notice Return permit token payment
      */
     function getPermitedPaymentToken(uint256 _index) external view returns (IERC20Upgradeable) {
@@ -133,24 +103,10 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     }
 
     /**
-     *  @notice Return permit token status
-     */
-    function isPermitedNFT(address _nftAddress) public view returns (bool) {
-        return _permitedNFTs.contains(_nftAddress);
-    }
-
-    /**
      *  @notice Return permit token payment
      */
     function isPermittedPaymentToken(IERC20Upgradeable token) public view returns (bool) {
         return _permitedPaymentToken.contains(address(token));
-    }
-
-    /**
-     *  @notice Return permit token status
-     */
-    function numPermitedNFTs() external view returns (uint256) {
-        return _permitedNFTs.length();
     }
 
     /**

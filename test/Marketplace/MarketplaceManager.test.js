@@ -87,11 +87,6 @@ describe("Marketplace Manager:", () => {
         ]);
 
         await admin.connect(owner).setAdmin(mtvsManager.address, true);
-        // await admin.setOrder(orderManager.address);
-
-        await admin.setPermitedNFT(tokenMintERC721.address, true);
-        await admin.setPermitedNFT(tokenMintERC1155.address, true);
-        await admin.setPermitedNFT(nftTest.address, true);
 
         await admin.setPermitedPaymentToken(token.address, true);
         await admin.setPermitedPaymentToken(constants.ZERO_ADDRESS, true);
@@ -138,13 +133,6 @@ describe("Marketplace Manager:", () => {
 
             await mkpManager.setTreasury(treasury.address);
             expect(await mkpManager.treasury()).to.equal(treasury.address);
-        });
-    });
-
-    describe("fetchAllPermitedNFTs:", async () => {
-        it("should get all params of pool: ", async () => {
-            const nfts = await mkpManager.fetchAllPermitedNFTs();
-            expect(nfts.length).to.equal(3);
         });
     });
 
