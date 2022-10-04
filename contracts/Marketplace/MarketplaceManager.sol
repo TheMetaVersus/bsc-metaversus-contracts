@@ -57,6 +57,11 @@ contract MarketPlaceManager is
     uint256 public listingFee;
 
     /**
+     *  @notice orderManager is address of Order contract
+     */
+    IOrder public orderManager;
+
+    /**
      *  @notice marketItemIdToMarketItem is mapping market ID to Market Item
      */
     mapping(uint256 => MarketItem) public marketItemIdToMarketItem;
@@ -108,6 +113,7 @@ contract MarketPlaceManager is
         bytes rootHash
     );
     event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
+    event Setorder(IOrder indexed oldTreasury, IOrder indexed newTreasury);
     event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event setPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
     event MadeOffer(uint256 indexed orderId);
@@ -142,9 +148,21 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice set treasury to change TreasuryManager address.
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function setOrder(IOrder _account) external onlyAdmin {
+        IOrder oldOrder = orderManager;
+        orderManager = _account;
+        emit Setorder(oldOrder, orderManager);
+    }
+
+    /**
      * @dev makeOffer external function for handle store and update data
      */
     function externalMakeOffer(
+        address caller,
         IERC20Upgradeable paymentToken,
         address bidder,
         uint256 bidPrice,
@@ -152,20 +170,18 @@ contract MarketPlaceManager is
         uint256 amount,
         uint256 marketItemId,
         WalletAsset memory walletAsset
-    ) external payable notZero(bidPrice) {
+    ) external payable notZero(bidPrice) notZero(amount) {
         _orderCounter.increment();
         uint256 orderId = _orderCounter.current();
 
-        Order memory newBid = Order(orderId, bidder, paymentToken, bidPrice, marketItemId, walletAsset, amount, time);
+        Order memory newBid = Order(orderId, caller, paymentToken, bidPrice, marketItemId, walletAsset, amount, time);
 
         orderIdToOrderInfo[orderId] = newBid;
 
-        _orderOfOwner[bidder].add(orderId);
+        _orderOfOwner[caller].add(orderId);
         address sender = marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller;
         _orderIdFromAssetOfOwner[sender].add(orderId);
 
-        // send offer money
-        // extTransferCall(paymentToken, bidPrice, caller, address(this));
         emit MadeOffer(orderId);
     }
 
@@ -280,7 +296,15 @@ contract MarketPlaceManager is
         );
 
         _marketItemOfOwner[_seller].add(marketItemId);
-        _rootHashesToMarketItemIds[bytes32(_rootHash)].add(marketItemId);
+        _rootHashesToMarketItemIds[bytes32(rootHash)].add(marketItemId);
+
+        // approve
+        if (nftType == NFTHelper.Type.ERC1155) {
+            IERC1155Upgradeable(_nftAddress).setApprovalForAll(address(orderManager), true);
+        } else if (nftType == NFTHelper.Type.ERC721) {
+            IERC721Upgradeable(_nftAddress).approve(address(orderManager), _tokenId);
+        }
+
         emit MarketItemCreated(
             marketItem
             marketItem
@@ -308,7 +332,7 @@ contract MarketPlaceManager is
         uint256 _endTime,
         IERC20Upgradeable _paymentToken,
         bytes calldata rootHash
-    ) external validId(_marketItemId) notZero(_price) {
+    ) external notZero(_price) {
         require(_msgSender().isContract(), "ERROR: only allow contract call !");
         require(_endTime > _startTime, "Invalid time");
         require(

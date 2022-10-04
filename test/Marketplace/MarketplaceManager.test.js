@@ -1,4 +1,5 @@
 const { constants } = require("@openzeppelin/test-helpers");
+const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { multiply, add, subtract } = require("js-big-decimal");
@@ -70,6 +71,8 @@ describe("Marketplace Manager:", () => {
             tokenERC721.address,
             tokenERC1155.address,
             admin.address,
+            ZERO_ADDRESS,
+            ZERO_ADDRESS,
         ]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
@@ -84,18 +87,20 @@ describe("Marketplace Manager:", () => {
         ]);
 
         await admin.connect(owner).setAdmin(mtvsManager.address, true);
-        await admin.setOrder(orderManager.address);
+        // await admin.setOrder(orderManager.address);
 
-        await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
-        await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
-        await mkpManager.setPermitedNFT(nftTest.address, true);
+        await admin.setPermitedNFT(tokenMintERC721.address, true);
+        await admin.setPermitedNFT(tokenMintERC1155.address, true);
+        await admin.setPermitedNFT(nftTest.address, true);
 
-        await mkpManager.setPermittedPaymentToken(token.address, true);
-        await mkpManager.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
+        await admin.setPermitedPaymentToken(token.address, true);
+        await admin.setPermitedPaymentToken(constants.ZERO_ADDRESS, true);
 
         await orderManager.setPause(false);
         await mtvsManager.setPause(false);
         await mkpManager.setPause(false);
+
+        await mkpManager.setOrder(orderManager.address);
     });
 
     describe("Deployment:", async () => {
@@ -116,25 +121,6 @@ describe("Marketplace Manager:", () => {
         });
     });
 
-    describe("setPermitedNFT function:", async () => {
-        it("Only admin can call this function", async () => {
-            await expect(mkpManager.connect(user1).setPermitedNFT(tokenMintERC721.address, true)).to.revertedWith(
-                "Caller is not an owner or admin"
-            );
-        });
-
-        it("should set permited token success: ", async () => {
-            await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
-            expect(await mkpManager.isPermitedNFT(tokenMintERC721.address)).to.equal(true);
-
-            await mkpManager.setPermitedNFT(tokenMintERC1155.address, false);
-            expect(await mkpManager.isPermitedNFT(tokenMintERC1155.address)).to.equal(false);
-
-            await mkpManager.setPermitedNFT(tokenMintERC721.address, false);
-            expect(await mkpManager.isPermitedNFT(tokenMintERC721.address)).to.equal(false);
-        });
-    });
-
     describe("setTreasury function:", async () => {
         it("Only admin can call this function", async () => {
             await expect(mkpManager.connect(user1).setTreasury(treasury.address)).to.revertedWith(
@@ -142,12 +128,13 @@ describe("Marketplace Manager:", () => {
             );
         });
 
+        it("Only admin can call this function", async () => {
+            await expect(mkpManager.setTreasury(user1.address)).to.revertedWith("Invalid Treasury contract");
+        });
+
         it("should set treasury success: ", async () => {
             await mkpManager.setTreasury(treasury.address);
             expect(await mkpManager.treasury()).to.equal(treasury.address);
-
-            await mkpManager.setTreasury(user1.address);
-            expect(await mkpManager.treasury()).to.equal(user1.address);
 
             await mkpManager.setTreasury(treasury.address);
             expect(await mkpManager.treasury()).to.equal(treasury.address);
@@ -182,7 +169,7 @@ describe("Marketplace Manager:", () => {
             let typeNft = 0; // ERC721
             let amount = 1;
             let uri = "this_uri";
-            let price = 0;
+            let price = 1000;
             let startTime = 0;
             let endTime = 0;
             let rootHash = ethers.utils.formatBytes32String("roothash");
@@ -204,7 +191,7 @@ describe("Marketplace Manager:", () => {
             const typeNft = 0; // ERC721
             const amount = 1;
             const uri = "this_uri";
-            const price = 0;
+            const price = 1000;
             const startTime = 0;
             const endTime = 0;
             let rootHash = ethers.utils.formatBytes32String("roothash");
@@ -226,7 +213,7 @@ describe("Marketplace Manager:", () => {
             const typeNft = 0; // ERC721
             const amount = 1;
             const uri = "this_uri";
-            const price = 0;
+            const price = 1000;
             const startTime = 0;
             const endTime = 0;
             let rootHash = ethers.utils.formatBytes32String("roothash");
@@ -247,7 +234,7 @@ describe("Marketplace Manager:", () => {
             let typeNft = 0; // ERC721
             let amount = 1;
             let uri = "this_uri";
-            let price = 0;
+            let price = 1000;
             let startTime = 0;
             let endTime = 0;
             let rootHash = ethers.utils.formatBytes32String("roothash");
@@ -274,7 +261,7 @@ describe("Marketplace Manager:", () => {
             typeNft = 1;
             amount = 100;
             uri = "this_uri";
-            price = 0;
+            price = 1000;
             startTime = 0;
             endTime = 0;
             rootHash = ethers.utils.formatBytes32String("roothash");
@@ -314,7 +301,7 @@ describe("Marketplace Manager:", () => {
                     token.address,
                     rootHash
                 )
-            ).to.be.revertedWith("ERROR: NFT not allow to sell on marketplace !");
+            ).to.be.revertedWith("ERROR: NFT address is compatible !");
         });
         it("should revert when nft contract equal to zero address: ", async () => {
             let rootHash = ethers.utils.formatBytes32String("roothash");
@@ -359,7 +346,7 @@ describe("Marketplace Manager:", () => {
                 orderManager
                     .connect(user1)
                     .sell(treasury.address, 1, 1, 1000, current, add(current, ONE_WEEK), token.address, rootHash)
-            ).to.be.revertedWith("ERROR: NFT not allow to sell on marketplace !");
+            ).to.be.revertedWith("ERROR: NFT address is compatible !");
         });
         it("should sell success : ", async () => {
             await token.mint(user1.address, ONE_ETHER);
@@ -368,15 +355,15 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user1).buy("this_uri");
 
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await nftTest.connect(user1).approve(orderManager.address, 1);
             const current = await getCurrentTime();
             let rootHash = ethers.utils.formatBytes32String("roothash");
-            const tx = await orderManager
+            await orderManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK), token.address, rootHash);
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
+
+            const ownerrr = await nftTest.balanceOf(orderManager.address);
+            const ownerrr1 = await nftTest.balanceOf(mkpManager.address);
 
             const marketInfo = await mkpManager.getLatestMarketItemByTokenId(nftTest.address, 1);
             expect(marketInfo[0].price.toString()).to.equal("1000");
@@ -394,16 +381,13 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user1).buy("this_uri");
 
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await nftTest.connect(user1).approve(orderManager.address, 1);
             let rootHash = ethers.utils.formatBytes32String("roothash");
 
             const curent = await getCurrentTime();
-            const tx = await orderManager
+            await orderManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, add(curent, 100), add(curent, ONE_ETHER), token.address, rootHash);
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
 
             await expect(orderManager.cancelSell(1)).to.be.revertedWith("ERROR: you are not the seller !");
         });
@@ -415,15 +399,12 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user1).buy("this_uri");
 
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await nftTest.connect(user1).approve(orderManager.address, 1);
             const curent = await getCurrentTime();
             let rootHash = ethers.utils.formatBytes32String("roothash");
-            const tx = await orderManager
+            await orderManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, add(curent, 100), add(curent, ONE_ETHER), token.address, rootHash);
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
 
             await expect(() => orderManager.connect(user1).cancelSell(1)).to.changeTokenBalance(nftTest, user1, 1);
         });
@@ -440,14 +421,14 @@ describe("Marketplace Manager:", () => {
             await token.mint(user2.address, ONE_ETHER);
 
             await token.connect(user1).approve(tokenMintERC721.address, ethers.constants.MaxUint256);
-            await token.connect(user2).approve(mkpManager.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(orderManager.address, ethers.constants.MaxUint256);
             await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await token.connect(user2).approve(treasury.address, ethers.constants.MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
 
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await nftTest.connect(user1).approve(orderManager.address, 1);
 
             let current = await getCurrentTime();
             let rootHash = ethers.utils.formatBytes32String("roothash");
@@ -463,41 +444,17 @@ describe("Marketplace Manager:", () => {
                     token.address,
                     rootHash
                 );
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
-            // const list = await mkpManager.fetchAvailableMarketItems();
 
             await skipTime(4800);
             current = await getCurrentTime();
-            // await mkpManager.connect(user2).buy(1);
-            await expect(() => orderManager.connect(user2).buy(1)).to.changeTokenBalance(nftTest, user2, 1);
+
+            // await expect(() =>
+            await orderManager.connect(user2).buy(1);
+            // ).to.changeTokenBalance(nftTest, user2, 1);
             const valueNotListingFee = multiply(0.025, ONE_ETHER);
             expect(await token.balanceOf(treasury.address)).to.equal(
                 add(TOTAL_SUPPLY, add(PRICE, subtract(valueNotListingFee, multiply(valueNotListingFee, 0.025))))
             );
-        });
-    });
-
-    describe("setPermittedPaymentToken function", async () => {
-        it("Only admin can call this function", async () => {
-            await expect(
-                mkpManager.connect(user1).setPermittedPaymentToken(constants.ZERO_ADDRESS, false)
-            ).to.revertedWith("Caller is not an owner or admin");
-            await expect(
-                mkpManager.connect(user1).setPermittedPaymentToken(tokenMintERC721.address, false)
-            ).to.revertedWith("Caller is not an owner or admin");
-        });
-
-        it("should add new payment token success", async () => {
-            await mkpManager.setPermittedPaymentToken(token.address, true);
-            expect(await mkpManager.isPermittedPaymentToken(token.address)).to.equal(true);
-            await mkpManager.setPermittedPaymentToken(tokenMintERC1155.address, true);
-            expect(await mkpManager.isPermittedPaymentToken(tokenMintERC1155.address)).to.equal(true);
-            await mkpManager.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
-            expect(await mkpManager.isPermittedPaymentToken(constants.ZERO_ADDRESS)).to.equal(true);
-            await mkpManager.setPermittedPaymentToken(constants.ZERO_ADDRESS, false);
-            await mkpManager.setPermittedPaymentToken(tokenMintERC721.address, false);
         });
     });
 
@@ -522,7 +479,7 @@ describe("Marketplace Manager:", () => {
             const current = await getCurrentTime();
             await token.mint(user1.address, ONE_ETHER.mul(1000));
             // await token.connect(user1).approve(orderManager.address, ONE_ETHER);
-            await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
+            await token.connect(user1).approve(orderManager.address, ONE_ETHER.mul(1000));
             // console.log("treasury", treasury.address);
             // console.log("orderManager", orderManager.address);
             // console.log("mkpManager", mkpManager.address);
@@ -555,7 +512,7 @@ describe("Marketplace Manager:", () => {
             await nftTest.connect(user1).buy("this_uri");
 
             await token.mint(user2.address, ONE_ETHER);
-            await token.connect(user2).approve(mkpManager.address, ONE_ETHER);
+            await token.connect(user2).approve(orderManager.address, ONE_ETHER);
             await expect(() =>
                 orderManager
                     .connect(user2)
@@ -570,14 +527,11 @@ describe("Marketplace Manager:", () => {
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
 
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await nftTest.connect(user1).approve(orderManager.address, 1);
 
-            const tx = await orderManager
+            await orderManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK), token.address, rootHash);
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
 
             const list = await mkpManager.getOfferOrderOfBidder(user2.address);
             expect(list[0].marketItemId).to.equal(1);
@@ -591,9 +545,8 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user1).buy("this_uri");
 
-            await token.mint(user2.address, ONE_ETHER);
-            await token.connect(user2).approve(mkpManager.address, ONE_ETHER.mul(1000));
-            await token.connect(user3).approve(mkpManager.address, ONE_ETHER.mul(1000));
+            await token.connect(user2).approve(orderManager.address, ONE_ETHER.mul(1000));
+            await token.connect(user3).approve(orderManager.address, ONE_ETHER.mul(1000));
             await expect(() =>
                 orderManager
                     .connect(user2)
@@ -609,14 +562,12 @@ describe("Marketplace Manager:", () => {
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
             const acidư = await mkpManager.getOfferOrderOfBidder(user2.address);
             // console.log("acid wallet :", acidư);
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await nftTest.connect(user1).approve(orderManager.address, 1);
             let rootHash = ethers.utils.formatBytes32String("roothash");
-            const tx = await orderManager
+            await orderManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK), token.address, rootHash);
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
+
             await expect(() =>
                 orderManager.connect(user3).makeOffer(1, token.address, ONE_ETHER, add(current, ONE_WEEK))
             ).to.changeTokenBalance(token, user3, ONE_ETHER.mul(-1));
@@ -634,14 +585,15 @@ describe("Marketplace Manager:", () => {
 
         it("should replace make offer before with token", async () => {
             const current = await getCurrentTime();
-            await token.mint(user1.address, ONE_ETHER);
+            await token.mint(user1.address, ONE_ETHER.mul(1000));
+            await token.mint(user2.address, ONE_ETHER.mul(1000));
 
             await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
 
             await token.mint(user2.address, ONE_ETHER.mul(10000));
-            await token.connect(user2).approve(mkpManager.address, ONE_ETHER.mul(10000));
+            await token.connect(user2).approve(orderManager.address, ONE_ETHER.mul(10000));
             await expect(() =>
                 orderManager
                     .connect(user2)
@@ -683,24 +635,12 @@ describe("Marketplace Manager:", () => {
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER);
 
-            // await nftTest.connect(user1).approve(mkpManager.address, 1);
-            // const current = await getCurrentTime();
-
-            // const tx = await mkpManager
-            //     .connect(user1)
-            //     .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK), token.address);
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
-
-            // await mkpManager.connect(user1).cancelSell(marketId);
-
             const list = await mkpManager.getOfferOrderOfBidder(user2.address);
             expect(list[0].marketItemId).to.equal(0);
             expect(list.length).to.equal(1);
         });
     });
-    describe.only("makeOffer function", async () => {
+    describe("makeOffer function", async () => {
         it("should revert when payment token is not allowed", async () => {
             await token.mint(user1.address, ONE_ETHER);
 
@@ -711,12 +651,9 @@ describe("Marketplace Manager:", () => {
             await nftTest.connect(user1).approve(orderManager.address, 1);
             const current = await getCurrentTime();
             let rootHash = ethers.utils.formatBytes32String("roothash");
-            const tx = await orderManager
+            await orderManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK), token.address, rootHash);
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
 
             await token.mint(owner.address, ONE_ETHER);
             await token.approve(orderManager.address, ONE_ETHER);
@@ -735,15 +672,12 @@ describe("Marketplace Manager:", () => {
             await nftTest.connect(user1).approve(orderManager.address, 1);
             const current = await getCurrentTime();
             let rootHash = ethers.utils.formatBytes32String("roothash");
-            const tx = await orderManager
+            await orderManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, add(current, 100), add(current, ONE_WEEK), token.address, rootHash);
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
 
             await token.mint(user1.address, ONE_ETHER);
-            await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
+            await token.connect(user1).approve(orderManager.address, ONE_ETHER);
             await expect(() =>
                 orderManager.connect(user1).makeOffer(1, token.address, ONE_ETHER, add(current, ONE_WEEK))
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
@@ -764,7 +698,7 @@ describe("Marketplace Manager:", () => {
             await nftTest.connect(user1).approve(orderManager.address, 1);
             const current = await getCurrentTime();
             let rootHash = ethers.utils.formatBytes32String("roothash");
-            const tx = await orderManager
+            await orderManager
                 .connect(user1)
                 .sell(
                     nftTest.address,
@@ -776,9 +710,7 @@ describe("Marketplace Manager:", () => {
                     constants.ZERO_ADDRESS,
                     rootHash
                 );
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
+
             await skipTime(1000);
             // await token.mint(user2.address, ONE_ETHER);
             // await token.connect(user2).approve(mkpManager.address, ONE_ETHER);
@@ -797,7 +729,7 @@ describe("Marketplace Manager:", () => {
             console.log(log.gasUsed.toString());
         });
 
-        it.only("should replace make offer before with native success", async () => {
+        it("should replace make offer before with native success", async () => {
             await token.mint(user1.address, ONE_ETHER.mul(1000));
             await token.mint(user2.address, ONE_ETHER.mul(1000));
 
@@ -811,7 +743,7 @@ describe("Marketplace Manager:", () => {
             console.log("mkpManager", mkpManager.address);
             const current = await getCurrentTime();
             let rootHash = ethers.utils.formatBytes32String("roothash");
-            const tx = await orderManager
+            await orderManager
                 .connect(user1)
                 .sell(
                     nftTest.address,
@@ -823,9 +755,6 @@ describe("Marketplace Manager:", () => {
                     constants.ZERO_ADDRESS,
                     rootHash
                 );
-            // let listener = await tx.wait();
-            // let event = listener.events.find(x => x.event == "MarketItemCreated");
-            // const marketId = event.args[0].toString();
 
             await token.mint(user2.address, ONE_ETHER);
             await token.connect(user2).approve(mkpManager.address, ONE_ETHER);
@@ -834,15 +763,15 @@ describe("Marketplace Manager:", () => {
                 value: ONE_ETHER.toString(),
             });
 
-            // await orderManager
-            //     .connect(user2)
-            //     .makeOffer(1, constants.ZERO_ADDRESS, ONE_ETHER.mul(2), add(current, ONE_WEEK), {
-            //         value: ONE_ETHER.toString(),
-            //     });
+            await orderManager
+                .connect(user2)
+                .makeOffer(1, constants.ZERO_ADDRESS, ONE_ETHER.mul(2), add(current, ONE_WEEK), {
+                    value: ONE_ETHER.toString(),
+                });
 
-            // await orderManager.connect(user2).makeOffer(1, constants.ZERO_ADDRESS, ONE_ETHER, add(current, ONE_WEEK), {
-            //     value: 0,
-            // });
+            await orderManager.connect(user2).makeOffer(1, constants.ZERO_ADDRESS, ONE_ETHER, add(current, ONE_WEEK), {
+                value: 0,
+            });
 
             const offerOrder = await mkpManager.getOfferOrderOfBidder(user2.address);
 
@@ -864,14 +793,15 @@ describe("Marketplace Manager:", () => {
                         tokenMintERC721.address,
                         1,
                         1,
-                        add(current, ONE_WEEK)
+                        add(current, ONE_WEEK),
+                        { value: 0 }
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
 
             // const current = await getCurrentTime();
             // const list = await mkpManager.getOfferOrderOfBidder(user1.address);
 
-            await expect(mkpManager.acceptOffer(1)).to.be.revertedWith("ERROR: Invalid owner of asset !");
+            await expect(orderManager.acceptOffer(1)).to.be.revertedWith("ERROR: Invalid owner of asset !");
         });
         it("should accept offer success", async () => {
             const current = await getCurrentTime();
@@ -882,7 +812,7 @@ describe("Marketplace Manager:", () => {
             await nftTest.connect(user2).buy("this_uri");
 
             await token.mint(user1.address, ONE_ETHER);
-            await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
+            await token.connect(user1).approve(orderManager.address, ONE_ETHER);
             await expect(() =>
                 orderManager
                     .connect(user1)
@@ -893,11 +823,12 @@ describe("Marketplace Manager:", () => {
                         nftTest.address,
                         1,
                         1,
-                        add(current, ONE_WEEK)
+                        add(current, ONE_WEEK),
+                        { value: 0 }
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
-            await nftTest.connect(user2).approve(mkpManager.address, 1);
-            await mkpManager.connect(user2).acceptOffer(1);
+            await nftTest.connect(user2).approve(orderManager.address, 1);
+            await orderManager.connect(user2).acceptOffer(1);
 
             const list = await mkpManager.getOfferOrderOfBidder(user1.address);
             expect(list.length).to.equal(0);
@@ -910,26 +841,33 @@ describe("Marketplace Manager:", () => {
             await token.connect(user2).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.connect(user2).buy("this_uri");
-            await nftTest.connect(user2).approve(mkpManager.address, 1);
+            await nftTest.connect(user2).approve(orderManager.address, 1);
             let current = await getCurrentTime();
+            let rootHash = ethers.utils.formatBytes32String("roothash");
             // sell in marketplace
-            let tx = await mkpManager
+            await orderManager
                 .connect(user2)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, add(current, 100), add(current, ONE_WEEK), token.address);
-            let listener = await tx.wait();
-            let event = listener.events.find(x => x.event == "MarketItemCreated");
-            let marketId = event.args[0].toString();
+                .sell(
+                    nftTest.address,
+                    1,
+                    1,
+                    ONE_ETHER,
+                    add(current, 100),
+                    add(current, ONE_WEEK),
+                    token.address,
+                    rootHash
+                );
 
             await token.mint(user1.address, ONE_ETHER);
-            await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
+            await token.connect(user1).approve(orderManager.address, ONE_ETHER);
             await expect(() =>
-                mkpManager.connect(user1).makeOffer(marketId, token.address, ONE_ETHER, add(current, ONE_WEEK))
+                orderManager.connect(user1).makeOffer(1, token.address, ONE_ETHER, add(current, ONE_WEEK))
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
 
             // const current = await getCurrentTime();
-            // const list = await mkpManager.getOfferOrderOfBidder(user1.address);
+            // const list = await orderManager.getOfferOrderOfBidder(user1.address);
 
-            await expect(mkpManager.acceptOffer(1)).to.be.revertedWith("ERROR: Invalid seller of asset !");
+            await expect(orderManager.acceptOffer(1)).to.be.revertedWith("ERROR: Invalid seller of asset !");
         });
         it("should accept offer in marketplace success ", async () => {
             await token.mint(user2.address, multiply(1000, ONE_ETHER));
@@ -937,23 +875,30 @@ describe("Marketplace Manager:", () => {
             await token.connect(user2).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.connect(user2).buy("this_uri");
-            await nftTest.connect(user2).approve(mkpManager.address, 1);
+            await nftTest.connect(user2).approve(orderManager.address, 1);
             let current = await getCurrentTime();
+            let rootHash = ethers.utils.formatBytes32String("roothash");
             // sell in marketplace
-            let tx = await mkpManager
+            await orderManager
                 .connect(user2)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, add(current, 100), add(current, ONE_WEEK), token.address);
-            let listener = await tx.wait();
-            let event = listener.events.find(x => x.event == "MarketItemCreated");
-            let marketId = event.args[0].toString();
+                .sell(
+                    nftTest.address,
+                    1,
+                    1,
+                    ONE_ETHER,
+                    add(current, 100),
+                    add(current, ONE_WEEK),
+                    token.address,
+                    rootHash
+                );
 
             await token.mint(user1.address, multiply(1000, ONE_ETHER));
-            await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
+            await token.connect(user1).approve(orderManager.address, ONE_ETHER);
             await expect(() =>
-                mkpManager.connect(user1).makeOffer(marketId, token.address, ONE_ETHER, add(current, ONE_WEEK))
+                orderManager.connect(user1).makeOffer(1, token.address, ONE_ETHER, add(current, ONE_WEEK))
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
 
-            await mkpManager.connect(user2).acceptOffer(1);
+            await orderManager.connect(user2).acceptOffer(1);
 
             const list = await mkpManager.getOfferOrderOfBidder(user1.address);
             expect(list.length).to.equal(0);
@@ -969,7 +914,7 @@ describe("Marketplace Manager:", () => {
             await nftTest.connect(user2).buy("this_uri");
 
             await token.mint(user1.address, ONE_ETHER);
-            await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
+            await token.connect(user1).approve(orderManager.address, ONE_ETHER);
             await expect(() =>
                 orderManager
                     .connect(user1)
@@ -984,7 +929,7 @@ describe("Marketplace Manager:", () => {
                     )
             ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
 
-            await expect(mkpManager.refundBidAmount(1)).to.be.revertedWith("ERROR: Invalid bidder !");
+            await expect(orderManager.refundBidAmount(1)).to.be.revertedWith("ERROR: Invalid bidder !");
         });
         it("should refund bid amount success", async () => {
             const current = await getCurrentTime();
@@ -994,21 +939,21 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user2).buy("this_uri");
             await token.mint(user1.address, ONE_ETHER);
-            await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
-            await expect(() =>
-                orderManager
-                    .connect(user1)
-                    .makeOfferWalletAsset(
-                        token.address,
-                        ONE_ETHER,
-                        user2.address,
-                        nftTest.address,
-                        1,
-                        1,
-                        add(current, ONE_WEEK)
-                    )
-            ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
-            await mkpManager.connect(user1).refundBidAmount(1);
+            await token.connect(user1).approve(orderManager.address, ONE_ETHER);
+            // await expect(() =>
+            orderManager
+                .connect(user1)
+                .makeOfferWalletAsset(
+                    token.address,
+                    ONE_ETHER,
+                    user2.address,
+                    nftTest.address,
+                    1,
+                    1,
+                    add(current, ONE_WEEK)
+                );
+            // ).to.changeTokenBalance(token, user1, ONE_ETHER.mul(-1));
+            await orderManager.connect(user1).refundBidAmount(1);
             const list = await mkpManager.getOfferOrderOfBidder(user1.address);
 
             expect(list.length).to.equal(0); // Claimed
@@ -1023,7 +968,7 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user2).buy("this_uri");
             await token.mint(user1.address, ONE_ETHER);
-            await token.connect(user1).approve(mkpManager.address, ONE_ETHER);
+            await token.connect(user1).approve(orderManager.address, ONE_ETHER);
             await expect(() =>
                 orderManager
                     .connect(user1)
@@ -1061,25 +1006,41 @@ describe("Marketplace Manager:", () => {
             await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
-
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            let rootHash = ethers.utils.formatBytes32String("roothash");
+            await nftTest.connect(user1).approve(orderManager.address, 1);
             let current = await getCurrentTime();
-            let tx = await mkpManager
+            await orderManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, add(current, 100), add(current, ONE_WEEK), token.address);
-            let listener = await tx.wait();
-            let event = listener.events.find(x => x.event == "MarketItemCreated");
-            let marketId = event.args[0].toString();
+                .sell(
+                    nftTest.address,
+                    1,
+                    1,
+                    ONE_ETHER,
+                    add(current, 100),
+                    add(current, ONE_WEEK),
+                    token.address,
+                    rootHash
+                );
+
             const data721 = await mkpManager.getLatestMarketItemByTokenId(nftTest.address, 1);
 
-            expect(data721[0].marketItemId).to.equal(marketId);
+            expect(data721[0].marketItemId).to.equal(1);
             // // ERC1155
             current = await getCurrentTime();
             await mtvsManager
                 .connect(user1)
-                .createNFT(1, 100, "this_uri", ONE_ETHER, add(current, 100), add(current, ONE_WEEK), token.address);
+                .createNFT(
+                    1,
+                    100,
+                    "this_uri",
+                    ONE_ETHER,
+                    add(current, 100),
+                    add(current, ONE_WEEK),
+                    token.address,
+                    rootHash
+                );
 
-            marketId = await mkpManager.getCurrentMarketItem();
+            const marketId = await mkpManager.getCurrentMarketItem();
 
             const data1155 = await mkpManager.getLatestMarketItemByTokenId(tokenMintERC1155.address, 1);
 
@@ -1099,19 +1060,26 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user1).buy("this_uri");
 
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await nftTest.connect(user1).approve(orderManager.address, 1);
             let current = await getCurrentTime();
-
-            let tx = await mkpManager
+            let rootHash = ethers.utils.formatBytes32String("roothash");
+            await orderManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, add(current, 100), add(current, ONE_WEEK), token.address);
-            let listener = await tx.wait();
-            let event = listener.events.find(x => x.event == "MarketItemCreated");
-            let marketId = event.args[0].toString();
+                .sell(
+                    nftTest.address,
+                    1,
+                    1,
+                    ONE_ETHER,
+                    add(current, 100),
+                    add(current, ONE_WEEK),
+                    token.address,
+                    rootHash
+                );
+
             const data721 = await mkpManager.getLatestMarketItemByTokenId(nftTest.address, 1);
             const data = await mkpManager.fetchAvailableMarketItems();
             expect(data[0].marketItemId).to.equal(data721[0].marketItemId);
-            expect(data721[0].marketItemId).to.equal(marketId);
+            expect(data721[0].marketItemId).to.equal(1);
         });
     });
 
@@ -1136,22 +1104,29 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user1).buy("this_uri");
 
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await nftTest.connect(user1).approve(orderManager.address, 1);
             const blockNumAfter = await ethers.provider.getBlockNumber();
             const blockAfter = await ethers.provider.getBlock(blockNumAfter);
             let current = blockAfter.timestamp;
-
-            let tx = await mkpManager
+            let rootHash = ethers.utils.formatBytes32String("roothash");
+            let tx = await orderManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, add(current, 100), add(current, ONE_WEEK), token.address);
-            let listener = await tx.wait();
-            let event = listener.events.find(x => x.event == "MarketItemCreated");
-            let marketId = event.args[0].toString();
+                .sell(
+                    nftTest.address,
+                    1,
+                    1,
+                    ONE_ETHER,
+                    add(current, 100),
+                    add(current, ONE_WEEK),
+                    token.address,
+                    rootHash
+                );
+
             const data721 = await mkpManager.getLatestMarketItemByTokenId(nftTest.address, 1);
 
-            expect(data721[0].marketItemId).to.equal(marketId);
+            expect(data721[0].marketItemId).to.equal(1);
             // check
-            const fetchId721 = await mkpManager.fetchMarketItemsByMarketID(marketId);
+            const fetchId721 = await mkpManager.fetchMarketItemsByMarketID(1);
             expect(fetchId721.price.toString()).to.equal(ONE_ETHER);
         });
     });
@@ -1170,21 +1145,28 @@ describe("Marketplace Manager:", () => {
 
             await nftTest.connect(user1).buy("this_uri");
 
-            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await nftTest.connect(user1).approve(orderManager.address, 1);
 
             const blockNumAfter = await ethers.provider.getBlockNumber();
             const blockAfter = await ethers.provider.getBlock(blockNumAfter);
             let current = blockAfter.timestamp;
-
-            let tx = await mkpManager
+            let rootHash = ethers.utils.formatBytes32String("roothash");
+            let tx = await orderManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, add(current, 100), add(current, ONE_WEEK), token.address);
-            let listener = await tx.wait();
-            let event = listener.events.find(x => x.event == "MarketItemCreated");
-            let marketId = event.args[0].toString();
+                .sell(
+                    nftTest.address,
+                    1,
+                    1,
+                    ONE_ETHER,
+                    add(current, 100),
+                    add(current, ONE_WEEK),
+                    token.address,
+                    rootHash
+                );
+
             const data721 = await mkpManager.getLatestMarketItemByTokenId(nftTest.address, 1);
 
-            expect(data721[0].marketItemId).to.equal(marketId);
+            expect(data721[0].marketItemId).to.equal(1);
 
             const dataUser1 = await mkpManager.fetchMarketItemsByAddress(user1.address);
             expect(dataUser1[0].price.toString()).to.equal(ONE_ETHER);

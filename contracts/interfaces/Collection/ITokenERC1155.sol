@@ -6,6 +6,10 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeab
 interface ITokenERC1155 is IERC165Upgradeable {
     function getTokenCounter() external view returns (uint256 tokenId);
 
+    function maxTotalSupply() external view returns (uint256);
+
+    function maxBatch() external view returns (uint256);
+
     function mint(
         address receiver,
         uint256 amount,

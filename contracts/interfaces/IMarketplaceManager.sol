@@ -39,6 +39,7 @@ interface IMarketplaceManager is IERC165Upgradeable {
     function removeMarketItemOfOwner(address owner, uint256 marketItemId) external;
 
     function externalMakeOffer(
+        address caller,
         IERC20Upgradeable paymentToken,
         address bidder,
         uint256 bidPrice,

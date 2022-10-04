@@ -216,8 +216,8 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         require(typeNft != NFTHelper.Type.NONE, "ERROR: Invalid NFT address");
 
         if (typeNft == NFTHelper.Type.ERC721) {
-            ITokenMintERC721(nftAddress).mint(address(marketplace), uri);
-            uint256 currentId = ITokenMintERC721(nftAddress).getTokenCounter();
+            ITokenERC721(nftAddress).mint(address(marketplace), uri);
+            uint256 currentId = ITokenERC721(nftAddress).getTokenCounter();
             marketplace.extCreateMarketInfo(
                 nftAddress,
                 currentId,
@@ -230,8 +230,8 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
                 rootHash
             );
         } else if (typeNft == NFTHelper.Type.ERC1155) {
-            ITokenMintERC1155(nftAddress).mint(address(marketplace), amount, uri);
-            uint256 currentId = ITokenMintERC1155(nftAddress).getTokenCounter();
+            ITokenERC1155(nftAddress).mint(address(marketplace), amount, uri);
+            uint256 currentId = ITokenERC1155(nftAddress).getTokenCounter();
             marketplace.extCreateMarketInfo(
                 nftAddress,
                 currentId,
@@ -278,23 +278,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
                 rootHash
             );
         }
-    }
-
-    /**
-     *  @notice Get all params
-     */
-    function getAllParams()
-        external
-        view
-        returns (
-            ITreasury,
-            IMarketplaceManager,
-            ITokenMintERC1155,
-            ITokenMintERC721,
-            IERC20Upgradeable
-        )
-    {
-        return (treasury, marketplace, tokenMintERC1155, tokenMintERC721, paymentToken);
     }
 
     /**

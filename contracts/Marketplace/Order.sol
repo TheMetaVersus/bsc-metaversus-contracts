@@ -7,7 +7,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import "hardhat/console.sol";
 
 import "../interfaces/IMarketplaceManager.sol";
 import "../lib/NFTHelper.sol";
@@ -132,11 +131,11 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                 return;
             }
         }
-        // Create Order
 
+        // Create Order
         WalletAsset memory newWalletAsset = WalletAsset(owner, nftAddress, tokenId);
 
-        marketplace.externalMakeOffer(paymentToken, _msgSender(), bidPrice, time, amount, 0, newWalletAsset);
+        marketplace.externalMakeOffer(_msgSender(), paymentToken, bidPrice, time, amount, 0, newWalletAsset);
         _internalTransferCall(paymentToken, bidPrice, _msgSender(), address(this));
     }
 
@@ -156,7 +155,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             if (order.marketItemId == marketItemId) {
                 if (bidPrice > order.bidPrice) {
                     _internalTransferCall(order.paymentToken, bidPrice - order.bidPrice, _msgSender(), address(this));
-                } else {
+                } else if (bidPrice < order.bidPrice) {
                     _internalTransferCall(order.paymentToken, order.bidPrice - bidPrice, address(this), _msgSender());
                 }
                 order.paymentToken = paymentToken;
@@ -167,11 +166,20 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                 return;
             }
         }
-        // Create Order
 
+        // Create Order
         WalletAsset memory newWalletAsset;
 
-        marketplace.externalMakeOffer(paymentToken, _msgSender(), bidPrice, time, 0, marketItemId, newWalletAsset);
+        marketplace.externalMakeOffer(
+            _msgSender(),
+            paymentToken,
+            bidPrice,
+            time,
+            marketplace.getMarketItemIdToMarketItem(marketItemId).amount,
+            marketItemId,
+            newWalletAsset
+        );
+
         _internalTransferCall(paymentToken, bidPrice, _msgSender(), address(this));
     }
 
@@ -415,6 +423,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         bytes calldata rootHash
     ) external nonReentrant notZero(amount) notZero(price) whenNotPaused {
         require(endTime > block.timestamp, "ERROR: Only sell");
+        // transfer nft to contract for selling
+        _internalTransferNFTCall(nftContractAddress, tokenId, amount, _msgSender(), address(marketplace));
         // create market item to store data selling
         marketplace.extCreateMarketInfo(
             nftContractAddress,
@@ -429,14 +439,14 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         );
         // check and update offer
         NFTHelper.Type nftType = NFTHelper.getType(nftContractAddress);
-        // 1. check sell all
+        // check sell all
         if (
             nftType == NFTHelper.Type.ERC721 ||
             (nftType == NFTHelper.Type.ERC1155 &&
                 IERC1155Upgradeable(nftContractAddress).balanceOf(_msgSender(), tokenId) == amount)
         ) {
             for (uint256 i = 0; i < marketplace.getLengthOrderIdFromAssetOfOwner(_msgSender()); i++) {
-                // 1. find Offer[] need to update
+                // find Offer[] need to update
                 Order memory validOrder = marketplace.getOrderIdToOrderInfo(
                     marketplace.getOrderIdFromAssetOfOwner(_msgSender(), i)
                 );
@@ -446,15 +456,12 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                     validOrder.walletAsset.nftAddress == nftContractAddress &&
                     validOrder.walletAsset.tokenId == tokenId
                 ) {
-                    // 3. update Offer[]
+                    // update Offer[]
                     validOrder.marketItemId = marketplace.getCurrentMarketItem();
                     marketplace.setOrderIdToOrderInfo(validOrder.orderId, validOrder);
                 }
             }
         }
-
-        // transfer nft to contract for selling
-        _internalTransferNFTCall(nftContractAddress, tokenId, amount, _msgSender(), address(marketplace));
     }
 
     /**
@@ -517,8 +524,6 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         address from,
         address to
     ) internal {
-        // console.log("order ext:", from, to, address(this));
-        // console.log("order msg.value:", msg.value);
         if (address(paymentToken) == address(0)) {
             if (to == address(this)) {
                 require(msg.value == amount, "Failed to send into contract in order");
@@ -528,12 +533,9 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             }
         } else {
             if (to == address(this)) {
-                // console.log("order ext: alo");
                 IERC20Upgradeable(paymentToken).safeTransferFrom(from, to, amount);
             } else {
-                // console.log("order ext: blo");
                 IERC20Upgradeable(paymentToken).transfer(to, amount);
-                // IERC20Upgradeable(paymentToken).safeTransferFrom(from, to, amount);
             }
         }
     }
@@ -570,15 +572,6 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
         // pay 97.5% of the amount actually received to seller
         _internalTransferCall(data.paymentToken, netSaleValue, address(this), data.seller);
-
-        // transfer nft
-        marketplace.extTransferNFTCall(
-            data.nftContractAddress,
-            data.tokenId,
-            data.amount,
-            address(marketplace),
-            _msgSender()
-        );
 
         emit Bought(
             marketItemId,
