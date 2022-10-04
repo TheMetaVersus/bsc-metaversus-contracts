@@ -264,13 +264,25 @@ describe("OrderManager:", () => {
             ).to.revertedWith("ERROR: payment token is not supported !");
         });
 
-        it("should be fail when insufficient allowance", async () => {
-            await expect(
-                orderManager.makeOffer(order.marketItemId, token.address, BUY_BID_PRICE, endTime)
-            ).to.revertedWith("ERC20: insufficient allowance");
-        });
-
         it("Should be ok when create buy offer", async () => {
+            const startTime = await getCurrentTime();
+            const endTime = add(await getCurrentTime(), ONE_WEEK);
+
+            await token.mint(user1.address, ONE_ETHER);
+            await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
+
+            await nftTest.connect(user1).buy("this_uri");
+            await nftTest.connect(user1).approve(orderManager.address, 1);
+
+            const leaves = [user1.address, user2.address].map(value => keccak256(value));
+            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+
+            rootHash = merkleTree.getHexRoot();
+
+            await orderManager
+                .connect(user1)
+                .sell(nftTest.address, 1, 1, 1000, startTime, endTime, token.address, rootHash);
+
             await orderManager.connect(user2).makeOffer(order.marketItemId, token.address, BUY_BID_PRICE, endTime);
 
             const buyOrder = await mkpManager.getOrderIdToOrderInfo(2);

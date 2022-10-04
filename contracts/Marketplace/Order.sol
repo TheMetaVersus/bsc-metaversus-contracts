@@ -11,6 +11,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "../interfaces/IMarketplaceManager.sol";
 import "../lib/NFTHelper.sol";
 import "../Validatable.sol";
+import "hardhat/console.sol";
 
 /**
  *  @title  Dev Order Contract
@@ -104,7 +105,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 tokenId,
         uint256 amount,
         uint256 time
-    ) external payable nonReentrant {
+    ) external payable nonReentrant whenNotPaused {
         require(admin.isPermittedPaymentToken(paymentToken), "ERROR: payment token is not supported !");
         // check is Exist Offer
         for (uint256 i = 0; i < marketplace.getLengthOrderOfOwner(_msgSender()); i++) {
@@ -147,7 +148,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         IERC20Upgradeable paymentToken,
         uint256 bidPrice,
         uint256 time
-    ) external payable nonReentrant {
+    ) external payable nonReentrant whenNotPaused {
         require(admin.isPermittedPaymentToken(paymentToken), "ERROR: payment token is not supported !");
         // check is Exist Offer
         for (uint256 i = 0; i < marketplace.getLengthOrderOfOwner(_msgSender()); i++) {
@@ -179,7 +180,6 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             marketItemId,
             newWalletAsset
         );
-
         _internalTransferCall(paymentToken, bidPrice, _msgSender(), address(this));
     }
 
@@ -220,7 +220,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
     /**
      *  @notice accept Offer
      */
-    function acceptOffer(uint256 _orderId) external payable nonReentrant {
+    function acceptOffer(uint256 _orderId) external payable nonReentrant whenNotPaused {
         Order memory orderInfo = marketplace.getOrderIdToOrderInfo(_orderId);
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(orderInfo.marketItemId);
 
@@ -249,7 +249,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             marketItem.buyer = orderInfo.bidder;
             marketplace.setMarketItemIdToMarketItem(marketItem.marketItemId, marketItem);
 
-            marketplace.extTransferNFTCall(
+            _internalTransferNFTCall(
                 marketItem.nftContractAddress,
                 marketItem.tokenId,
                 marketItem.amount,
@@ -308,7 +308,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
     /**
      *  @notice Refund amount token for Bid
      */
-    function refundBidAmount(uint256 orderId) external {
+    function refundBidAmount(uint256 orderId) external whenNotPaused {
         Order memory orderInfo = marketplace.getOrderIdToOrderInfo(orderId);
         require(orderInfo.bidder == _msgSender(), "ERROR: Invalid bidder !");
         // refund all amount
@@ -493,8 +493,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             }
         }
 
-        // transfer nft back seller
-        marketplace.extTransferNFTCall(
+        // transfer nft back to seller
+        _internalTransferNFTCall(
             item.nftContractAddress,
             item.tokenId,
             item.amount,
@@ -572,6 +572,15 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
         // pay 97.5% of the amount actually received to seller
         _internalTransferCall(data.paymentToken, netSaleValue, address(this), data.seller);
+
+        // transfer nft
+        _internalTransferNFTCall(
+            data.nftContractAddress,
+            data.tokenId,
+            data.amount,
+            address(marketplace),
+            _msgSender()
+        );
 
         emit Bought(
             marketItemId,

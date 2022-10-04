@@ -17,7 +17,6 @@ import "../lib/NFTHelper.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../Validatable.sol";
 import "../Struct.sol";
-import "hardhat/console.sol";
 
 /**
  *  @title  Dev Marketplace Manager Contract
@@ -164,7 +163,6 @@ contract MarketPlaceManager is
     function externalMakeOffer(
         address caller,
         IERC20Upgradeable paymentToken,
-        address bidder,
         uint256 bidPrice,
         uint256 time,
         uint256 amount,
@@ -289,14 +287,14 @@ contract MarketPlaceManager is
             uint256(nftType),
             _seller,
             address(0),
-            marketItem.LISTING,
+            MarketItemStatus.LISTING,
             _startTime >= block.timestamp ? _startTime : 0,
             _endTime >= _startTime ? _endTime : 0,
             admin.isPermittedPaymentToken(_paymentToken) ? _paymentToken : IERC20Upgradeable(address(0))
         );
 
         _marketItemOfOwner[_seller].add(marketItemId);
-        _rootHashesToMarketItemIds[bytes32(rootHash)].add(marketItemId);
+        _rootHashesToMarketItemIds[bytes32(_rootHash)].add(marketItemId);
 
         // approve
         if (nftType == NFTHelper.Type.ERC1155) {
@@ -306,8 +304,8 @@ contract MarketPlaceManager is
         }
 
         emit MarketItemCreated(
-            marketItem
-            marketItem
+            marketItemId,
+            _nftAddress,
             _tokenId,
             nftType == NFTHelper.Type.ERC1155 ? _amount : 1,
             _seller,

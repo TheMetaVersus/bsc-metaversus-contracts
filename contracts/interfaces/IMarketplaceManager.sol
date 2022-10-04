@@ -41,7 +41,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
     function externalMakeOffer(
         address caller,
         IERC20Upgradeable paymentToken,
-        address bidder,
         uint256 bidPrice,
         uint256 time,
         uint256 amount,
