@@ -11,7 +11,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "../interfaces/IMarketplaceManager.sol";
 import "../lib/NFTHelper.sol";
 import "../Validatable.sol";
-import "hardhat/console.sol";
 
 /**
  *  @title  Dev Order Contract
@@ -545,8 +544,13 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *
      *  @dev    All caller can call this function.
      */
-    function buy(uint256 marketItemId) external payable nonReentrant whenNotPaused {
+    function buy(uint256 marketItemId, bytes32[] memory _proof) external payable nonReentrant whenNotPaused {
         MarketItem memory data = marketplace.getMarketItemIdToMarketItem(marketItemId);
+
+        if (data.isPrivate) {
+            require(marketplace.verify(marketItemId, _proof, _msgSender()), "ERROR: Not in whitelist !");
+        }
+
         require(_msgSender() != data.seller, "ERROR: Not allow to buy yourself");
         require(
             data.status == MarketItemStatus.LISTING &&

@@ -95,4 +95,10 @@ interface IMarketplaceManager is IERC165Upgradeable {
     ) external view returns (address, uint256);
 
     function isRoyalty(address _contract) external view returns (bool);
+
+    function verify(
+        uint256 _marketItemId,
+        bytes32[] memory _proof,
+        address _account
+    ) external view returns (bool);
 }

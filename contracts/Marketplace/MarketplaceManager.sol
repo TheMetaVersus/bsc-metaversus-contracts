@@ -109,7 +109,8 @@ contract MarketPlaceManager is
         uint256 startTime,
         uint256 endTime,
         IERC20Upgradeable paymentToken,
-        bytes rootHash
+        bytes rootHash,
+        bool isPrivate
     );
     event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event Setorder(IOrder indexed oldTreasury, IOrder indexed newTreasury);
@@ -290,7 +291,8 @@ contract MarketPlaceManager is
             MarketItemStatus.LISTING,
             _startTime >= block.timestamp ? _startTime : 0,
             _endTime >= _startTime ? _endTime : 0,
-            admin.isPermittedPaymentToken(_paymentToken) ? _paymentToken : IERC20Upgradeable(address(0))
+            admin.isPermittedPaymentToken(_paymentToken) ? _paymentToken : IERC20Upgradeable(address(0)),
+            keccak256(abi.encodePacked((""))) != keccak256(_rootHash)
         );
 
         _marketItemOfOwner[_seller].add(marketItemId);
@@ -315,6 +317,7 @@ contract MarketPlaceManager is
             _endTime >= _startTime ? _endTime : 0,
             _paymentToken,
             _rootHash
+            // keccak256(abi.encodePacked((""))) != keccak256(_rootHash)
         );
     }
 
@@ -349,7 +352,15 @@ contract MarketPlaceManager is
 
         _rootHashesToMarketItemIds[bytes32(rootHash)].add(_marketItemId);
 
-        emit MarketItemUpdated(_marketItemId, _price, _startTime, _endTime, _paymentToken, rootHash);
+        emit MarketItemUpdated(
+            _marketItemId,
+            _price,
+            _startTime,
+            _endTime,
+            _paymentToken,
+            rootHash,
+            keccak256(abi.encodePacked((""))) != keccak256(rootHash)
+        );
     }
 
     /**
@@ -632,15 +643,16 @@ contract MarketPlaceManager is
      * @dev Returns true if an address (leaf)
      * @param _marketItemId market item Id
      * @param _proof Proof to verify address
-     * @param _leaf Address to verify
+     * @param _account Address to verify
      */
     function verify(
         uint256 _marketItemId,
         bytes32[] memory _proof,
-        bytes32 _leaf
+        address _account
     ) external view returns (bool) {
         require(_marketItemId > 0, "Invalid market item ID");
-        bytes32 root = MerkleProofUpgradeable.processProof(_proof, _leaf);
+        bytes32 leaf = keccak256(abi.encodePacked(_account));
+        bytes32 root = MerkleProofUpgradeable.processProof(_proof, leaf);
         return _rootHashesToMarketItemIds[root].contains(_marketItemId);
     }
 }
