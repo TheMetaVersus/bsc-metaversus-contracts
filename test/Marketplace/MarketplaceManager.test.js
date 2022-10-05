@@ -6,7 +6,8 @@ const { multiply, add, subtract } = require("js-big-decimal");
 const { getCurrentTime, skipTime } = require("../utils");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
-describe.only("Marketplace Manager:", () => {
+
+describe("Marketplace Manager:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000");
         PRICE = ethers.utils.parseEther("1");
@@ -466,11 +467,7 @@ describe.only("Marketplace Manager:", () => {
         it("should make offer in wallet success ", async () => {
             const current = await getCurrentTime();
             await token.mint(user1.address, ONE_ETHER.mul(1000));
-            // await token.connect(user1).approve(orderManager.address, ONE_ETHER);
             await token.connect(user1).approve(orderManager.address, ONE_ETHER.mul(1000));
-            // console.log("treasury", treasury.address);
-            // console.log("orderManager", orderManager.address);
-            // console.log("mkpManager", mkpManager.address);
 
             await expect(() =>
                 orderManager
@@ -549,7 +546,6 @@ describe.only("Marketplace Manager:", () => {
                     )
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
             const acidư = await mkpManager.getOfferOrderOfBidder(user2.address);
-            // console.log("acid wallet :", acidư);
             await nftTest.connect(user1).approve(orderManager.address, 1);
 
             await orderManager
@@ -562,13 +558,9 @@ describe.only("Marketplace Manager:", () => {
 
             const acidb = await mkpManager.getOfferOrderOfBidder(user2.address);
             const acidb3 = await mkpManager.getOfferOrderOfBidder(user3.address);
-            // console.log("acid before :", acidb, acidb3);
             await orderManager.connect(user1).cancelSell(1);
             const acid = await mkpManager.getOfferOrderOfBidder(user2.address);
             const acidb33 = await mkpManager.getOfferOrderOfBidder(user3.address);
-            // console.log("acid:", acid, acidb33);
-            // const list = await mkpManager.marketItemIdToMarketItem(marketId);
-            // expect(list.marketItemId).to.equal(0);
         });
 
         it("should replace make offer before with token", async () => {
@@ -705,7 +697,6 @@ describe.only("Marketplace Manager:", () => {
             const proof = merkleTree.getHexProof(leaf);
             const txx = await orderManager.connect(user2).buy(1, proof, { value: ONE_ETHER });
             const log = await txx.wait();
-            console.log(log.gasUsed.toString());
         });
 
         it("should replace make offer before with native success", async () => {
@@ -717,9 +708,6 @@ describe.only("Marketplace Manager:", () => {
             await nftTest.connect(user1).buy("this_uri");
 
             await nftTest.connect(user1).approve(orderManager.address, 1);
-            console.log("treasury", treasury.address);
-            console.log("orderManager", orderManager.address);
-            console.log("mkpManager", mkpManager.address);
             const current = await getCurrentTime();
 
             await orderManager
