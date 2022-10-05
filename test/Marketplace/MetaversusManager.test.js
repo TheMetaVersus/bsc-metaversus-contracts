@@ -59,7 +59,7 @@ describe("Metaversus Manager:", () => {
             tokenERC721.address,
             tokenERC1155.address,
             admin.address,
-            mkpManager.address,
+            constants.ZERO_ADDRESS,
             user1.address,
         ]);
 
@@ -74,8 +74,10 @@ describe("Metaversus Manager:", () => {
             admin.address,
         ]);
 
-        await admin.setPermittedNFT(tokenMintERC721.address, true);
-        await admin.setPermittedNFT(tokenMintERC1155.address, true);
+        await admin.setPermitedNFT(tokenMintERC721.address, true);
+        await admin.setPermitedNFT(tokenMintERC1155.address, true);
+
+        await collectionFactory.setMetaversusManager(mtvsManager.address);
     });
 
     describe("Deployment:", async () => {
@@ -87,9 +89,10 @@ describe("Metaversus Manager:", () => {
                     token.address,
                     treasury.address,
                     mkpManager.address,
+                    collectionFactory.address,
                     admin.address,
                 ])
-            ).to.be.revertedWith("Invalid address");
+            ).to.be.revertedWith("Invalid TokenMintERC721 contract");
         });
 
         it("Should be revert when NFT1155 Address equal to Zero Address", async () => {
@@ -100,9 +103,10 @@ describe("Metaversus Manager:", () => {
                     token.address,
                     treasury.address,
                     mkpManager.address,
+                    collectionFactory.address,
                     admin.address,
                 ])
-            ).to.be.revertedWith("Invalid address");
+            ).to.be.revertedWith("Invalid TokenMintERC1155 contract");
         });
 
         it("Should be revert when token Address equal to Zero Address", async () => {
@@ -113,6 +117,7 @@ describe("Metaversus Manager:", () => {
                     constants.ZERO_ADDRESS,
                     treasury.address,
                     mkpManager.address,
+                    collectionFactory.address,
                     admin.address,
                 ])
             ).to.be.revertedWith("Invalid address");
@@ -126,9 +131,10 @@ describe("Metaversus Manager:", () => {
                     token.address,
                     constants.ZERO_ADDRESS,
                     mkpManager.address,
+                    collectionFactory.address,
                     admin.address,
                 ])
-            ).to.be.revertedWith("Invalid address");
+            ).to.be.revertedWith("Invalid Treasury contract");
         });
 
         it("Should be revert when Marketplace Address equal to Zero Address", async () => {
@@ -139,9 +145,10 @@ describe("Metaversus Manager:", () => {
                     token.address,
                     treasury.address,
                     constants.ZERO_ADDRESS,
+                    collectionFactory.address,
                     admin.address,
                 ])
-            ).to.be.revertedWith("Invalid address");
+            ).to.be.revertedWith("Invalid MarketplaceManager contract");
         });
 
         it("Should revert when invalid admin contract address", async () => {
@@ -152,6 +159,7 @@ describe("Metaversus Manager:", () => {
                     token.address,
                     treasury.address,
                     mkpManager.address,
+                    collectionFactory.address,
                     constants.ZERO_ADDRESS,
                 ])
             ).to.revertedWith("Invalid Admin contract");
@@ -162,6 +170,7 @@ describe("Metaversus Manager:", () => {
                     token.address,
                     treasury.address,
                     mkpManager.address,
+                    collectionFactory.address,
                     user1.address,
                 ])
             ).to.revertedWith("Invalid Admin contract");
@@ -172,6 +181,7 @@ describe("Metaversus Manager:", () => {
                     token.address,
                     treasury.address,
                     mkpManager.address,
+                    collectionFactory.address,
                     treasury.address,
                 ])
             ).to.revertedWith("Invalid Admin contract");
@@ -195,15 +205,13 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should revert when address equal to zero address: ", async () => {
-            await expect(mtvsManager.setMarketplace(constants.ZERO_ADDRESS)).to.be.revertedWith("Invalid address");
+            await expect(mtvsManager.setMarketplace(constants.ZERO_ADDRESS)).to.be.revertedWith("Invalid MarketplaceManager contract");
         });
 
         it("should set marketplace address success: ", async () => {
-            await mtvsManager.setMarketplace(user2.address);
-            expect(await mtvsManager.marketplace()).to.equal(user2.address);
-
-            await mtvsManager.setMarketplace(user1.address);
-            expect(await mtvsManager.marketplace()).to.equal(user1.address);
+            const mkpManager_v2 = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+            await mtvsManager.setMarketplace(mkpManager_v2.address);
+            expect(await mtvsManager.marketplace()).to.equal(mkpManager_v2.address);
         });
     });
 
@@ -215,15 +223,17 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should revert when invalid wallet", async () => {
-            await expect(mtvsManager.setTreasury(constants.ZERO_ADDRESS)).to.revertedWith("Invalid address");
+            await expect(mtvsManager.setTreasury(constants.ZERO_ADDRESS)).to.revertedWith("Invalid Treasury contract");
         });
 
         it("should set treasury success: ", async () => {
+            const treasury_v2 = await upgrades.deployProxy(Treasury, [admin.address]);
+
             await mtvsManager.setTreasury(treasury.address);
             expect(await mtvsManager.treasury()).to.equal(treasury.address);
 
-            await mtvsManager.setTreasury(user1.address);
-            expect(await mtvsManager.treasury()).to.equal(user1.address);
+            await mtvsManager.setTreasury(treasury_v2.address);
+            expect(await mtvsManager.treasury()).to.equal(treasury_v2.address);
 
             await mtvsManager.setTreasury(treasury.address);
             expect(await mtvsManager.treasury()).to.equal(treasury.address);
@@ -231,22 +241,24 @@ describe("Metaversus Manager:", () => {
     });
 
     describe("createNFT function:", async () => {
+        beforeEach(async () => {
+            merkleTree = generateMerkleTree([user1.address, user2.address]);
+            await mtvsManager.setPause(false);
+        });
+
         it("should revert when amount equal to zero amount: ", async () => {
             await expect(
-                mtvsManager.connect(user1).createNFT(1, 0, "this_uri", ONE_ETHER, 0, 0, token.address),
+                mtvsManager.connect(user1).createNFT(1, 0, "this_uri", ONE_ETHER, 0, 0, token.address, merkleTree.getHexRoot()),
                 token.address
-            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
+            ).to.be.revertedWith("Invalid amount");
         });
+
         it("should create NFT success: ", async () => {
             await token.mint(user2.address, AMOUNT);
-
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
 
-            await mkpManager.setAdmin(mtvsManager.address, true);
-
-            await tokenMintERC721.setAdmin(mtvsManager.address, true);
-
-            await mtvsManager.connect(user2).createNFT(0, 1, "this_uri", 0, 0, 0, token.address, false);
+            await admin.setAdmin(mtvsManager.address, true);
+            await mtvsManager.connect(user2).createNFT(0, 1, "this_uri", ONE_ETHER, 0, 0, token.address, merkleTree.getHexRoot());
 
             // check owner nft
             expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
@@ -254,32 +266,31 @@ describe("Metaversus Manager:", () => {
             let allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
             expect(allItems[0].status).to.equal(0); // 0 is FREE
 
-            await tokenMintERC1155.setAdmin(mtvsManager.address, true);
             const blockNumAfter = await ethers.provider.getBlockNumber();
             const blockAfter = await ethers.provider.getBlock(blockNumAfter);
             const current = blockAfter.timestamp;
             const time = current + 30 * 24 * 60 * 60; // sale 30 ngay
-            await mtvsManager.connect(user2).createNFT(1, 100, "this_uri", 0, time, time + 10000, token.address, false);
+            await mtvsManager.connect(user2).createNFT(1, 100, "this_uri", ONE_ETHER, time, time + 10000, token.address, merkleTree.getHexRoot());
 
             allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
             expect(allItems[1].status).to.equal(0);
-            expect(parseInt(allItems[1].endTime)).lessThan(current);
+            expect(parseInt(allItems[1].endTime)).greaterThan(current);
         });
+
         it("should create and sale NFT success: ", async () => {
             await token.mint(user2.address, AMOUNT);
 
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
 
-            await mkpManager.setAdmin(mtvsManager.address, true);
+            await admin.setAdmin(mtvsManager.address, true);
 
-            await tokenMintERC721.setAdmin(mtvsManager.address, true);
             const blockNumAfter = await ethers.provider.getBlockNumber();
             const blockAfter = await ethers.provider.getBlock(blockNumAfter);
             const current = blockAfter.timestamp;
             const time = current + 30 * 24 * 60 * 60; // sale 30 ngay
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, time, time + 10000, token.address, false);
+                .createNFT(0, 1, "this_uri", 1000, time, time + 10000, token.address, merkleTree.getHexRoot());
 
             // check owner nft
             expect(await tokenMintERC721.ownerOf(1)).to.equal(mkpManager.address);
@@ -292,14 +303,18 @@ describe("Metaversus Manager:", () => {
     describe("createNFT limit function:", async () => {
         beforeEach(async () => {
             await collectionFactory.setPause(false);
-            await collectionFactory.create(0, "NFT", "NFT", user1.address, 250);
+            await mtvsManager.setPause(false);
 
-            await collectionFactory.create(1, "NFT1155", "NFT1155", user1.address, 250);
+            await collectionFactory.connect(user2).create(0, "NFT", "NFT", user1.address, 250);
+            await collectionFactory.connect(user2).create(1, "NFT1155", "NFT1155", user1.address, 250);
 
             collection_1 = await collectionFactory.getCollectionInfo(1);
             collection_2 = await collectionFactory.getCollectionInfo(2);
 
-            const merkleTree = generateMerkleTree([user1.address, user2.address]);
+            nft_721 = await TokenERC721.attach(collection_1.collectionAddress);
+            nft_1155 = await TokenERC721.attach(collection_2.collectionAddress);
+
+            merkleTree = generateMerkleTree([user1.address, user2.address]);
         });
 
         it("should revert when amount equal to zero amount: ", async () => {
@@ -307,7 +322,7 @@ describe("Metaversus Manager:", () => {
                 mtvsManager
                     .connect(user1)
                     .createNFTLimit(
-                        collection_1.collectionAddress,
+                        nft_721.address,
                         0,
                         "this_uri",
                         ONE_ETHER,
@@ -315,14 +330,13 @@ describe("Metaversus Manager:", () => {
                         0,
                         token.address,
                         merkleTree.getHexRoot()
-                    ),
-                token.address
-            ).to.be.revertedWith("ERROR: amount must be greater than zero !");
+                    )
+            ).to.be.revertedWith("Invalid amount");
         });
 
         it("should create NFT success: ", async () => {
-            await token.mint(user2.address, AMOUNT);
-            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
+            await admin.setPermitedNFT(nft_721.address, true);
+            await admin.setPermitedNFT(nft_1155.address, true);
 
             await mtvsManager
                 .connect(user2)
@@ -334,7 +348,7 @@ describe("Metaversus Manager:", () => {
                     0,
                     0,
                     token.address,
-                    formatBytes32String("0x1234")
+                    merkleTree.getHexRoot()
                 );
 
             // check owner nft
@@ -357,7 +371,7 @@ describe("Metaversus Manager:", () => {
                     time,
                     time + 10000,
                     token.address,
-                    formatBytes32String("0x1234")
+                    merkleTree.getHexRoot()
                 );
 
             allItems = await mkpManager.fetchMarketItemsByAddress(user2.address);
@@ -368,10 +382,12 @@ describe("Metaversus Manager:", () => {
     describe("buyTicketEvent function:", async () => {
         it("should revert when amount equal to zero amount: ", async () => {
             await expect(mtvsManager.connect(user1).buyTicketEvent(1, 0)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
+                "Invalid amount"
             );
         });
         it("should buy ticket success: ", async () => {
+            await mtvsManager.setPause(false);
+
             await token.mint(user2.address, AMOUNT);
             await token.approve(user2.address, ethers.constants.MaxUint256);
             await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);

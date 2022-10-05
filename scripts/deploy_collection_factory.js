@@ -10,7 +10,7 @@ async function main() {
 
   const tokenERC721 = "0xA9A1E0617c7607940B45D2052a5Dedc1a5f20DF3"; // testnet = 0xA9A1E0617c7607940B45D2052a5Dedc1a5f20DF3; mainnet = ;
   const tokenERC1155 = "0xC492b1eeA6dE03CeaF02cb139a2d794a35234DE6"; // testnet = 0xC492b1eeA6dE03CeaF02cb139a2d794a35234DE6; mainnet = ;
-  // const adminValidate = "0x65D752d6DDB57a688561F92acc6b6b43e8Ff420c"; // testnet = 0x65D752d6DDB57a688561F92acc6b6b43e8Ff420c; mainnet = ;
+  // const adminValidate = "0x28516b7115Cb16aBCeFC1670328f84e4399A5e48"; // testnet = 0x28516b7115Cb16aBCeFC1670328f84e4399A5e48; mainnet = ;
 
   // Loading contract factory.
   const CollectionFactory = await ethers.getContractFactory("CollectionFactory");
@@ -36,7 +36,7 @@ async function main() {
 
   // Factory
   const collectionFactory = await upgrades.deployProxy(CollectionFactory, [
-    tokenERC721, tokenERC1155, adminValidate.address
+    tokenERC721, tokenERC1155, adminValidate.address, admin, admin
   ]);
 
   await collectionFactory.deployed();
