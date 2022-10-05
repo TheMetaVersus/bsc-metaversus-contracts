@@ -333,7 +333,6 @@ describe("Staking Pool:", () => {
 
             await skipTime(86400);
             calReward = await staking.calReward(user1.address);
-            console.log("calReward", calReward.toString());
             expect(calReward.toNumber()).to.greaterThan(0);
 
             await staking.connect(user1).requestClaim();
@@ -347,7 +346,6 @@ describe("Staking Pool:", () => {
 
             await skipTime(86400);
             const newcalReward = await staking.calReward(user1.address);
-            console.log("newcalReward", newcalReward.toString());
             expect(newcalReward.toNumber()).to.equal(newcalReward.toNumber());
         });
     });

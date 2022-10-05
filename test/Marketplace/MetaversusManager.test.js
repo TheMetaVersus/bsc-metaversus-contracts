@@ -74,9 +74,6 @@ describe("Metaversus Manager:", () => {
             admin.address,
         ]);
 
-        await admin.setPermitedNFT(tokenMintERC721.address, true);
-        await admin.setPermitedNFT(tokenMintERC1155.address, true);
-
         await collectionFactory.setMetaversusManager(mtvsManager.address);
     });
 
@@ -335,9 +332,6 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should create NFT success: ", async () => {
-            await admin.setPermitedNFT(nft_721.address, true);
-            await admin.setPermitedNFT(nft_1155.address, true);
-
             await mtvsManager
                 .connect(user2)
                 .createNFTLimit(

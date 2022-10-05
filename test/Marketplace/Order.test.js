@@ -691,7 +691,6 @@ describe("OrderManager:", () => {
         });
 
         it("should be ok", async () => {
-            console.log("owwner", await nftTest.ownerOf(1), user1.address, user2.address);
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
             await orderManager.connect(user2).buy(marketItemId, proof);
