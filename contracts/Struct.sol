@@ -29,19 +29,22 @@ struct MarketItem {
     uint256 endTime;                                // Time when the NFT expire at Marketplace
     IERC20Upgradeable paymentToken;                 // Token to transfer
 }
+
+//  prettier-ignore
 struct WalletAsset {
-    address owner; // Owner of the wallet
-    address nftAddress; // NFT Contract Address of this asset
-    uint256 tokenId; // Token Id of NFT contract
+    address owner;                                  // Owner of the wallet
+    address nftAddress;                             // NFT Contract Address of this asset
+    uint256 tokenId;                                // Token Id of NFT contract
 }
 
+//  prettier-ignore
 struct Order {
-    uint256 orderId; // Order Id
-    address bidder; // The person who want to buy the Item at this Order
-    IERC20Upgradeable paymentToken; // Token to transfer
-    uint256 bidPrice; // Bid price
-    uint256 marketItemId; // Id of market item
-    WalletAsset walletAsset; // Wallet asset
-    uint256 amount; // Amount to transfer
-    uint256 expiredOrder; // Expired time
+    uint256 orderId;                                // Order Id
+    address bidder;                                 // The person who want to buy the Item at this Order
+    IERC20Upgradeable paymentToken;                 // Token to transfer
+    uint256 bidPrice;                               // Bid price
+    uint256 marketItemId;                           // Id of market item
+    WalletAsset walletAsset;                        // Wallet asset
+    uint256 amount;                                 // Amount to transfer
+    uint256 expiredOrder;                           // Time to expire
 }
