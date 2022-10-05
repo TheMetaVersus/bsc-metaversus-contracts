@@ -42,12 +42,6 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
     mapping(address => mapping(uint256 => uint256)) public privateHistories;
 
     /**
-     *  @notice this data contains public minting histories of users.
-     *  @dev user address => (drop id => minted counter)
-     */
-    mapping(address => mapping(uint256 => uint256)) public publicHistories;
-
-    /**
      *  @notice address of Meta Citizen NFT
      */
     IERC721Upgradeable public metaCitizen;
@@ -228,12 +222,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         drop.mintedTotal += _amount;
         require(drop.mintedTotal <= drop.maxSupply, "Mint more tokens than available");
 
-        // record minted history
-        if (isPrivateRound(_dropId)) {
-            privateHistories[_msgSender()][_dropId] += _amount;
-        } else {
-            publicHistories[_msgSender()][_dropId] += _amount;
-        }
+        privateHistories[_msgSender()][_dropId] += _amount;
 
         // payout fee
         uint256 fee = _estimateMintFee(_dropId, _amount);
@@ -305,13 +294,8 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
      *  @param  _account    Address of an account to query with
      */
     function mintableAmount(uint256 _dropId, address _account) public view returns (uint256) {
-        uint256 mintableLimit = drops[_dropId].publicRound.mintableLimit;
-        uint256 mintedAmount = publicHistories[_account][_dropId];
-
-        if (isPrivateRound(_dropId)) {
-            mintableLimit = drops[_dropId].privateRound.mintableLimit;
-            mintedAmount = privateHistories[_account][_dropId];
-        }
+        uint256 mintableLimit = drops[_dropId].privateRound.mintableLimit;
+        uint256 mintedAmount = privateHistories[_account][_dropId];
 
         if (mintableLimit == 0) {
             return drops[_dropId].maxSupply - drops[_dropId].mintedTotal;
@@ -336,12 +320,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         bytes32[] memory _proof
     ) public view returns (bool) {
         if (metaCitizen.balanceOf(_account) == 0) return false;
-
-        if (isPrivateRound(_dropId)) {
-            return Validatable.isValidProof(_proof, drops[_dropId].root, _account);
-        }
-
-        return isPublicRound(_dropId);
+        return Validatable.isValidProof(_proof, drops[_dropId].root, _account);
     }
 
     /**
@@ -353,17 +332,6 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         return
             block.timestamp >= drops[_dropId].privateRound.startTime && // solhint-disable-line not-rely-on-time
             block.timestamp <= drops[_dropId].privateRound.endTime; // solhint-disable-line not-rely-on-time
-    }
-
-    /**
-     *  @notice Check if the Drop was still in the public phase.
-     *
-     *  @param  _dropId     Id of drop
-     */
-    function isPublicRound(uint256 _dropId) private view returns (bool) {
-        return
-            block.timestamp >= drops[_dropId].publicRound.startTime && // solhint-disable-line not-rely-on-time
-            block.timestamp <= drops[_dropId].publicRound.endTime; // solhint-disable-line not-rely-on-time
     }
 
     /**
