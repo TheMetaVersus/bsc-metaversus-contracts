@@ -46,5 +46,5 @@ struct Order {
     uint256 marketItemId;                           // Id of market item
     WalletAsset walletAsset;                        // Wallet asset
     uint256 amount;                                 // Amount to transfer
-    uint256 expiredOrder;                           // Time to expire
+    uint256 expiredOrder;                           // Expired time
 }
