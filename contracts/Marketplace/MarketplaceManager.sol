@@ -413,18 +413,6 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Fetch all permited nft
-     */
-    function fetchAllPermitedNFTs() external view returns (address[] memory) {
-        address[] memory nfts = new address[](admin.numPermitedNFTs());
-        for (uint256 i = 0; i < admin.numPermitedNFTs(); i++) {
-            nfts[i] = admin.getPermitedNFT(i);
-        }
-
-        return nfts;
-    }
-
-    /**
      *  @notice Get current market item id
      *
      *  @dev    All caller can call this function.

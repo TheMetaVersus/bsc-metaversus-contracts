@@ -13,33 +13,38 @@ enum MarketItemStatus {
     SOLD,
     CANCELED
 }
+
+//  prettier-ignore
 struct MarketItem {
-    uint256 marketItemId;
-    address nftContractAddress;
-    uint256 tokenId;
-    uint256 amount;
-    uint256 price;
-    uint256 nftType;
-    address seller;
-    address buyer;
-    MarketItemStatus status;
-    uint256 startTime;
-    uint256 endTime;
-    IERC20Upgradeable paymentToken;
-}
-struct WalletAsset {
-    address owner;
-    address nftAddress;
-    uint256 tokenId;
+    uint256 marketItemId;                           // Id of market item
+    address nftContractAddress;                     // NFT Contract Address
+    uint256 tokenId;                                // Token Id of NFT contract
+    uint256 amount;                                 // Amount if token is ERC1155
+    uint256 price;                                  // Price of this token
+    uint256 nftType;                                // Type of this NFT
+    address seller;                                 // The person who sell this NFT
+    address buyer;                                  // The person who offer to this NFT
+    MarketItemStatus status;                        // Status of this NFT at Marketplace
+    uint256 startTime;                              // Time when the NFT push to Marketplace
+    uint256 endTime;                                // Time when the NFT expire at Marketplace
+    IERC20Upgradeable paymentToken;                 // Token to transfer
 }
 
+//  prettier-ignore
+struct WalletAsset {
+    address owner;                                  // Owner of the wallet
+    address nftAddress;                             // NFT Contract Address of this asset
+    uint256 tokenId;                                // Token Id of NFT contract
+}
+
+//  prettier-ignore
 struct Order {
-    uint256 orderId;
-    address bidder;
-    IERC20Upgradeable paymentToken;
-    uint256 bidPrice;
-    uint256 marketItemId;
-    WalletAsset walletAsset;
-    uint256 amount;
-    uint256 expiredOrder;
+    uint256 orderId;                                // Order Id
+    address bidder;                                 // The person who want to buy the Item at this Order
+    IERC20Upgradeable paymentToken;                 // Token to transfer
+    uint256 bidPrice;                               // Bid price
+    uint256 marketItemId;                           // Id of market item
+    WalletAsset walletAsset;                        // Wallet asset
+    uint256 amount;                                 // Amount to transfer
+    uint256 expiredOrder;                           // Time to expire
 }

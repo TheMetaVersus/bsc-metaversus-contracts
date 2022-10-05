@@ -86,9 +86,6 @@ describe("Staking Pool:", () => {
 
         await staking.setStartTime(CURRENT);
 
-        await mkpManager.setPermitedNFT(tokenMintERC721.address, true);
-        await mkpManager.setPermitedNFT(tokenMintERC1155.address, true);
-
         await mkpManager.setPermittedPaymentToken(token.address, true);
         await mkpManager.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
     });
