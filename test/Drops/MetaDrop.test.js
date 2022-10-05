@@ -50,7 +50,7 @@ describe("MetaDrop", () => {
             treasury.address,
             token.address,
             TOKEN_0_1,
-            admin.address
+            admin.address,
         ]);
         await metaCitizen.deployed();
 
@@ -59,7 +59,7 @@ describe("MetaDrop", () => {
             metaCitizen.address,
             admin.address,
             treasury.address,
-            DEFAULT_SERVICE_NUMERATOR // 10%
+            DEFAULT_SERVICE_NUMERATOR, // 10%
         ]);
         await metaDrop.deployed();
 
@@ -79,7 +79,7 @@ describe("MetaDrop", () => {
 
         await tokenERC721.setAdmin(metaDrop.address, true);
 
-        privateStartTime = await getCurrentTime() + 10;
+        privateStartTime = (await getCurrentTime()) + 10;
         privateEndTime = privateStartTime + ONE_DAY;
         publicStartTime = privateEndTime + ONE_DAY;
         publicEndTime = publicStartTime + ONE_DAY;
@@ -99,11 +99,9 @@ describe("MetaDrop", () => {
                     metaCitizen.address,
                     admin.address,
                     treasury.address,
-                    SERVICE_FEE_DENOMINATOR.add(1)
+                    SERVICE_FEE_DENOMINATOR.add(1),
                 ])
-            ).to.be.revertedWith(
-                "Service fee will exceed minting fee"
-            );
+            ).to.be.revertedWith("Service fee will exceed minting fee");
         });
 
         it("Set initial state successful", async () => {
@@ -114,24 +112,21 @@ describe("MetaDrop", () => {
         });
     });
 
-
     describe("setServiceFeeNumerator", async () => {
         it("Should throw error Service fee will exceed minting fee", async () => {
-            await expect(
-                metaDrop.setServiceFeeNumerator(SERVICE_FEE_DENOMINATOR.add(1))
-            ).to.be.revertedWith(
+            await expect(metaDrop.setServiceFeeNumerator(SERVICE_FEE_DENOMINATOR.add(1))).to.be.revertedWith(
                 "Service fee will exceed minting fee"
             );
         });
 
         it("Should set successfully", async () => {
-            await metaDrop.setServiceFeeNumerator("0")
+            await metaDrop.setServiceFeeNumerator("0");
             expect(await metaDrop.serviceFeeNumerator()).to.equal("0");
 
-            await metaDrop.setServiceFeeNumerator(DEFAULT_SERVICE_NUMERATOR + 1)
+            await metaDrop.setServiceFeeNumerator(DEFAULT_SERVICE_NUMERATOR + 1);
             expect(await metaDrop.serviceFeeNumerator()).to.equal(DEFAULT_SERVICE_NUMERATOR + 1);
 
-            await metaDrop.setServiceFeeNumerator(SERVICE_FEE_DENOMINATOR)
+            await metaDrop.setServiceFeeNumerator(SERVICE_FEE_DENOMINATOR);
             expect(await metaDrop.serviceFeeNumerator()).to.equal(SERVICE_FEE_DENOMINATOR);
         });
     });
@@ -148,118 +143,82 @@ describe("MetaDrop", () => {
                     startTime: privateStartTime,
                     endTime: privateEndTime,
                     mintFee: TOKEN_0_1,
-                    mintableLimit: 1
+                    mintableLimit: 1,
                 },
                 publicRound: {
                     startTime: publicStartTime,
                     endTime: publicEndTime,
                     mintFee: TOKEN_0_2,
-                    mintableLimit: 5
-                }
-            }
+                    mintableLimit: 5,
+                },
+            };
         });
 
         it("Should throw error Invalid TokenCollectionERC721 contract", async () => {
             drop.nft = AddressZero;
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith(
                 "Invalid TokenCollectionERC721 contract"
             );
 
             drop.nft = metaCitizen.address;
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith(
                 "Invalid TokenCollectionERC721 contract"
             );
         });
 
         it("Should throw error Invalid root", async () => {
-            drop.root = formatBytes32String('');
+            drop.root = formatBytes32String("");
 
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
-                "Invalid root"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid root");
         });
 
         it("Should throw error Invalid funding receiver", async () => {
             drop.fundingReceiver = AddressZero;
 
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
-                "Invalid funding receiver"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid funding receiver");
         });
 
         it("Should throw error Invalid private sale start time", async () => {
             drop.privateRound.startTime = getCurrentTime();
 
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
-                "Invalid private sale start time"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid private sale start time");
         });
 
         it("Should throw error Invalid private sale end time", async () => {
             drop.privateRound.endTime = privateStartTime;
 
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
-                "Invalid private sale end time"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid private sale end time");
         });
 
         it("Should throw error Invalid public sale start time", async () => {
             drop.publicRound.startTime = privateEndTime;
 
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
-                "Invalid public sale start time"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid public sale start time");
         });
 
         it("Should throw error Invalid public sale end time", async () => {
             drop.publicRound.endTime = publicStartTime;
 
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
-                "Invalid public sale end time"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid public sale end time");
         });
 
         it("Should throw error Invalid minting supply", async () => {
             drop.maxSupply = 0;
 
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
-                "Invalid minting supply"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid minting supply");
         });
 
         it("Should throw error Invalid payment token", async () => {
             drop.paymentToken = user1.address;
 
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
-                "Invalid payment token"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid payment token");
         });
 
         it("Should create drop successful", async () => {
             await metaDrop.connect(user1).create(drop);
 
             const currentDropCounter = await metaDrop.getCurrentCounter();
-            expect(currentDropCounter).to.equal('1');
+            expect(currentDropCounter).to.equal("1");
 
             const createdDrop = await metaDrop.drops(currentDropCounter);
             expect(createdDrop.root).to.equal(drop.root);
@@ -294,15 +253,15 @@ describe("MetaDrop", () => {
                     startTime: privateStartTime,
                     endTime: privateEndTime,
                     mintFee: TOKEN_0_1,
-                    mintableLimit: 1
+                    mintableLimit: 1,
                 },
                 publicRound: {
                     startTime: publicStartTime,
                     endTime: publicEndTime,
                     mintFee: TOKEN_0_2,
-                    mintableLimit: 5
-                }
-            }
+                    mintableLimit: 5,
+                },
+            };
 
             await metaDrop.connect(user1).create(drop);
 
@@ -310,39 +269,25 @@ describe("MetaDrop", () => {
         });
 
         it("Should throw error Invalid drop", async () => {
-            await expect(
-                metaDrop.connect(user1).update("0", drop)
-            ).to.be.revertedWith(
-                "Invalid drop"
-            );
+            await expect(metaDrop.connect(user1).update("0", drop)).to.be.revertedWith("Invalid drop");
 
-            await expect(
-                metaDrop.connect(user1).update(dropId.add(1), drop)
-            ).to.be.revertedWith(
-                "Invalid drop"
-            );
+            await expect(metaDrop.connect(user1).update(dropId.add(1), drop)).to.be.revertedWith("Invalid drop");
         });
 
         it("Should throw error Invalid TokenCollectionERC721 contract", async () => {
             drop.nft = AddressZero;
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
                 "Invalid TokenCollectionERC721 contract"
             );
 
             drop.nft = metaCitizen.address;
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
                 "Invalid TokenCollectionERC721 contract"
             );
         });
 
         it("Should throw error Only Drop owner can call this function", async () => {
-            await expect(
-                metaDrop.connect(user2).update(dropId, drop)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user2).update(dropId, drop)).to.be.revertedWith(
                 "Only Drop owner can call this function"
             );
         });
@@ -350,19 +295,13 @@ describe("MetaDrop", () => {
         it("Should throw error Invalid funding receiver", async () => {
             drop.fundingReceiver = AddressZero;
 
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
-                "Invalid funding receiver"
-            );
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Invalid funding receiver");
         });
 
         it("Should throw error Invalid private sale start time", async () => {
             drop.privateRound.startTime = 0;
 
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
                 "Invalid private sale start time"
             );
         });
@@ -370,9 +309,7 @@ describe("MetaDrop", () => {
         it("Should throw error Invalid private sale end time", async () => {
             drop.privateRound.endTime = privateStartTime;
 
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
                 "Invalid private sale end time"
             );
         });
@@ -380,9 +317,7 @@ describe("MetaDrop", () => {
         it("Should throw error Invalid public sale start time", async () => {
             drop.publicRound.startTime = privateEndTime;
 
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
                 "Invalid public sale start time"
             );
         });
@@ -390,9 +325,7 @@ describe("MetaDrop", () => {
         it("Should throw error Invalid public sale end time", async () => {
             drop.publicRound.endTime = publicStartTime;
 
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
                 "Invalid public sale end time"
             );
         });
@@ -400,21 +333,13 @@ describe("MetaDrop", () => {
         it("Should throw error Invalid minting supply", async () => {
             drop.maxSupply = 0;
 
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
-                "Invalid minting supply"
-            );
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Invalid minting supply");
         });
 
         it("Should throw error Invalid payment token", async () => {
             drop.paymentToken = user1.address;
 
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
-                "Invalid payment token"
-            );
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Invalid payment token");
         });
 
         it("Should update drop successful", async () => {
@@ -428,15 +353,15 @@ describe("MetaDrop", () => {
                     startTime: privateStartTime + 10,
                     endTime: privateEndTime + 10,
                     mintFee: 0,
-                    mintableLimit: 0
+                    mintableLimit: 0,
                 },
                 publicRound: {
                     startTime: publicStartTime + 10,
                     endTime: publicEndTime + 10,
                     mintFee: 0,
-                    mintableLimit: 0
-                }
-            }
+                    mintableLimit: 0,
+                },
+            };
 
             await metaDrop.connect(user1).update(dropId, expectedUpdateDrop);
 
@@ -473,71 +398,53 @@ describe("MetaDrop", () => {
                     startTime: privateStartTime,
                     endTime: privateEndTime,
                     mintFee: TOKEN_0_1,
-                    mintableLimit: 1
+                    mintableLimit: 1,
                 },
                 publicRound: {
                     startTime: publicStartTime,
                     endTime: publicEndTime,
                     mintFee: TOKEN_0_2,
-                    mintableLimit: 5
-                }
-            }
+                    mintableLimit: 5,
+                },
+            };
 
             await metaDrop.create(drop);
             dropId = await metaDrop.getCurrentCounter();
         });
 
         it("Should throw error Invalid drop", async () => {
-            await expect(
-                metaDrop.connect(user1).mint("0", proof_user1, 5)
-            ).to.be.revertedWith(
-                "Invalid drop"
-            );
+            await expect(metaDrop.connect(user1).mint("0", proof_user1, 5)).to.be.revertedWith("Invalid drop");
 
-            await expect(
-                metaDrop.connect(user1).mint("2", proof_user1, 5)
-            ).to.be.revertedWith(
-                "Invalid drop"
-            );
+            await expect(metaDrop.connect(user1).mint("2", proof_user1, 5)).to.be.revertedWith("Invalid drop");
         });
 
         it("Should throw error when not hold MTV Citizen", async () => {
-            await expect(
-                metaDrop.connect(user3).mint(dropId, proof_user3, 5)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user3).mint(dropId, proof_user3, 5)).to.be.revertedWith(
                 "Not permitted to mint token at the moment"
             );
         });
 
         it("Should throw error when drop is not active", async () => {
             // Drop is not started yet
-            await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, 5)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
                 "Not permitted to mint token at the moment"
             );
 
             // Private round has end
             await setTime(privateEndTime);
-            await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, 5)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
                 "Not permitted to mint token at the moment"
             );
 
             // Public round is not started yet
             await setTime(publicStartTime - 5);
-            await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, 5)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
                 "Not permitted to mint token at the moment"
             );
 
             // Public round has end
             await setTime(publicEndTime);
-            await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, 5)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
                 "Not permitted to mint token at the moment"
             );
         });
@@ -549,9 +456,7 @@ describe("MetaDrop", () => {
 
             await expect(
                 metaDrop.connect(user_notWhitelisted).mint(dropId, proof_user_notWhitelisted, 5)
-            ).to.be.revertedWith(
-                "Not permitted to mint token at the moment"
-            );
+            ).to.be.revertedWith("Not permitted to mint token at the moment");
         });
 
         it("Should throw error Mint more than allocated portion", async () => {
@@ -559,9 +464,7 @@ describe("MetaDrop", () => {
             let mintableAmount = await metaDrop.mintableAmount(dropId, user1.address);
             expect(mintableAmount).to.equal(drop.privateRound.mintableLimit);
 
-            await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, mintableAmount.add(1))
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).mint(dropId, proof_user1, mintableAmount.add(1))).to.be.revertedWith(
                 "Mint more than allocated portion"
             );
 
@@ -569,9 +472,7 @@ describe("MetaDrop", () => {
             mintableAmount = await metaDrop.mintableAmount(dropId, user1.address);
             expect(mintableAmount).to.equal(drop.publicRound.mintableLimit);
 
-            await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, mintableAmount.add(1))
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).mint(dropId, proof_user1, mintableAmount.add(1))).to.be.revertedWith(
                 "Mint more than allocated portion"
             );
         });
@@ -585,9 +486,7 @@ describe("MetaDrop", () => {
             await metaDrop.connect(user1).mint(dropId, proof_user1, drop.publicRound.mintableLimit);
             await metaDrop.connect(user2).mint(dropId, proof_user2, drop.publicRound.mintableLimit);
 
-            await expect(
-                metaDrop.connect(user3).mint(dropId, proof_user3, "1")
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user3).mint(dropId, proof_user3, "1")).to.be.revertedWith(
                 "Mint more tokens than available"
             );
         });
@@ -598,12 +497,13 @@ describe("MetaDrop", () => {
             let expectedServiceFee = expectedMintedFee.mul(DEFAULT_SERVICE_NUMERATOR).div(SERVICE_FEE_DENOMINATOR);
             let expectedCreatorFee = expectedMintedFee.sub(expectedServiceFee);
 
-            await expect(() => metaDrop.connect(user1).mint(dropId, proof_user1, drop.privateRound.mintableLimit))
-                .to.changeTokenBalances(
-                    token,
-                    [treasury, user1, owner],
-                    [expectedServiceFee, expectedMintedFee.mul(-1), expectedCreatorFee]
-                );
+            await expect(() =>
+                metaDrop.connect(user1).mint(dropId, proof_user1, drop.privateRound.mintableLimit)
+            ).to.changeTokenBalances(
+                token,
+                [treasury, user1, owner],
+                [expectedServiceFee, expectedMintedFee.mul(-1), expectedCreatorFee]
+            );
 
             expect(await tokenERC721.balanceOf(user1.address)).to.equal(drop.privateRound.mintableLimit);
 
@@ -612,19 +512,22 @@ describe("MetaDrop", () => {
             expectedServiceFee = expectedMintedFee.mul(DEFAULT_SERVICE_NUMERATOR).div(SERVICE_FEE_DENOMINATOR);
             expectedCreatorFee = expectedMintedFee.sub(expectedServiceFee);
 
-            await expect(() => metaDrop.connect(user1).mint(dropId, proof_user1, drop.publicRound.mintableLimit))
-                .to.changeTokenBalances(
-                    token,
-                    [treasury, user1, owner],
-                    [expectedServiceFee, expectedMintedFee.mul(-1), expectedCreatorFee]
-                );
+            await expect(() =>
+                metaDrop.connect(user1).mint(dropId, proof_user1, drop.publicRound.mintableLimit)
+            ).to.changeTokenBalances(
+                token,
+                [treasury, user1, owner],
+                [expectedServiceFee, expectedMintedFee.mul(-1), expectedCreatorFee]
+            );
 
-            expect(await tokenERC721.balanceOf(user1.address)).to.equal(drop.privateRound.mintableLimit + drop.publicRound.mintableLimit);
+            expect(await tokenERC721.balanceOf(user1.address)).to.equal(
+                drop.privateRound.mintableLimit + drop.publicRound.mintableLimit
+            );
         });
 
         it("Should mint successful by native coin", async () => {
             drop.paymentToken = AddressZero;
-            drop.privateRound.startTime = await getCurrentTime() + 10;
+            drop.privateRound.startTime = (await getCurrentTime()) + 10;
             drop.privateRound.endTime = drop.privateRound.startTime + ONE_DAY;
             drop.publicRound.startTime = drop.privateRound.endTime + ONE_DAY;
             drop.publicRound.endTime = drop.publicRound.startTime + ONE_DAY;
@@ -637,32 +540,39 @@ describe("MetaDrop", () => {
             let expectedServiceFee = expectedMintedFee.mul(DEFAULT_SERVICE_NUMERATOR).div(SERVICE_FEE_DENOMINATOR);
             let expectedCreatorFee = expectedMintedFee.sub(expectedServiceFee);
 
-            await expect(() => metaDrop.connect(user1).mint(dropId, proof_user1, drop.privateRound.mintableLimit, { value: expectedMintedFee }))
-                .to.changeEtherBalances(
-                    [treasury, user1, owner],
-                    [expectedServiceFee, expectedMintedFee.mul(-1), expectedCreatorFee]
-                );
+            await expect(() =>
+                metaDrop
+                    .connect(user1)
+                    .mint(dropId, proof_user1, drop.privateRound.mintableLimit, { value: expectedMintedFee })
+            ).to.changeEtherBalances(
+                [treasury, user1, owner],
+                [expectedServiceFee, expectedMintedFee.mul(-1), expectedCreatorFee]
+            );
 
             expect(await tokenERC721.balanceOf(user1.address)).to.equal(drop.privateRound.mintableLimit);
-
 
             await setTime(drop.publicRound.startTime);
             expectedMintedFee = drop.publicRound.mintFee.mul(drop.publicRound.mintableLimit);
             expectedServiceFee = expectedMintedFee.mul(DEFAULT_SERVICE_NUMERATOR).div(SERVICE_FEE_DENOMINATOR);
             expectedCreatorFee = expectedMintedFee.sub(expectedServiceFee);
 
-            await expect(() => metaDrop.connect(user1).mint(dropId, proof_user1, drop.publicRound.mintableLimit, { value: expectedMintedFee }))
-                .to.changeEtherBalances(
-                    [treasury, user1, owner],
-                    [expectedServiceFee, expectedMintedFee.mul(-1), expectedCreatorFee]
-                );
+            await expect(() =>
+                metaDrop
+                    .connect(user1)
+                    .mint(dropId, proof_user1, drop.publicRound.mintableLimit, { value: expectedMintedFee })
+            ).to.changeEtherBalances(
+                [treasury, user1, owner],
+                [expectedServiceFee, expectedMintedFee.mul(-1), expectedCreatorFee]
+            );
 
-            expect(await tokenERC721.balanceOf(user1.address)).to.equal(drop.privateRound.mintableLimit + drop.publicRound.mintableLimit);
+            expect(await tokenERC721.balanceOf(user1.address)).to.equal(
+                drop.privateRound.mintableLimit + drop.publicRound.mintableLimit
+            );
         });
 
         it("Should throw error Not enough fee", async () => {
             drop.paymentToken = AddressZero;
-            drop.privateRound.startTime = await getCurrentTime() + 10;
+            drop.privateRound.startTime = (await getCurrentTime()) + 10;
             drop.privateRound.endTime = drop.privateRound.startTime + ONE_DAY;
             drop.publicRound.startTime = drop.privateRound.endTime + ONE_DAY;
             drop.publicRound.endTime = drop.publicRound.startTime + ONE_DAY;
@@ -674,20 +584,20 @@ describe("MetaDrop", () => {
             const expectedMintedFee = drop.privateRound.mintFee.mul(drop.privateRound.mintableLimit);
 
             await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, drop.privateRound.mintableLimit, { value: expectedMintedFee.sub(1) })
-            ).to.be.revertedWith(
-                "Not enough fee"
-            );
+                metaDrop
+                    .connect(user1)
+                    .mint(dropId, proof_user1, drop.privateRound.mintableLimit, { value: expectedMintedFee.sub(1) })
+            ).to.be.revertedWith("Not enough fee");
 
             await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, drop.privateRound.mintableLimit, { value: expectedMintedFee.add(1) })
-            ).to.be.revertedWith(
-                "Not enough fee"
-            );
+                metaDrop
+                    .connect(user1)
+                    .mint(dropId, proof_user1, drop.privateRound.mintableLimit, { value: expectedMintedFee.add(1) })
+            ).to.be.revertedWith("Not enough fee");
         });
     });
 
-    describe.only("mintableAmount", async () => {
+    describe("mintableAmount", async () => {
         beforeEach(async () => {
             drop = {
                 root: merkleTree.getHexRoot(),
@@ -699,15 +609,15 @@ describe("MetaDrop", () => {
                     startTime: privateStartTime,
                     endTime: privateEndTime,
                     mintFee: TOKEN_0_1,
-                    mintableLimit: 1
+                    mintableLimit: 1,
                 },
                 publicRound: {
                     startTime: publicStartTime,
                     endTime: publicEndTime,
                     mintFee: TOKEN_0_2,
-                    mintableLimit: 5
-                }
-            }
+                    mintableLimit: 5,
+                },
+            };
         });
 
         it("Should return mintable amount correctly when mintable is zero", async () => {
@@ -730,6 +640,5 @@ describe("MetaDrop", () => {
             await metaDrop.connect(user1).mint(dropId, proof_user1, 1);
             await metaDrop.connect(user1).mint(dropId, proof_user1, 1);
         });
-
     });
 });

@@ -28,6 +28,7 @@ struct MarketItem {
     uint256 startTime;                              // Time when the NFT push to Marketplace
     uint256 endTime;                                // Time when the NFT expire at Marketplace
     IERC20Upgradeable paymentToken;                 // Token to transfer
+    bool isPrivate;                                 // Access status
 }
 
 //  prettier-ignore
