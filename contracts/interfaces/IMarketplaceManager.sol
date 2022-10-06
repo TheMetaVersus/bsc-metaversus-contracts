@@ -9,13 +9,6 @@ import "../Struct.sol";
 interface IMarketplaceManager is IERC165Upgradeable {
     function wasBuyer(address account) external view returns (bool);
 
-    // order
-    function getOrderIdToOrderInfo(uint256 orderId) external view returns (Order memory);
-
-    function setOrderIdToOrderInfo(uint256 orderId, Order memory value) external;
-
-    function removeOrderIdToOrderInfo(uint256 orderId) external;
-
     // Market Item
     function getMarketItemIdToMarketItem(uint256 marketItemId) external view returns (MarketItem memory);
 
@@ -38,16 +31,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
     // MarketItemOfOwner
     function removeMarketItemOfOwner(address owner, uint256 marketItemId) external;
 
-    function externalMakeOffer(
-        address caller,
-        IERC20Upgradeable paymentToken,
-        uint256 bidPrice,
-        uint256 time,
-        uint256 amount,
-        uint256 marketItemId,
-        WalletAsset memory walletAsset
-    ) external payable;
-
     function extCreateMarketInfo(
         address _nftAddress,
         uint256 _tokenId,
@@ -62,6 +45,28 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     function getListingFee(uint256 amount) external view returns (uint256);
 
+    function deduceRoyalties(
+        address nftContractAddress,
+        uint256 tokenId,
+        uint256 grossSaleValue,
+        IERC20Upgradeable paymentToken
+    ) external payable returns (uint256);
+
+    function extTransferCall(
+        IERC20Upgradeable paymentToken,
+        uint256 amount,
+        address from,
+        address to
+    ) external payable;
+
+    function extTransferNFTCall(
+        address nftContractAddress,
+        uint256 tokenId,
+        uint256 amount,
+        address from,
+        address to
+    ) external;
+
     function getCurrentMarketItem() external view returns (uint256);
 
     function getCurrentOrder() external view returns (uint256);
@@ -74,9 +79,5 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     function isRoyalty(address _contract) external view returns (bool);
 
-    function verify(
-        uint256 _marketItemId,
-        bytes32[] memory _proof,
-        address _account
-    ) external view returns (bool);
+    function isNftTokenExist(address _nftAddress, uint256 _tokenId) external returns (bool);
 }

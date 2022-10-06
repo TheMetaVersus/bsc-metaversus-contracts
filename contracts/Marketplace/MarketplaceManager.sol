@@ -36,13 +36,12 @@ contract MarketPlaceManager is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     using AddressUpgradeable for address;
+
     CountersUpgradeable.Counter private _marketItemIds;
     CountersUpgradeable.Counter private _orderCounter;
 
-    bytes4 private constant _INTERFACE_ID_ERC2981 = type(IERC2981Upgradeable).interfaceId;
-    bytes4 private constant _INTERFACE_ID_ERC721 = type(IERC721Upgradeable).interfaceId;
-    bytes4 private constant _INTERFACE_ID_ERC1155 = type(IERC1155Upgradeable).interfaceId;
     uint256 public constant DENOMINATOR = 1e5;
 
     /**
@@ -59,16 +58,6 @@ contract MarketPlaceManager is
      *  @notice orderManager is address of Order contract
      */
     IOrder public orderManager;
-
-    /**
-     *  @notice marketItemIdToMarketItem is mapping market ID to Market Item
-     */
-    mapping(uint256 => MarketItem) public marketItemIdToMarketItem;
-
-    /**
-     *  @notice orderIdToOrderInfo is mapping order ID to order info
-     */
-    mapping(uint256 => Order) public orderIdToOrderInfo;
 
     /**
      *  @notice _marketItemOfOwner is mapping owner address to Market ID
@@ -89,6 +78,30 @@ contract MarketPlaceManager is
      *  @notice _rootHashesToMarketItems is mapping owner's asset address to order ID
      */
     mapping(bytes32 => EnumerableSetUpgradeable.UintSet) private _rootHashesToMarketItemIds;
+
+    /**
+     *  @notice Mapping from MarketItemId to Order
+     *  @dev NFTAddress -> TokenId[]
+     */
+    mapping(address => EnumerableSetUpgradeable.UintSet) private nftAddressToNftTokenIds;
+
+    /**
+     *  @notice Mapping TokenID to OwnerAddress
+     *  @dev TokenId -> OwnerAddress[]
+     */
+    mapping(uint256 => EnumerableSetUpgradeable.AddressSet) private tokenIdToOwners;
+
+    /**
+     *  @notice Mapping from MarketItemID to Market Item
+     *  @dev MarketItemID -> MarketItem
+     */
+    mapping(uint256 => MarketItem) public marketItemIdToMarketItem;
+
+    /**
+     *  @notice Mapping from OwnerAddress to MarketItemId[]
+     *  @dev OwnerAddress -> MarketItemId[]
+     */
+    mapping(address => EnumerableSetUpgradeable.UintSet) private ownerToMarketplaceItemId;
 
     event MarketItemCreated(
         uint256 indexed marketItemId,
@@ -159,29 +172,75 @@ contract MarketPlaceManager is
     }
 
     /**
-     * @dev makeOffer external function for handle store and update data
+     *  @notice Transfer nft call
      */
-    function externalMakeOffer(
-        address caller,
-        IERC20Upgradeable paymentToken,
-        uint256 bidPrice,
-        uint256 time,
-        uint256 amount,
-        uint256 marketItemId,
-        WalletAsset memory walletAsset
-    ) external payable notZero(bidPrice) notZero(amount) {
-        _orderCounter.increment();
-        uint256 orderId = _orderCounter.current();
+    function extTransferNFTCall(
+        address _nftContractAddress,
+        uint256 _tokenId,
+        uint256 _amount,
+        address _from,
+        address _to
+    ) external {
+        NFTHelper.transferNFTCall(_nftContractAddress, _tokenId, _amount, _from, _to);
+    }
 
-        Order memory newBid = Order(orderId, caller, paymentToken, bidPrice, marketItemId, walletAsset, amount, time);
+    /**
+     *  @notice Transfer call
+     */
+    function extTransferCall(
+        IERC20Upgradeable _paymentToken,
+        uint256 _amount,
+        address _from,
+        address _to
+    ) public payable validOrder(IOrder(_msgSender())) {
+        if (address(_paymentToken) == address(0)) {
+            if (_to == address(this)) {
+                require(msg.value == _amount, "Failed to send into contract");
+            } else {
+                (bool sent, ) = _to.call{ value: _amount }("");
+                require(sent, "Failed to send native");
+            }
+        } else {
+            if (_to == address(this)) {
+                IERC20Upgradeable(_paymentToken).safeTransferFrom(_from, _to, _amount);
+            } else {
+                IERC20Upgradeable(_paymentToken).transfer(_to, _amount);
+            }
+        }
+    }
 
-        orderIdToOrderInfo[orderId] = newBid;
+    /**
+     *  @notice Transfers royalties to the rightsowner if applicable and return the remaining amount
+     *  @param _nftContractAddress is address contract of nft
+     *  @param _tokenId is token id of nft
+     *  @param _grossSaleValue is price of nft that is listed
+     *  @param _paymentToken is token for payment
+     */
+    function deduceRoyalties(
+        address _nftContractAddress,
+        uint256 _tokenId,
+        uint256 _grossSaleValue,
+        IERC20Upgradeable _paymentToken
+    ) external payable returns (uint256 netSaleAmount) {
+        // Get amount of royalties to pays and recipient
+        if (NFTHelper.isRoyalty(_nftContractAddress)) {
+            (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
+                _nftContractAddress,
+                _tokenId,
+                _grossSaleValue
+            );
 
-        _orderOfOwner[caller].add(orderId);
-        address sender = marketItemId == 0 ? walletAsset.owner : marketItemIdToMarketItem[marketItemId].seller;
-        _orderIdFromAssetOfOwner[sender].add(orderId);
-
-        emit MadeOffer(orderId);
+            // Deduce royalties from sale value
+            uint256 netSaleValue = _grossSaleValue - royaltiesAmount;
+            // Transfer royalties to rightholder if not zero
+            if (royaltiesAmount > 0) {
+                extTransferCall(_paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
+            }
+            // Broadcast royalties payment
+            emit RoyaltiesPaid(_tokenId, royaltiesAmount);
+            return netSaleValue;
+        }
+        return _grossSaleValue;
     }
 
     /**
@@ -200,7 +259,7 @@ contract MarketPlaceManager is
         IERC20Upgradeable _paymentToken,
         bytes calldata _rootHash
     ) external {
-        require(_msgSender().isContract(), "ERROR: only allow contract call !");
+        require(_msgSender() == address(orderManager), "only allow Order contract call");
         NFTHelper.Type nftType = NFTHelper.getType(_nftAddress);
         require(nftType != NFTHelper.Type.NONE, "ERROR: NFT address is incompatible!");
 
@@ -208,12 +267,11 @@ contract MarketPlaceManager is
         uint256 marketItemId = _marketItemIds.current();
 
         marketItemIdToMarketItem[marketItemId] = MarketItem(
-            marketItemId,
             _nftAddress,
             _tokenId,
             nftType == NFTHelper.Type.ERC1155 ? _amount : 1,
             _endTime >= _startTime && _startTime >= block.timestamp ? _price : 0,
-            uint256(nftType),
+            nftType,
             _seller,
             address(0),
             MarketItemStatus.LISTING,
@@ -411,25 +469,8 @@ contract MarketPlaceManager is
     /**
      *  @notice Check standard
      */
-    function checkStandard(address _contract) public view returns (uint256) {
-        if (IERC721Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC721)) {
-            return uint256(NftStandard.ERC721);
-        }
-        if (IERC1155Upgradeable(_contract).supportsInterface(_INTERFACE_ID_ERC1155)) {
-            return uint256(NftStandard.ERC1155);
-        }
-        return uint256(NftStandard.NONE);
-    }
-
-    /**
-     *  @notice get data of offer order of bidder
-     */
-    function getOfferOrderOfBidder(address bidder) public view returns (Order[] memory) {
-        Order[] memory data = new Order[](_orderOfOwner[bidder].length());
-        for (uint256 i = 0; i < _orderOfOwner[bidder].length(); i++) {
-            data[i] = orderIdToOrderInfo[_orderOfOwner[bidder].at(i)];
-        }
-        return data;
+    function checkStandard(address _contract) public view returns (NFTHelper.Type) {
+        return NFTHelper.getType(_contract);
     }
 
     /**
@@ -481,27 +522,6 @@ contract MarketPlaceManager is
 
     function isRoyalty(address _contract) external view returns (bool) {
         return NFTHelper.isRoyalty(_contract);
-    }
-
-    /**
-     *  @notice get order info from order ID
-     */
-    function getOrderIdToOrderInfo(uint256 orderId) external view returns (Order memory) {
-        return orderIdToOrderInfo[orderId];
-    }
-
-    /**
-     *  @notice set order ID
-     */
-    function setOrderIdToOrderInfo(uint256 orderId, Order memory value) external {
-        orderIdToOrderInfo[orderId] = value;
-    }
-
-    /**
-     *  @notice remove order info at order ID
-     */
-    function removeOrderIdToOrderInfo(uint256 orderId) external {
-        delete orderIdToOrderInfo[orderId];
     }
 
     /**
@@ -561,6 +581,13 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice get owner addresses of token id
+     */
+    function getOwnerOfTokenId(address owner, uint256 index) external view returns (uint256) {
+        return _orderOfOwner[owner].at(index);
+    }
+
+    /**
      *  @notice remove market item info from owner
      */
     function removeMarketItemOfOwner(address owner, uint256 marketItemId) external {
@@ -582,5 +609,9 @@ contract MarketPlaceManager is
         bytes32 leaf = keccak256(abi.encodePacked(_account));
         bytes32 root = MerkleProofUpgradeable.processProof(_proof, leaf);
         return _rootHashesToMarketItemIds[root].contains(_marketItemId);
+    }
+
+    function isNftTokenExist(address _nftAddress, uint256 _tokenId) external view returns (bool) {
+        return nftAddressToNftTokenIds[_nftAddress].contains(_tokenId);
     }
 }

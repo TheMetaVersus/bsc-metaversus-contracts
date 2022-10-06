@@ -52,7 +52,7 @@ const getCurrentTime = async () => {
 };
 
 const generateMerkleTree = accounts => {
-  const leaves = [user1.address, user2.address].map(value => keccak256(value));
+  const leaves = accounts.map(value => keccak256(value));
   return new MerkleTree(leaves, keccak256, { sort: true });
 };
 

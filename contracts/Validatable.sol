@@ -37,7 +37,7 @@ contract Validatable is PausableUpgradeable {
     }
 
     modifier validWallet(address _account) {
-        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallets");
+        require(isWallet(_account), "Invalid wallets");
         _;
     }
 
@@ -50,6 +50,11 @@ contract Validatable is PausableUpgradeable {
 
     modifier notZero(uint256 _amount) {
         require(_amount > 0, "Invalid amount");
+        _;
+    }
+
+    modifier validPaymentToken(IERC20Upgradeable _paymentToken) {
+        require(admin.isPermittedPaymentToken(_paymentToken), "Payment token is not supported");
         _;
     }
 
@@ -164,6 +169,8 @@ contract Validatable is PausableUpgradeable {
         return super.paused();
     }
 
+    /*------------------Checking Functions------------------*/
+
     /**
      *  @notice Check whether merkle tree proof is valid
      *
@@ -178,5 +185,9 @@ contract Validatable is PausableUpgradeable {
     ) public pure returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(_account));
         return MerkleProofUpgradeable.verify(_proof, _root, leaf);
+    }
+
+    function isWallet(address _account) public returns (bool) {
+        return _account != address(0) && !AddressUpgradeable.isContract(_account);
     }
 }
