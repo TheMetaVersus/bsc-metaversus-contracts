@@ -36,20 +36,12 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     event SetAdmin(address indexed user, bool allow);
     event SetPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
 
-    modifier validWallet(address _account) {
-        require(_account != address(0) && !AddressUpgradeable.isContract(_account), "Invalid wallet");
-        _;
-    }
-
-    modifier notZeroAddress(address _account) {
-        require(_account != address(0), "Invalid address");
-        _;
-    }
-
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(address _owner) public initializer validWallet(_owner) {
+    function initialize(address _owner) public initializer {
+        require(_owner != address(0) && !AddressUpgradeable.isContract(_owner), "Invalid wallet");
+
         __Ownable_init();
         __ERC165_init();
 
