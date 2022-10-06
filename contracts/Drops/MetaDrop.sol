@@ -125,8 +125,6 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
 
         require(_drop.privateRound.startTime > block.timestamp, "Invalid private sale start time");
         require(_drop.privateRound.endTime > _drop.privateRound.startTime, "Invalid private sale end time");
-        require(_drop.publicRound.startTime > _drop.privateRound.endTime, "Invalid public sale start time");
-        require(_drop.publicRound.endTime > _drop.publicRound.startTime, "Invalid public sale end time");
 
         if (_drop.paymentToken != address(0)) {
             require(mvtsAdmin.isPermittedPaymentToken(IERC20Upgradeable(_drop.paymentToken)), "Invalid payment token");
@@ -144,8 +142,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
             serviceFeeNumerator: serviceFeeNumerator,
             mintedTotal: 0,
             maxSupply: _drop.maxSupply,
-            privateRound: _drop.privateRound,
-            publicRound: _drop.publicRound
+            privateRound: _drop.privateRound
         });
 
         emit CreatedDrop(drops[dropId]);
@@ -173,8 +170,6 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
 
         require(_newDrop.privateRound.startTime > 0, "Invalid private sale start time");
         require(_newDrop.privateRound.endTime > _newDrop.privateRound.startTime, "Invalid private sale end time");
-        require(_newDrop.publicRound.startTime > _newDrop.privateRound.endTime, "Invalid public sale start time");
-        require(_newDrop.publicRound.endTime > _newDrop.publicRound.startTime, "Invalid public sale end time");
 
         if (_newDrop.paymentToken != address(0)) {
             require(
@@ -190,7 +185,6 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         drop.maxSupply = _newDrop.maxSupply;
         drop.paymentToken = _newDrop.paymentToken;
         drop.privateRound = _newDrop.privateRound;
-        drop.publicRound = _newDrop.publicRound;
 
         emit UpdatedDrop(oldDrop, drop);
     }
@@ -280,11 +274,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
      *  @param  _amount     Amount of token that user want to mint
      */
     function _estimateMintFee(uint256 _dropId, uint256 _amount) private view returns (uint256) {
-        if (isPrivateRound(_dropId)) {
-            return drops[_dropId].privateRound.mintFee * _amount;
-        }
-
-        return drops[_dropId].publicRound.mintFee * _amount;
+        return drops[_dropId].privateRound.mintFee * _amount;
     }
 
     /**
