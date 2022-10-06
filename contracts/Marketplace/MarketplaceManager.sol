@@ -45,6 +45,11 @@ contract MarketPlaceManager is
     uint256 public constant DENOMINATOR = 1e5;
 
     /**
+     *  @notice metaversus manager store the address of the MetaversusManager contract
+     */
+    address public metaversusManager;
+
+    /**
      *  @notice treasury store the address of the TreasuryManager contract
      */
     ITreasury public treasury;
@@ -126,10 +131,9 @@ contract MarketPlaceManager is
         bool isPrivate
     );
     event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
-    event Setorder(IOrder indexed oldTreasury, IOrder indexed newTreasury);
-    event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
-    event setPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
+    event SetOrder(IOrder indexed oldTreasury, IOrder indexed newTreasury);
     event MadeOffer(uint256 indexed orderId);
+    event SetMetaversusManager(address indexed oldMetaversusManager, address indexed newMetaversusManager);
 
     modifier validId(uint256 _id) {
         require(_id <= _marketItemIds.current() && _id > 0, "ERROR: market ID is not exist !");
@@ -147,6 +151,19 @@ contract MarketPlaceManager is
         listingFee = 25e2; // 2.5%
     }
 
+    modifier onlyOrder() {
+        require(_msgSender() == address(orderManager), "Caller is not an order manager");
+        _;
+    }
+
+    modifier onlyMetaversusOrOrder() {
+        require(
+            _msgSender() == metaversusManager || _msgSender() == address(orderManager),
+            "Caller is not a metaversus manager or metaDrop"
+        );
+        _;
+    }
+
     receive() external payable {}
 
     /**
@@ -161,6 +178,17 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice set marketplaceManager to change MarketplaceManager address.
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function setMetaversusManager(address _address) external onlyAdmin notZeroAddress(_address) {
+        address oldMetaversusManager = _address;
+        metaversusManager = _address;
+        emit SetMetaversusManager(oldMetaversusManager, _address);
+    }
+
+    /**
      *  @notice set treasury to change TreasuryManager address.
      *
      *  @dev    Only owner or admin can call this function.
@@ -168,7 +196,7 @@ contract MarketPlaceManager is
     function setOrder(IOrder _account) external onlyAdmin {
         IOrder oldOrder = orderManager;
         orderManager = _account;
-        emit Setorder(oldOrder, orderManager);
+        emit SetOrder(oldOrder, orderManager);
     }
 
     /**
@@ -210,40 +238,6 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Transfers royalties to the rightsowner if applicable and return the remaining amount
-     *  @param _nftContractAddress is address contract of nft
-     *  @param _tokenId is token id of nft
-     *  @param _grossSaleValue is price of nft that is listed
-     *  @param _paymentToken is token for payment
-     */
-    function deduceRoyalties(
-        address _nftContractAddress,
-        uint256 _tokenId,
-        uint256 _grossSaleValue,
-        IERC20Upgradeable _paymentToken
-    ) external payable returns (uint256 netSaleAmount) {
-        // Get amount of royalties to pays and recipient
-        if (NFTHelper.isRoyalty(_nftContractAddress)) {
-            (address royaltiesReceiver, uint256 royaltiesAmount) = getRoyaltyInfo(
-                _nftContractAddress,
-                _tokenId,
-                _grossSaleValue
-            );
-
-            // Deduce royalties from sale value
-            uint256 netSaleValue = _grossSaleValue - royaltiesAmount;
-            // Transfer royalties to rightholder if not zero
-            if (royaltiesAmount > 0) {
-                extTransferCall(_paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
-            }
-            // Broadcast royalties payment
-            emit RoyaltiesPaid(_tokenId, royaltiesAmount);
-            return netSaleValue;
-        }
-        return _grossSaleValue;
-    }
-
-    /**
      *  @notice Create market info with data
      *
      *  @dev    All caller can call this function.
@@ -258,10 +252,11 @@ contract MarketPlaceManager is
         uint256 _endTime,
         IERC20Upgradeable _paymentToken,
         bytes calldata _rootHash
-    ) external {
-        require(_msgSender() == address(orderManager), "only allow Order contract call");
+    ) external onlyMetaversusOrOrder {
+        require(_msgSender().isContract(), "ERROR: only allow contract call !");
         NFTHelper.Type nftType = NFTHelper.getType(_nftAddress);
         require(nftType != NFTHelper.Type.NONE, "ERROR: NFT address is incompatible!");
+        require(block.timestamp <= _startTime && _startTime < _endTime, "ERROR: Invalid time");
 
         _marketItemIds.increment();
         uint256 marketItemId = _marketItemIds.current();
@@ -270,13 +265,13 @@ contract MarketPlaceManager is
             _nftAddress,
             _tokenId,
             nftType == NFTHelper.Type.ERC1155 ? _amount : 1,
-            _endTime >= _startTime && _startTime >= block.timestamp ? _price : 0,
+            _price,
             nftType,
             _seller,
             address(0),
             MarketItemStatus.LISTING,
-            _startTime >= block.timestamp ? _startTime : 0,
-            _endTime >= _startTime ? _endTime : 0,
+            _startTime,
+            _endTime,
             admin.isPermittedPaymentToken(_paymentToken) ? _paymentToken : IERC20Upgradeable(address(0)),
             keccak256(abi.encodePacked((""))) != keccak256(_rootHash)
         );
@@ -297,55 +292,12 @@ contract MarketPlaceManager is
             _tokenId,
             nftType == NFTHelper.Type.ERC1155 ? _amount : 1,
             _seller,
-            _endTime >= _startTime && _startTime >= block.timestamp ? _price : 0,
-            uint256(nftType),
-            _startTime >= block.timestamp ? _startTime : 0,
-            _endTime >= _startTime ? _endTime : 0,
-            _paymentToken,
-            _rootHash
-            // keccak256(abi.encodePacked((""))) != keccak256(_rootHash)
-        );
-    }
-
-    /**
-     *  @notice Update market info with data
-     *
-     *  @dev    All caller can call this function.
-     */
-    function extUpdateMarketInfo(
-        uint256 _marketItemId,
-        uint256 _price,
-        uint256 _startTime,
-        uint256 _endTime,
-        IERC20Upgradeable _paymentToken,
-        bytes calldata rootHash
-    ) external notZero(_price) {
-        require(_msgSender().isContract(), "ERROR: only allow contract call !");
-        require(_endTime > _startTime, "Invalid time");
-        require(
-            admin.isPermittedPaymentToken(_paymentToken) || address(_paymentToken) == address(0),
-            "Invalid payment token"
-        );
-
-        MarketItem memory marketItem = marketItemIdToMarketItem[_marketItemId];
-
-        marketItem.price = _price;
-        marketItem.startTime = _startTime;
-        marketItem.endTime = _endTime;
-        marketItem.paymentToken = admin.isPermittedPaymentToken(_paymentToken)
-            ? _paymentToken
-            : IERC20Upgradeable(address(0));
-
-        _rootHashesToMarketItemIds[bytes32(rootHash)].add(_marketItemId);
-
-        emit MarketItemUpdated(
-            _marketItemId,
             _price,
+            uint256(nftType),
             _startTime,
             _endTime,
             _paymentToken,
-            rootHash,
-            keccak256(abi.encodePacked((""))) != keccak256(rootHash)
+            _rootHash
         );
     }
 

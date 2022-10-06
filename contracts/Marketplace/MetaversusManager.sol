@@ -60,7 +60,14 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
     event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event SetMarketplace(IMarketplaceManager indexed oldMarketplace, IMarketplaceManager indexed newMarketplace);
     event SetCollectionFactory(ICollectionFactory indexed oldValue, ICollectionFactory indexed newValue);
-    event Created(NFTHelper.Type indexed typeMint, address indexed to, uint256 indexed amount);
+    event Created(
+        NFTHelper.Type indexed typeMint,
+        address indexed nftAddress,
+        uint256 tokenId,
+        address from,
+        address indexed to,
+        uint256 amount
+    );
 
     /**
      *  @notice Initialize new logic contract.
@@ -142,6 +149,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
      *  @dev    All caller can call this function.
      */
     function createNFT(
+        bool isSellOnMarket,
         NFTHelper.Type typeNft,
         uint256 amount,
         string memory uri,
@@ -152,36 +160,32 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         bytes calldata rootHash
     ) external whenNotPaused nonReentrant notZero(amount) notZero(price) {
         if (typeNft == NFTHelper.Type.ERC721) {
-            tokenMintERC721.mint(address(marketplace), uri);
-            uint256 currentId = tokenMintERC721.getTokenCounter();
-            marketplace.extCreateMarketInfo(
+            _create721(
+                isSellOnMarket,
+                typeNft,
                 address(tokenMintERC721),
-                currentId,
                 amount,
+                uri,
                 price,
-                _msgSender(),
                 startTime,
                 endTime,
                 payment,
                 rootHash
             );
         } else if (typeNft == NFTHelper.Type.ERC1155) {
-            tokenMintERC1155.mint(address(marketplace), amount, uri);
-            uint256 currentId = tokenMintERC1155.getTokenCounter();
-            marketplace.extCreateMarketInfo(
+            _create1155(
+                isSellOnMarket,
+                typeNft,
                 address(tokenMintERC1155),
-                currentId,
                 amount,
+                uri,
                 price,
-                _msgSender(),
                 startTime,
                 endTime,
                 payment,
                 rootHash
             );
         }
-
-        emit Created(typeNft, _msgSender(), amount);
     }
 
     /**
@@ -201,6 +205,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
      *  @dev    All caller can call this function.
      */
     function createNFTLimit(
+        bool isSellOnMarket,
         address nftAddress,
         uint256 amount,
         string memory uri,
@@ -216,67 +221,89 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         require(typeNft != NFTHelper.Type.NONE, "ERROR: Invalid NFT address");
 
         if (typeNft == NFTHelper.Type.ERC721) {
-            ITokenERC721(nftAddress).mint(address(marketplace), uri);
-            uint256 currentId = ITokenERC721(nftAddress).getTokenCounter();
-            marketplace.extCreateMarketInfo(
-                nftAddress,
-                currentId,
-                amount,
-                price,
-                _msgSender(),
-                startTime,
-                endTime,
-                payment,
-                rootHash
-            );
+            _create721(isSellOnMarket, typeNft, nftAddress, amount, uri, price, startTime, endTime, payment, rootHash);
         } else if (typeNft == NFTHelper.Type.ERC1155) {
-            ITokenERC1155(nftAddress).mint(address(marketplace), amount, uri);
-            uint256 currentId = ITokenERC1155(nftAddress).getTokenCounter();
-            marketplace.extCreateMarketInfo(
-                nftAddress,
-                currentId,
-                amount,
-                price,
-                _msgSender(),
-                startTime,
-                endTime,
-                payment,
-                rootHash
-            );
+            _create1155(isSellOnMarket, typeNft, nftAddress, amount, uri, price, startTime, endTime, payment, rootHash);
         }
-
-        emit Created(typeNft, _msgSender(), amount);
     }
 
     /**
-     *  @notice Import collection into marketplace
+     *  @notice create nft 721
      */
-    function importCollection(
+    function _create721(
+        bool isSellOnMarket,
+        NFTHelper.Type typeNft,
         address nftAddress,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
-        uint256[] calldata prices,
-        bytes calldata rootHash,
-        IERC20Upgradeable payment,
+        uint256 amount,
+        string memory uri,
+        uint256 price,
         uint256 startTime,
-        uint256 endTime
-    ) public nonReentrant {
-        require(ids.length == amounts.length && amounts.length == prices.length, "ERROR: Invalid length of input");
-        require(NFTHelper.getType(nftAddress) != NFTHelper.Type.NONE, "ERROR: Invalid NFT address");
+        uint256 endTime,
+        IERC20Upgradeable payment,
+        bytes calldata rootHash
+    ) private notZeroAddress(nftAddress) {
+        uint256 currentId;
+        if (!isSellOnMarket) {
+            ITokenERC721(nftAddress).mint(_msgSender(), uri);
+            currentId = ITokenERC721(nftAddress).getTokenCounter();
 
-        for (uint256 i = 0; i < ids.length; i++) {
-            NFTHelper.transferNFTCall(nftAddress, ids[i], amounts[i], _msgSender(), address(marketplace));
+            emit Created(typeNft, nftAddress, currentId, _msgSender(), _msgSender(), amount);
+        } else {
+            ITokenERC721(nftAddress).mint(address(marketplace), uri);
+            currentId = ITokenERC721(nftAddress).getTokenCounter();
             marketplace.extCreateMarketInfo(
                 nftAddress,
-                ids[i],
-                amounts[i],
-                prices[i],
+                currentId,
+                amount,
+                price,
                 _msgSender(),
                 startTime,
                 endTime,
                 payment,
                 rootHash
             );
+
+            emit Created(typeNft, nftAddress, currentId, _msgSender(), address(marketplace), amount);
+        }
+    }
+
+    /**
+     *  @notice create nft 1155
+     */
+    function _create1155(
+        bool isSellOnMarket,
+        NFTHelper.Type typeNft,
+        address nftAddress,
+        uint256 amount,
+        string memory uri,
+        uint256 price,
+        uint256 startTime,
+        uint256 endTime,
+        IERC20Upgradeable payment,
+        bytes calldata rootHash
+    ) private notZeroAddress(nftAddress) {
+        uint256 currentId;
+        if (!isSellOnMarket) {
+            ITokenERC1155(nftAddress).mint(_msgSender(), amount, uri);
+            currentId = ITokenERC1155(nftAddress).getTokenCounter();
+
+            emit Created(typeNft, nftAddress, currentId, _msgSender(), _msgSender(), amount);
+        } else {
+            ITokenERC1155(nftAddress).mint(address(marketplace), amount, uri);
+            currentId = ITokenERC1155(nftAddress).getTokenCounter();
+            marketplace.extCreateMarketInfo(
+                nftAddress,
+                currentId,
+                amount,
+                price,
+                _msgSender(),
+                startTime,
+                endTime,
+                payment,
+                rootHash
+            );
+
+            emit Created(typeNft, nftAddress, currentId, _msgSender(), address(marketplace), amount);
         }
     }
 

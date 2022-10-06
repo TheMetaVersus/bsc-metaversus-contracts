@@ -45,13 +45,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     function getListingFee(uint256 amount) external view returns (uint256);
 
-    function deduceRoyalties(
-        address nftContractAddress,
-        uint256 tokenId,
-        uint256 grossSaleValue,
-        IERC20Upgradeable paymentToken
-    ) external payable returns (uint256);
-
     function extTransferCall(
         IERC20Upgradeable paymentToken,
         uint256 amount,
