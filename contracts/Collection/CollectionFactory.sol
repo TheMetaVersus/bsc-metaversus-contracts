@@ -40,7 +40,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
     mapping(uint256 => CollectionInfo) public collectionIdToCollectionInfos;
     mapping(address => EnumerableSetUpgradeable.AddressSet) private _ownerToCollectionAddress;
 
-    event CollectionDeployed(address collection, address deployer);
+    event CollectionDeployed(TypeNft collectType, address collection, address deployer);
     event SetMaxCollection(uint256 indexed oldValue, uint256 indexed newValue);
     event SetMaxTotalSuply(uint256 indexed oldValue, uint256 indexed newValue);
     event SetTemplateAddress(address indexed templateERC721, address indexed templateERC1155);
@@ -103,7 +103,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
 
         _ownerToCollectionAddress[_msgSender()].add(address(_collection));
 
-        emit CollectionDeployed(address(_collection), _msgSender());
+        emit CollectionDeployed(_typeNft, address(_collection), _msgSender());
     }
 
     /**

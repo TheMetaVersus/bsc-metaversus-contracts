@@ -33,8 +33,14 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      */
     EnumerableSetUpgradeable.AddressSet private _permitedPaymentToken;
 
+    /**
+     *  @notice _permitedNFTs mapping from NFT address to trade
+     */
+    EnumerableSetUpgradeable.AddressSet private _permitedNFTs;
+
     event SetAdmin(address indexed user, bool allow);
     event SetPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
+    event SetPermittedNFT(address _nftAddress, bool allow);
 
     /**
      *  @notice Initialize new logic contract.
@@ -73,6 +79,21 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     }
 
     /**
+     *  @notice Set permit payment token
+     */
+    function setPermittedNFT(address _nftAddress, bool _allow) external {
+        require(isAdmin(_msgSender()), "Caller is not an owner or admin");
+
+        if (_allow) {
+            _permitedNFTs.add(_nftAddress);
+        } else if (isPermittedNFT(_nftAddress)) {
+            _permitedNFTs.remove(_nftAddress);
+        }
+
+        emit SetPermittedNFT(_nftAddress, _allow);
+    }
+
+    /**
      * @notice Get owner of this contract
      * @dev Using in related contracts
      */
@@ -99,6 +120,13 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      */
     function isPermittedPaymentToken(IERC20Upgradeable token) public view returns (bool) {
         return _permitedPaymentToken.contains(address(token));
+    }
+
+    /**
+     *  @notice Return permit token payment
+     */
+    function isPermittedNFT(address _nftAddress) public view returns (bool) {
+        return _permitedNFTs.contains(_nftAddress);
     }
 
     /**

@@ -28,7 +28,6 @@ struct DropRoundRecord {
  *  @param mintedTotal              Total token that minted.
  *  @param maxSupply                Max total tokens that user can mint in this drop event.
  *  @param privateRound             Information of private round (See DropRoundRecord struct).
- *  @param publicRound              Information of public round (See DropRoundRecord struct).
  */
 struct DropRecord {
     bytes32 root;
@@ -40,7 +39,6 @@ struct DropRecord {
     uint256 mintedTotal;
     uint256 maxSupply;
     DropRoundRecord privateRound;
-    DropRoundRecord publicRound;
 }
 
 /**
@@ -52,7 +50,6 @@ struct DropRecord {
  *  @param fundingReceiver          Address of receving minting fee.
  *  @param maxSupply                Max total tokens that user can mint in this drop event.
  *  @param privateRound             Information of private round (See DropRoundRecord struct).
- *  @param publicRound              Information of public round (See DropRoundRecord struct).
  */
 struct DropParams {
     bytes32 root;
@@ -61,5 +58,4 @@ struct DropParams {
     address paymentToken;
     uint256 maxSupply;
     DropRoundRecord privateRound;
-    DropRoundRecord publicRound;
 }

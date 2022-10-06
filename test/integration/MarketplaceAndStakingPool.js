@@ -5,7 +5,9 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { multiply, add, subtract } = require("js-big-decimal");
 const { getCurrentTime, skipTime } = require("../utils");
-
+const { MerkleTree } = require("merkletreejs");
+const keccak256 = require("keccak256");
+const aggregator_abi = require("../../artifacts/@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
 const PRICE = ethers.utils.parseEther("1");
 const ONE_ETHER = ethers.utils.parseEther("1");
 const ONE_WEEK = 604800;
@@ -47,10 +49,13 @@ describe("Marketplace interact with Staking Pool:", () => {
     treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
     PANCAKE_ROUTER = await deployMockContract(owner, abi);
+    AGGREGATOR = await deployMockContract(owner, aggregator_abi.abi);
     await PANCAKE_ROUTER.mock.getAmountsOut.returns([
       ONE_ETHER,
       multiply(500, ONE_ETHER)
     ]);
+
+    await AGGREGATOR.mock.latestRoundData.returns(1, 1, 1, 1, 1);
 
     Token = await ethers.getContractFactory("MTVS");
     token = await upgrades.deployProxy(Token, [
@@ -115,6 +120,26 @@ describe("Marketplace interact with Staking Pool:", () => {
     TokenERC1155 = await ethers.getContractFactory("TokenERC1155");
     tokenERC1155 = await TokenERC1155.deploy();
 
+    CollectionFactory = await ethers.getContractFactory("CollectionFactory");
+    collectionFactory = await upgrades.deployProxy(CollectionFactory, [
+      tokenERC721.address,
+      tokenERC1155.address,
+      admin.address,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS
+    ]);
+
+    MTVSManager = await ethers.getContractFactory("MetaversusManager");
+    mtvsManager = await upgrades.deployProxy(MTVSManager, [
+      tokenMintERC721.address,
+      tokenMintERC1155.address,
+      token.address,
+      treasury.address,
+      mkpManager.address,
+      collectionFactory.address,
+      admin.address
+    ]);
+
     Staking = await ethers.getContractFactory("StakingPool");
     staking = await upgrades.deployProxy(Staking, [
       token.address,
@@ -124,11 +149,16 @@ describe("Marketplace interact with Staking Pool:", () => {
       poolDuration,
       PANCAKE_ROUTER.address,
       USD_TOKEN,
-      USD_TOKEN,
+      AGGREGATOR.address,
       admin.address
     ]);
 
     CURRENT = await getCurrentTime();
+    await admin.setAdmin(mtvsManager.address, true);
+    await mtvsManager.setPause(false);
+    await staking.setPause(false);
+    await orderManager.setPause(false);
+    await mkpManager.setOrder(orderManager.address);
   });
 
   describe("Setup: Set permitted tokens => Set start time for staking pool", () => {
@@ -156,6 +186,43 @@ describe("Marketplace interact with Staking Pool:", () => {
       await staking.setStartTime(CURRENT);
 
       expect(await staking.startTime()).to.equal(CURRENT);
+    });
+
+    it("Buy NFT in marketplace to stake MTVS token", async () => {
+      const current = await getCurrentTime();
+      const leaves = [user1.address, user2.address].map(value =>
+        keccak256(value)
+      );
+      merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+
+      await token
+        .connect(user2)
+        .approve(mtvsManager.address, ONE_MILLION_ETHER);
+      const rootHash = merkleTree.getHexRoot();
+      await mtvsManager
+        .connect(user2)
+        .createNFT(
+          0,
+          1,
+          "this_uri",
+          1000,
+          current + 10,
+          current + 1000000,
+          token.address,
+          rootHash
+        );
+      await skipTime(1000);
+
+      const leaf = keccak256(user1.address);
+      const proof = merkleTree.getHexProof(leaf);
+      await token.mint(user1.address, ONE_ETHER.mul(1000));
+      await token.connect(user1).approve(orderManager.address, ONE_ETHER);
+      await orderManager.connect(user1).buy(1, proof);
+      await token.connect(user1).approve(staking.address, ONE_MILLION_ETHER);
+      await token.connect(user3).approve(staking.address, ONE_MILLION_ETHER);
+      await staking.connect(user1).stake(ONE_ETHER);
+      // User3 cannot allow to stake because don't buy anything
+      await expect(staking.connect(user3).stake(ONE_ETHER)).to.be.reverted;
     });
   });
 });
