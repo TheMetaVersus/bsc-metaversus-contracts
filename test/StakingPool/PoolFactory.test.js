@@ -6,6 +6,7 @@ const { constants } = require("@openzeppelin/test-helpers");
 const aggregator_abi = require("../../artifacts/@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const { utils } = require("ethers");
 
 const abi = [
     {
@@ -146,7 +147,76 @@ describe("Pool Factory:", () => {
                 "Invalid Admin contract"
             );
         });
+
+        it("Should be ok", async () => {
+            expect(await poolFactory.template()).to.equal(staking.address);
+            expect(await poolFactory.admin()).to.equal(admin.address);
+        });
     });
+
+    describe("create:", async () => {
+        it("should revert when contract is paused", async () => {
+            await poolFactory.setPause(true);
+            expect(await poolFactory.paused()).to.equal(true);
+
+            await expect(
+                poolFactory.create(
+                    token.address,
+                    token.address,
+                    mkpManager.address,
+                    REWARD_RATE,
+                    POOL_DURATION,
+                    PANCAKE_ROUTER.address,
+                    USD_TOKEN,
+                    AGGREGATOR.address
+                )
+            ).to.revertedWith("Pausable: paused");
+        });
+
+        it("Only admin can call this function:", async () => {
+            await expect(
+                poolFactory
+                    .connect(user1)
+                    .create(
+                        token.address,
+                        token.address,
+                        mkpManager.address,
+                        REWARD_RATE,
+                        POOL_DURATION,
+                        PANCAKE_ROUTER.address,
+                        USD_TOKEN,
+                        AGGREGATOR.address
+                    )
+            ).to.revertedWith("Caller is not an owner or admin");
+        });
+
+        it("should be ok: ", async () => {
+            await poolFactory.create(
+                token.address,
+                token.address,
+                mkpManager.address,
+                REWARD_RATE,
+                POOL_DURATION,
+                PANCAKE_ROUTER.address,
+                USD_TOKEN,
+                AGGREGATOR.address
+            );
+            expect((await poolFactory.getAllPool()).length).to.equal(1);
+
+            await poolFactory.create(
+                token.address,
+                token.address,
+                mkpManager.address,
+                REWARD_RATE,
+                POOL_DURATION,
+                PANCAKE_ROUTER.address,
+                USD_TOKEN,
+                AGGREGATOR.address
+            );
+            expect((await poolFactory.getAllPool()).length).to.equal(2);
+        });
+    });
+
     // GET FUNC
     describe("getPool:", async () => {
         it("should return a pool address: ", async () => {
@@ -182,49 +252,6 @@ describe("Pool Factory:", () => {
     });
     describe("getAllPool:", async () => {
         it("should return all pool info: ", async () => {
-            await poolFactory.create(
-                token.address,
-                token.address,
-                mkpManager.address,
-                REWARD_RATE,
-                POOL_DURATION,
-                PANCAKE_ROUTER.address,
-                USD_TOKEN,
-                AGGREGATOR.address
-            );
-            await poolFactory.create(
-                token.address,
-                token.address,
-                mkpManager.address,
-                REWARD_RATE,
-                POOL_DURATION,
-                PANCAKE_ROUTER.address,
-                USD_TOKEN,
-                AGGREGATOR.address
-            );
-            const allPool = await poolFactory.getAllPool();
-            expect(allPool.length).to.equal(2);
-        });
-    });
-    // CREATE
-    describe("create:", async () => {
-        it("should revert when caller is not owner or admin: ", async () => {
-            await expect(
-                poolFactory
-                    .connect(user1)
-                    .create(
-                        token.address,
-                        token.address,
-                        mkpManager.address,
-                        REWARD_RATE,
-                        POOL_DURATION,
-                        PANCAKE_ROUTER.address,
-                        USD_TOKEN,
-                        AGGREGATOR.address
-                    )
-            ).to.be.revertedWith("Caller is not an owner or admin");
-        });
-        it("should create success: ", async () => {
             await poolFactory.create(
                 token.address,
                 token.address,

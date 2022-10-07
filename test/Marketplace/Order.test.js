@@ -15,7 +15,7 @@ const MINT_FEE = 1000;
 const BID_PRICE = parseEther("100");
 const BUY_BID_PRICE = add(BID_PRICE, parseEther("100"));
 
-describe.only("OrderManager:", () => {
+describe("OrderManager:", () => {
     beforeEach(async () => {
         [owner, user1, user2, user3] = await ethers.getSigners();
 
@@ -86,15 +86,6 @@ describe.only("OrderManager:", () => {
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
-        CollectionFactory = await ethers.getContractFactory("CollectionFactory");
-        collectionFactory = await upgrades.deployProxy(CollectionFactory, [
-            templateERC721.address,
-            templateERC1155.address,
-            admin.address,
-            user1.address,
-            user2.address,
-        ]);
-
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
             tokenMintERC721.address,
@@ -158,7 +149,7 @@ describe.only("OrderManager:", () => {
         });
     });
 
-    describe.only("makeWalletOrder function:", async () => {
+    describe("makeWalletOrder function:", async () => {
         beforeEach(async () => {
             await orderManager.setPause(false);
             endTime = add(await getCurrentTime(), ONE_WEEK);
@@ -217,7 +208,6 @@ describe.only("OrderManager:", () => {
                 .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
 
             let order = await orderManager.getOrderByWalletOrderId(1);
-            console.log("getOrderByWalletOrderId", order, order[1].bidPrice);
             expect(order[1].bidPrice).to.equal(BID_PRICE);
 
             await orderManager

@@ -1,13 +1,13 @@
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
 const { expect } = require("chai");
 const { upgrades } = require("hardhat");
-const { skipTime, acceptable, getCurrentTime } = require("../utils");
+const { skipTime, acceptable, getCurrentTime, generateMerkleTree, generateLeaf } = require("../utils");
 const { add, multiply, divide, subtract } = require("js-big-decimal");
-const { constants } = require("@openzeppelin/test-helpers");
 const aggregator_abi = require("../../artifacts/@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
 const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const { MerkleTree } = require("merkletreejs");
-const keccak256 = require("keccak256");
+const { parseEther, formatEther } = require("ethers/lib/utils");
+const { constants } = require("ethers");
 
 const abi = [
     {
@@ -21,22 +21,21 @@ const abi = [
         type: "function",
     },
 ];
+
+const USD_TOKEN = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
+const REWARD_RATE = 15854895992; // 50 % APY
+const poolDuration = 9 * 30 * 24 * 60 * 60; // 9 months
+const PRICE = parseEther("1");
+const OVER_AMOUNT = ethers.utils.parseEther("1000000");
+const ONE_ETHER = ethers.utils.parseEther("1");
+const ONE_MILLION_ETHER = ethers.utils.parseEther("1000000");
+const ONE_YEAR = 31104000;
+const TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
+const MINT_FEE = 1000;
+
 describe("Staking Pool:", () => {
     beforeEach(async () => {
-        USD_TOKEN = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
-        REWARD_RATE = 15854895992; // 50 % APY
-        poolDuration = 9 * 30 * 24 * 60 * 60; // 9 months
-        OVER_AMOUNT = ethers.utils.parseEther("1000000");
-        ONE_ETHER = ethers.utils.parseEther("1");
-        ONE_MILLION_ETHER = ethers.utils.parseEther("1000000");
-        ONE_YEAR = 31104000;
-        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-        accounts = await ethers.getSigners();
-        owner = accounts[0];
-        user1 = accounts[1];
-        user2 = accounts[2];
-        user3 = accounts[3];
-        treasury = accounts[4];
+        [owner, user1, user2, user3, treasury] = await ethers.getSigners();
 
         PANCAKE_ROUTER = await deployMockContract(owner, abi);
         await PANCAKE_ROUTER.mock.getAmountsOut.returns([ONE_ETHER, multiply(500, ONE_ETHER)]);
@@ -60,6 +59,14 @@ describe("Staking Pool:", () => {
             admin.address,
         ]);
 
+        MetaCitizen = await ethers.getContractFactory("MetaCitizen");
+        metaCitizen = await upgrades.deployProxy(MetaCitizen, [
+            treasury.address,
+            token.address,
+            MINT_FEE,
+            admin.address,
+        ]);
+
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
@@ -72,8 +79,36 @@ describe("Staking Pool:", () => {
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
 
+        NftTest = await ethers.getContractFactory("NftTest");
+        nftTest = await upgrades.deployProxy(NftTest, [
+            "NFT test",
+            "NFT",
+            token.address,
+            treasury.address,
+            250,
+            PRICE,
+            admin.address,
+        ]);
+
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+
+        TemplateERC721 = await ethers.getContractFactory("TokenERC721");
+        templateERC721 = await TemplateERC721.deploy();
+        await templateERC721.deployed();
+
+        TemplateERC1155 = await ethers.getContractFactory("TokenERC1155");
+        templateERC1155 = await TemplateERC1155.deploy();
+        await templateERC1155.deployed();
+
+        CollectionFactory = await ethers.getContractFactory("CollectionFactory");
+        collectionFactory = await upgrades.deployProxy(CollectionFactory, [
+            templateERC721.address,
+            templateERC1155.address,
+            admin.address,
+            user1.address,
+            user2.address,
+        ]);
 
         OrderManager = await ethers.getContractFactory("OrderManager");
         orderManager = await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
@@ -83,14 +118,8 @@ describe("Staking Pool:", () => {
         TokenERC1155 = await ethers.getContractFactory("TokenERC1155");
         tokenERC1155 = await TokenERC1155.deploy();
 
-        CollectionFactory = await ethers.getContractFactory("CollectionFactory");
-        collectionFactory = await upgrades.deployProxy(CollectionFactory, [
-            tokenERC721.address,
-            tokenERC1155.address,
-            admin.address,
-            ZERO_ADDRESS,
-            ZERO_ADDRESS,
-        ]);
+        MkpManager = await ethers.getContractFactory("MarketPlaceManager");
+        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
@@ -102,6 +131,9 @@ describe("Staking Pool:", () => {
             collectionFactory.address,
             admin.address,
         ]);
+
+        OrderManager = await ethers.getContractFactory("OrderManager");
+        orderManager = await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
 
         Staking = await ethers.getContractFactory("StakingPool");
         staking = await upgrades.deployProxy(Staking, [
@@ -116,13 +148,21 @@ describe("Staking Pool:", () => {
             admin.address,
         ]);
 
-        await staking.deployed();
         CURRENT = await getCurrentTime();
-
         await staking.setStartTime(CURRENT);
 
         await admin.setPermittedPaymentToken(token.address, true);
-        await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
+        await admin.setPermittedPaymentToken(constants.AddressZero, true);
+        await admin.setMetaCitizen(metaCitizen.address);
+
+        await token.connect(user1).approve(orderManager.address, constants.MaxUint256);
+        await token.mint(user1.address, parseEther("1000"));
+
+        await token.connect(user2).approve(orderManager.address, constants.MaxUint256);
+        await token.connect(user1).approve(metaCitizen.address, constants.MaxUint256);
+        await token.mint(user2.address, parseEther("1000"));
+
+        await mkpManager.setOrder(orderManager.address);
 
         await admin.setAdmin(mtvsManager.address, true);
         await mtvsManager.setPause(false);
@@ -130,6 +170,8 @@ describe("Staking Pool:", () => {
         await orderManager.setPause(false);
         await mkpManager.setOrder(orderManager.address);
         await mkpManager.setMetaversusManager(mtvsManager.address);
+
+        merkleTree = generateMerkleTree([user1.address, user2.address]);
     });
 
     describe("Deployment:", async () => {
@@ -144,7 +186,7 @@ describe("Staking Pool:", () => {
                     PANCAKE_ROUTER.address,
                     USD_TOKEN,
                     USD_TOKEN,
-                    constants.ZERO_ADDRESS,
+                    constants.AddressZero,
                 ])
             ).to.revertedWith("Invalid Admin contract");
             await expect(
@@ -206,11 +248,22 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", ONE_ETHER, current + 10, current + 100000000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    ONE_ETHER,
+                    current + 10,
+                    current + 100000000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
 
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
             await token.connect(user1).approve(staking.address, multiply(500, ONE_ETHER));
 
             await staking.connect(user1).stake(multiply(500, ONE_ETHER));
@@ -296,12 +349,10 @@ describe("Staking Pool:", () => {
         });
     });
 
-    // // Others
+    //  Others
     describe("stake:", async () => {
         it("should revert when amount equal to zero: ", async () => {
-            await expect(staking.connect(user1).stake(0)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
-            );
+            await expect(staking.connect(user1).stake(0)).to.be.revertedWith("Invalid amount");
         });
         it("should stake success: ", async () => {
             await token.mint(user2.address, ONE_MILLION_ETHER);
@@ -311,10 +362,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 1000000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 1000000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const amount = "125000000000000000000000";
             await token.mint(user1.address, amount);
@@ -330,10 +392,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 1000000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 1000000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const amount = "125000000000000000000000";
             await token.mint(user1.address, amount);
@@ -351,6 +424,7 @@ describe("Staking Pool:", () => {
 
             expect(calReward).to.equal(0);
         });
+        //
         it("should return reward each day: ", async () => {
             await token.mint(user2.address, ONE_MILLION_ETHER);
             await token.mint(user1.address, ONE_MILLION_ETHER);
@@ -359,10 +433,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             await token.mint(user1.address, ONE_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -397,7 +482,7 @@ describe("Staking Pool:", () => {
 
             expect(pendingRewards).to.equal(0);
         });
-
+        //
         it("should return pending reward: ", async () => {
             await token.mint(user2.address, ONE_MILLION_ETHER);
             await token.mint(user1.address, ONE_MILLION_ETHER);
@@ -406,10 +491,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const claimTime = 4 * 30 * 24 * 60 * 60;
 
@@ -429,6 +525,7 @@ describe("Staking Pool:", () => {
             ).to.be.true;
         });
     });
+    //
     describe("requestUnstake:", async () => {
         it("should revert when not allow at this time for no NFT or on staking time: ", async () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -439,10 +536,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const claimTime = 4 * 30 * 24 * 60 * 60;
 
@@ -462,10 +570,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const claimTime = 4 * 30 * 24 * 60 * 60;
 
@@ -484,10 +603,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const claimTime = 10 * 30 * 24 * 60 * 60; // 1 thangs
 
@@ -500,7 +630,7 @@ describe("Staking Pool:", () => {
             expect(data.lazyUnstake.isRequested).to.equal(true);
         });
     });
-
+    //
     describe("requestClaim:", async () => {
         it("should revert when pool is not start: ", async () => {
             await token.mint(user2.address, ONE_MILLION_ETHER);
@@ -511,10 +641,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             await staking.setStartTime(0);
             await expect(staking.connect(user1).requestClaim()).to.be.revertedWith(
@@ -530,10 +671,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const claimTime = 4 * 30 * 24 * 60 * 60;
 
@@ -551,10 +703,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const claimTime = 4 * 30 * 24 * 60 * 60;
 
@@ -565,7 +728,7 @@ describe("Staking Pool:", () => {
             expect(data.lazyClaim.isRequested).to.equal(true);
         });
     });
-
+    //
     describe("claim:", async () => {
         it("should revert when staking pool had been expired ", async () => {
             await token.mint(user2.address, ONE_MILLION_ETHER);
@@ -576,10 +739,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             await staking.connect(user1).stake(ONE_ETHER);
 
@@ -599,10 +773,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             await staking.connect(user1).stake(ONE_ETHER);
 
@@ -621,10 +806,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             await staking.connect(user1).stake(ONE_ETHER);
 
@@ -649,10 +845,23 @@ describe("Staking Pool:", () => {
             const startTime = current + 10;
             const endTime = current + 10000;
 
-            await mtvsManager.connect(user2).createNFT(typeNft, amount, uri, price, startTime, endTime, token.address);
+            await mtvsManager
+                .connect(user2)
+                .createNFT(
+                    true,
+                    typeNft,
+                    amount,
+                    uri,
+                    price,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(24 * 60 * 60 + 1);
@@ -692,10 +901,23 @@ describe("Staking Pool:", () => {
             const startTime = current + 10;
             const endTime = current + 10000;
 
-            await mtvsManager.connect(user2).createNFT(typeNft, amount, uri, price, startTime, endTime, token.address);
+            await mtvsManager
+                .connect(user2)
+                .createNFT(
+                    true,
+                    typeNft,
+                    amount,
+                    uri,
+                    price,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(24 * 60 * 60 + 1);
@@ -714,6 +936,7 @@ describe("Staking Pool:", () => {
             );
         });
     });
+    //
     describe("unstake:", async () => {
         it("should revert when staking pool for NFT not expired: ", async () => {
             await token.mint(user2.address, ONE_MILLION_ETHER);
@@ -724,10 +947,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const unstakeTime = 8 * 30 * 24 * 60 * 60 + 1; // not enough time
 
@@ -747,10 +981,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const unstakeTime = 9 * 30 * 24 * 60 * 60 + 1;
 
@@ -770,10 +1015,21 @@ describe("Staking Pool:", () => {
             const current = await getCurrentTime();
             await mtvsManager
                 .connect(user2)
-                .createNFT(0, 1, "this_uri", 1000, current + 10, current + 10000, token.address);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            await mkpManager.connect(user1).buy(1);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
             const unstakeTime = 9 * 30 * 24 * 60 * 60 + 1;
 
             await staking.connect(user1).stake(ONE_ETHER);
@@ -792,35 +1048,38 @@ describe("Staking Pool:", () => {
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             const current = await getCurrentTime();
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
 
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
-            const rootHash = merkleTree.getHexRoot();
 
             await mtvsManager
                 .connect(user2)
-                .createNFT(true, 0, 1, "this_uri", 1000, current + 10, current + 10000, token.address, rootHash);
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    1000,
+                    current + 10,
+                    current + 10000,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             await skipTime(1000);
-            const leaf = keccak256(user1.address);
-            const proof = merkleTree.getHexProof(leaf);
-            await orderManager.connect(user1).buy(1, proof);
+            await metaCitizen.mint(user1.address);
+            await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const unstakeTime = 9 * 30 * 24 * 60 * 60 + 1;
 
-            // await staking.connect(user1).stake(ONE_ETHER);
-            // await skipTime(unstakeTime);
-            // await staking.connect(user1).requestUnstake();
-            // await skipTime(25 * 60 * 60);
-            // const pendingRewards = await staking.pendingRewards(user1.address);
-            // await staking.connect(user1).unstake(ONE_ETHER);
+            await staking.connect(user1).stake(ONE_ETHER);
+            await skipTime(unstakeTime);
+            await staking.connect(user1).requestUnstake();
+            await skipTime(25 * 60 * 60);
+            const pendingRewards = await staking.pendingRewards(user1.address);
 
-            // expect(await token.balanceOf(staking.address)).to.equal(subtract(ONE_MILLION_ETHER, pendingRewards));
+            await staking.connect(user1).unstake(ONE_ETHER);
 
-            // expect(await token.balanceOf(user1.address)).to.equal(
-            //     subtract(add(ONE_MILLION_ETHER, pendingRewards), 1000)
-            // );
+            expect(await token.balanceOf(staking.address)).to.equal(subtract(ONE_MILLION_ETHER, pendingRewards));
         });
     });
 
