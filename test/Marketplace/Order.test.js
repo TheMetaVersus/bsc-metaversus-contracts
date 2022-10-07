@@ -86,15 +86,6 @@ describe.only("OrderManager:", () => {
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
-        CollectionFactory = await ethers.getContractFactory("CollectionFactory");
-        collectionFactory = await upgrades.deployProxy(CollectionFactory, [
-            templateERC721.address,
-            templateERC1155.address,
-            admin.address,
-            user1.address,
-            user2.address,
-        ]);
-
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
             tokenMintERC721.address,
