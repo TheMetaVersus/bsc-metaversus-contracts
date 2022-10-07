@@ -44,19 +44,19 @@ struct WalletOrder {
     address to;                                     // Seller
     address nftAddress;                             // NFT Contract Address of this asset
     uint256 tokenId;                                // Token Id of NFT contract
-    uint256 amount;                                 // Amount to transfer
-    IERC20Upgradeable paymentToken;                 // Token to transfer
-    uint256 bidPrice;                               // Bid price
-    uint256 expiredTime;                            // Expired time
-    OrderStatus status;
 }
 
 //  prettier-ignore
 struct MarketItemOrder {
     address owner;                                  // The person who want to buy the Item at this Order
     uint256 marketItemId;                           // Id of MarketItem
+}
+
+//  prettier-ignore
+struct OrderInfo {
+    uint256 amount;                                 // Amount to transfer
     IERC20Upgradeable paymentToken;                 // Token to transfer
     uint256 bidPrice;                               // Bid price
     uint256 expiredTime;                            // Expired time
-    OrderStatus status;
+    OrderStatus status;                             // Status of order
 }
