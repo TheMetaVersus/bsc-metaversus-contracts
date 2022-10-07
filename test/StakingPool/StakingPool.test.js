@@ -162,13 +162,13 @@ describe("Staking Pool:", () => {
         await token.connect(user1).approve(metaCitizen.address, constants.MaxUint256);
         await token.mint(user2.address, parseEther("1000"));
 
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
 
         await admin.setAdmin(mtvsManager.address, true);
         await mtvsManager.setPause(false);
         await staking.setPause(false);
         await orderManager.setPause(false);
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
         await mkpManager.setMetaversusManager(mtvsManager.address);
 
         merkleTree = generateMerkleTree([user1.address, user2.address]);

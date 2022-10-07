@@ -124,7 +124,7 @@ describe("Marketplace interact with Order", () => {
         await token.connect(user3).approve(orderManager.address, ethers.constants.MaxUint256);
         await token.mint(user3.address, parseEther("1000"));
 
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
         await orderManager.setPause(false);
     });
     describe("Buy/Mint a NFT ", async () => {

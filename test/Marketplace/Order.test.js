@@ -109,7 +109,7 @@ describe("OrderManager:", () => {
         await token.connect(user2).approve(orderManager.address, ethers.constants.MaxUint256);
         await token.mint(user2.address, parseEther("1000"));
 
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
 
         const leaves = [user1.address, user2.address].map(value => keccak256(value));
         merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
@@ -371,7 +371,7 @@ describe("OrderManager:", () => {
     describe("Sell function:", async () => {
         beforeEach(async () => {
             await orderManager.setPause(false);
-            startTime = await getCurrentTime();
+            startTime = add(await getCurrentTime(), 10);
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
             const leaves = [user1.address, user2.address].map(value => keccak256(value));
