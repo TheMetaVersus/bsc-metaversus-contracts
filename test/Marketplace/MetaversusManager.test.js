@@ -395,6 +395,13 @@ describe("Metaversus Manager:", () => {
                     .createNFTLimit(true, nft_721.address, 0, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot())).to.be.revertedWith("Invalid amount");
         });
 
+        it("should revert User is not create collection: ", async () => {
+            await expect(
+                mtvsManager
+                    .connect(user1)
+                    .createNFTLimit(true, nft_721.address, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot())).to.be.revertedWith("User is not create collection");
+        });
+
         it("should create NFT success: ", async () => {
             await mtvsManager
                 .connect(user2)
