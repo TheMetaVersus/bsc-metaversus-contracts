@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
 import "./lib/NFTHelper.sol";
 import "./interfaces/IAdmin.sol";
@@ -12,6 +13,7 @@ import "./interfaces/ITokenMintERC1155.sol";
 import "./interfaces/IMarketplaceManager.sol";
 import "./interfaces/IStakingPool.sol";
 import "./interfaces/IOrder.sol";
+import "./interfaces/IMetaCitizen.sol";
 
 /**
  *  @title  Dev Admin Contract
@@ -38,7 +40,13 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      */
     EnumerableSetUpgradeable.AddressSet private _permitedNFTs;
 
+    /**
+     *  @notice metaCitizen is address of metaCitizen pass
+     */
+    IMetaCitizen public metaCitizen;
+
     event SetAdmin(address indexed user, bool allow);
+    event SetMetaCitizen(IMetaCitizen oldMetaCitizen, IMetaCitizen newMetaCitizen);
     event SetPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
     event SetPermittedNFT(address _nftAddress, bool allow);
 
@@ -61,6 +69,24 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     function setAdmin(address user, bool allow) external onlyOwner {
         admins[user] = allow;
         emit SetAdmin(user, allow);
+    }
+
+    /**
+     *  @notice Replace the meta citizen address by another address.
+     *  @dev    Only owner can call this function.
+     */
+    function setMetaCitizen(IMetaCitizen citizen) external onlyOwner {
+        IMetaCitizen oldMetaCitizen = metaCitizen;
+        metaCitizen = citizen;
+        emit SetMetaCitizen(oldMetaCitizen, metaCitizen);
+    }
+
+    /**
+     *  @notice Returns true if account own meta citizen NFT
+     *  @dev    Only owner can call this function.
+     */
+    function isOwnedMetaCitizen(address account) external view returns (bool) {
+        return IERC721Upgradeable(address(metaCitizen)).balanceOf(account) > 0;
     }
 
     /**

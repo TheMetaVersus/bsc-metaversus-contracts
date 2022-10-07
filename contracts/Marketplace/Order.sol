@@ -146,6 +146,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         validWallet(_to)
         notZero(_amount)
     {
+        require(admin.isOwnedMetaCitizen(_msgSender()), "Require own MetaCitizen NFT");
         require(marketplace.isNftTokenExist(_nftAddress, _tokenId), "Token is not existed");
         require(_time > block.timestamp, "Invalid order time");
 
@@ -208,6 +209,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         uint256 _bidPrice,
         uint256 _time
     ) external payable nonReentrant whenNotPaused validPaymentToken(_paymentToken) notZero(_bidPrice) {
+        require(admin.isOwnedMetaCitizen(_msgSender()), "Require own MetaCitizen NFT");
         require(_time > block.timestamp, "Invalid order time");
 
         // Check Market Item
@@ -486,7 +488,10 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         );
         // Only check when market item is in private collection
         if (marketItem.isPrivate) {
-            require(marketplace.verify(marketItemId, proof, _msgSender()), "Sender is not in whitelist");
+            require(
+                marketplace.verify(marketItemId, proof, _msgSender()) && admin.isOwnedMetaCitizen(_msgSender()),
+                "Sender is not in whitelist or not own meta citizen NFT"
+            );
         }
 
         // update new buyer for martket item

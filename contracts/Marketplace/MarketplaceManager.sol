@@ -70,7 +70,8 @@ contract MarketPlaceManager is
     mapping(address => bool) public isBuyer;
 
     /**
-     *  @notice _marketItemOfOwner is mapping owner address to Market ID
+     *  @notice Mapping from OwnerAddress to MarketItemId[]
+     *  @dev OwnerAddress -> MarketItemId[]
      */
     mapping(address => EnumerableSetUpgradeable.UintSet) private _marketItemOfOwner;
 
@@ -97,12 +98,6 @@ contract MarketPlaceManager is
      */
     mapping(uint256 => MarketItem) public marketItemIdToMarketItem;
 
-    /**
-     *  @notice Mapping from OwnerAddress to MarketItemId[]
-     *  @dev OwnerAddress -> MarketItemId[]
-     */
-    mapping(address => EnumerableSetUpgradeable.UintSet) private ownerToMarketplaceItemId;
-
     event MarketItemCreated(
         uint256 indexed marketItemId,
         address nftContract,
@@ -128,7 +123,6 @@ contract MarketPlaceManager is
     );
     event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event SetOrder(IOrder indexed oldTreasury, IOrder indexed newTreasury);
-    event MadeOffer(uint256 indexed orderId);
     event SetMetaversusManager(address indexed oldMetaversusManager, address indexed newMetaversusManager);
 
     modifier validId(uint256 _id) {
@@ -189,7 +183,7 @@ contract MarketPlaceManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setOrder(IOrder _account) external onlyAdmin {
+    function setOrder(IOrder _account) external onlyAdmin validOrder(_account) {
         IOrder oldOrder = orderManager;
         orderManager = _account;
         emit SetOrder(oldOrder, orderManager);
@@ -204,7 +198,7 @@ contract MarketPlaceManager is
         uint256 _amount,
         address _from,
         address _to
-    ) external {
+    ) external onlyOrder {
         NFTHelper.transferNFTCall(_nftContractAddress, _tokenId, _amount, _from, _to);
     }
 
@@ -443,7 +437,7 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice set market item info at market item ID
+     *  @notice mark user is buyer
      */
     function setIsBuyer(address newBuyer) external onlyOrder notZeroAddress(newBuyer) {
         isBuyer[newBuyer] = true;
@@ -452,7 +446,7 @@ contract MarketPlaceManager is
     /**
      *  @notice remove market item info from owner
      */
-    function removeMarketItemOfOwner(address owner, uint256 marketItemId) external {
+    function removeMarketItemOfOwner(address owner, uint256 marketItemId) external onlyOrder {
         _marketItemOfOwner[owner].remove(marketItemId);
     }
 
