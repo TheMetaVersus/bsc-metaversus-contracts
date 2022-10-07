@@ -109,7 +109,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         uint256 nftType,
         address seller,
         address buyer,
-        uint256 status,
+        MarketItemStatus status,
         uint256 startTime,
         uint256 endTime,
         address paymentToken,
@@ -128,7 +128,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         address paymentToken,
         uint256 bidPrice,
         uint256 expiredTime,
-        uint256 status
+        OrderStatus status
     );
     event MakeOrder(
         uint256 indexed orderId,
@@ -140,7 +140,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         address paymentToken,
         uint256 bidPrice,
         uint256 expiredTime,
-        uint256 status
+        OrderStatus status
     );
     event UpdateOrder(
         address owner,
@@ -151,7 +151,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         address paymentToken,
         uint256 bidPrice,
         uint256 expiredTime,
-        uint256 status
+        OrderStatus status
     );
     event CanceledOrder(uint256 indexed orderId);
 
@@ -216,7 +216,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
                 address(current.paymentToken),
                 current.bidPrice,
                 current.expiredTime,
-                uint256(current.status)
+                current.status
             );
         } else {
             walletOrderIds.increment();
@@ -250,7 +250,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
                 address(orderInfo.paymentToken),
                 orderInfo.bidPrice,
                 orderInfo.expiredTime,
-                uint256(orderInfo.status)
+                orderInfo.status
             );
         }
     }
@@ -327,7 +327,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
                 address(current.paymentToken),
                 current.bidPrice,
                 current.expiredTime,
-                uint256(current.status)
+                current.status
             );
         } else {
             // Create Order
@@ -361,7 +361,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
                 address(orderInfo.paymentToken),
                 orderInfo.bidPrice,
                 orderInfo.expiredTime,
-                uint256(orderInfo.status)
+                orderInfo.status
             );
         }
     }
@@ -518,7 +518,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             uint(marketItem.nftType),
             marketItem.seller,
             marketItem.buyer,
-            uint(marketItem.status),
+            uint256(marketItem.status),
             marketItem.startTime,
             marketItem.endTime,
             address(marketItem.paymentToken),
@@ -602,7 +602,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             uint(marketItem.nftType),
             marketItem.seller,
             marketItem.buyer,
-            uint(marketItem.status),
+            uint256(marketItem.status),
             marketItem.startTime,
             marketItem.endTime,
             address(marketItem.paymentToken),
@@ -674,7 +674,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             uint(marketItem.nftType),
             marketItem.seller,
             marketItem.buyer,
-            uint(marketItem.status),
+            marketItem.status,
             marketItem.startTime,
             marketItem.endTime,
             address(marketItem.paymentToken),
