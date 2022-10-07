@@ -86,15 +86,6 @@ describe.only("OrderManager:", () => {
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
-        CollectionFactory = await ethers.getContractFactory("CollectionFactory");
-        collectionFactory = await upgrades.deployProxy(CollectionFactory, [
-            templateERC721.address,
-            templateERC1155.address,
-            admin.address,
-            user1.address,
-            user2.address,
-        ]);
-
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
             tokenMintERC721.address,
@@ -245,10 +236,10 @@ describe.only("OrderManager:", () => {
             await metaCitizen.mint(user1.address);
             await mtvsManager.setPause(false);
             const current = await getCurrentTime();
-            const time = add(current, 1000); // sale 30 ngay
+
             await mtvsManager
                 .connect(user2)
-                .createNFT(true, 1, 100, "this_uri", ONE_ETHER, current, time, token.address, []);
+                .createNFT(true, 1, 100, "this_uri", ONE_ETHER, current + 100, current + 10000, token.address, []);
         });
 
         it("should revert when contract is paused", async () => {
@@ -267,7 +258,7 @@ describe.only("OrderManager:", () => {
             ).to.revertedWith("Payment token is not supported");
         });
 
-        it.only("Should be ok when create buy offer", async () => {
+        it("Should be ok when create buy offer", async () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
@@ -275,37 +266,7 @@ describe.only("OrderManager:", () => {
             await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
-            await nftTest.connect(user1).approve(orderManager.address, 1);
-
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
-
-            rootHash = merkleTree.getHexRoot();
-
-            console.log("startTime/endTime", startTime, endTime);
-            // await orderManager
-            //     .connect(user1)
-            //     .sell(nftTest.address, 1, 1, 1000, startTime, endTime, token.address, rootHash);
-
-            // await orderManager.connect(user2).makeMaketItemOrder(1, token.address, BUY_BID_PRICE, endTime);
-
-            // const buyOrder = await mkpManager.getOrderIdToOrderInfo(2);
-            // expect(buyOrder.orderId).to.equal(2);
-            // expect(buyOrder.bidder).to.equal(user2.address);
-            // expect(buyOrder.paymentToken).to.equal(token.address);
-            // expect(buyOrder.bidPrice).to.equal(BUY_BID_PRICE);
-            // expect(buyOrder.marketItemId).to.equal(buyOrder.marketItemId);
-        });
-
-        it("Should be ok when update buy offer", async () => {
-            const startTime = await getCurrentTime();
-            const endTime = add(await getCurrentTime(), ONE_WEEK);
-
-            await token.mint(user1.address, ONE_ETHER);
-            await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
-
-            await nftTest.connect(user1).buy("this_uri");
-            await nftTest.connect(user1).approve(orderManager.address, 1);
+            await nftTest.connect(user1).approve(mkpManager.address, 1);
 
             const leaves = [user1.address, user2.address].map(value => keccak256(value));
             merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
@@ -314,19 +275,48 @@ describe.only("OrderManager:", () => {
 
             await orderManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1000, startTime, endTime, token.address, rootHash);
+                .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash);
+            await metaCitizen.mint(user2.address);
+            await orderManager.connect(user2).makeMaketItemOrder(2, token.address, BUY_BID_PRICE, endTime);
 
-            await orderManager.connect(user2).makeMaketItemOrder(1, token.address, BUY_BID_PRICE, endTime);
+            const order = await orderManager.getOrderByMarketItemOrderId(1);
 
-            let buyOrder = await mkpManager.getOrderIdToOrderInfo(2);
-            expect(buyOrder.bidPrice).to.equal(BUY_BID_PRICE);
+            expect(order[0].owner).to.equal(user2.address);
+            expect(order[1].paymentToken).to.equal(token.address);
+            expect(order[1].bidPrice).to.equal(BUY_BID_PRICE);
+            expect(order[0].marketItemId).to.equal(2);
+        });
+
+        it.only("Should be ok when update buy offer", async () => {
+            const startTime = await getCurrentTime();
+            const endTime = add(await getCurrentTime(), ONE_WEEK);
+
+            await token.mint(user1.address, ONE_ETHER);
+            await token.connect(user1).approve(nftTest.address, ethers.constants.MaxUint256);
+
+            await nftTest.connect(user1).buy("this_uri");
+            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await metaCitizen.mint(user2.address);
+            const leaves = [user1.address, user2.address].map(value => keccak256(value));
+            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+
+            rootHash = merkleTree.getHexRoot();
+
+            await orderManager
+                .connect(user1)
+                .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash);
+
+            await orderManager.connect(user2).makeMaketItemOrder(2, token.address, BUY_BID_PRICE, endTime);
+
+            let order = await orderManager.getOrderByMarketItemOrderId(1);
+            expect(order[1].bidPrice).to.equal(BUY_BID_PRICE);
 
             await orderManager
                 .connect(user2)
-                .makeMaketItemOrder(1, token.address, add(BUY_BID_PRICE, parseEther("100")), endTime);
+                .makeMaketItemOrder(2, token.address, add(BUY_BID_PRICE, parseEther("100")), endTime);
 
-            buyOrder = await mkpManager.getOrderIdToOrderInfo(2);
-            expect(buyOrder.bidPrice).to.equal(add(BUY_BID_PRICE, parseEther("100")));
+            order = await orderManager.getOrderByMarketItemOrderId(1);
+            expect(order[1].bidPrice).to.equal(add(BUY_BID_PRICE, parseEther("100")));
         });
     });
 
