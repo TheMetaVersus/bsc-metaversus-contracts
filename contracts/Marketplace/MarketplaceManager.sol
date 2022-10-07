@@ -81,12 +81,6 @@ contract MarketPlaceManager is
     mapping(bytes32 => EnumerableSetUpgradeable.UintSet) private _rootHashesToMarketItemIds;
 
     /**
-     *  @notice Mapping from MarketItemId to Order
-     *  @dev NFTAddress -> TokenId[]
-     */
-    mapping(address => EnumerableSetUpgradeable.UintSet) private nftAddressToNftTokenIds;
-
-    /**
      *  @notice Mapping TokenID to OwnerAddress
      *  @dev TokenId -> OwnerAddress[]
      */
@@ -149,7 +143,7 @@ contract MarketPlaceManager is
     modifier onlyMetaversusOrOrder() {
         require(
             _msgSender() == metaversusManager || _msgSender() == address(orderManager),
-            "Caller is not a metaversus manager or metaDrop"
+            "Caller is not a metaversus manager or order manager"
         );
         _;
     }
@@ -465,9 +459,5 @@ contract MarketPlaceManager is
         bytes32 leaf = keccak256(abi.encodePacked(_account));
         bytes32 root = MerkleProofUpgradeable.processProof(_proof, leaf);
         return _rootHashesToMarketItemIds[root].contains(_marketItemId);
-    }
-
-    function isNftTokenExist(address _nftAddress, uint256 _tokenId) external view returns (bool) {
-        return nftAddressToNftTokenIds[_nftAddress].contains(_tokenId);
     }
 }

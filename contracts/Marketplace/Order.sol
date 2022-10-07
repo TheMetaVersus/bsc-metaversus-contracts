@@ -147,7 +147,8 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         notZero(_amount)
     {
         require(admin.isOwnedMetaCitizen(_msgSender()), "Require own MetaCitizen NFT");
-        require(marketplace.isNftTokenExist(_nftAddress, _tokenId), "Token is not existed");
+        // TODO check token is valid of NFT contract
+        // require(marketplace.isNftTokenExist(_nftAddress, _tokenId), "Token is not existed");
         require(_time > block.timestamp, "Invalid order time");
 
         // Create Order
