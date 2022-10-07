@@ -40,7 +40,6 @@ contract MarketPlaceManager is
     using AddressUpgradeable for address;
 
     CountersUpgradeable.Counter private _marketItemIds;
-    CountersUpgradeable.Counter private _orderCounter;
 
     uint256 public constant DENOMINATOR = 1e5;
 
@@ -65,7 +64,7 @@ contract MarketPlaceManager is
     IOrder public orderManager;
 
     /**
-     *  @notice wasBuyer is mapping owner address to Market ID
+     *  @notice isBuyer is mapping owner address to account was buyer in marketplace
      */
     mapping(address => bool) public isBuyer;
 
@@ -79,12 +78,6 @@ contract MarketPlaceManager is
      *  @notice _rootHashesToMarketItems is mapping owner's asset address to order ID
      */
     mapping(bytes32 => EnumerableSetUpgradeable.UintSet) private _rootHashesToMarketItemIds;
-
-    /**
-     *  @notice Mapping TokenID to OwnerAddress
-     *  @dev TokenId -> OwnerAddress[]
-     */
-    mapping(uint256 => EnumerableSetUpgradeable.AddressSet) private tokenIdToOwners;
 
     /**
      *  @notice Mapping from MarketItemID to Market Item
@@ -285,6 +278,13 @@ contract MarketPlaceManager is
         );
     }
 
+    function setNewRootHash(bytes calldata oldRoot, bytes calldata newRoot) external onlyAdmin {
+        for (uint256 i = 0; i < _rootHashesToMarketItemIds[bytes32(oldRoot)].length(); i++) {
+            _rootHashesToMarketItemIds[bytes32(newRoot)].add(_rootHashesToMarketItemIds[bytes32(oldRoot)].at(i));
+        }
+        delete _rootHashesToMarketItemIds[bytes32(oldRoot)];
+    }
+
     /**
      * @dev Get Latest Market Item by the token id
      */
@@ -308,10 +308,6 @@ contract MarketPlaceManager is
      */
     function getCurrentMarketItem() external view returns (uint256) {
         return _marketItemIds.current();
-    }
-
-    function getCurrentOrder() external view returns (uint256) {
-        return _orderCounter.current();
     }
 
     /**
@@ -431,7 +427,7 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice mark user is buyer
+     *  @notice mark user was buyer
      */
     function setIsBuyer(address newBuyer) external onlyOrder notZeroAddress(newBuyer) {
         isBuyer[newBuyer] = true;

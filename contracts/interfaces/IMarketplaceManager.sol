@@ -50,8 +50,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     function getCurrentMarketItem() external view returns (uint256);
 
-    function getCurrentOrder() external view returns (uint256);
-
     function getRoyaltyInfo(
         address _nftAddr,
         uint256 _tokenId,
@@ -59,8 +57,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
     ) external view returns (address, uint256);
 
     function isRoyalty(address _contract) external view returns (bool);
-
-    function isNftTokenExist(address _nftAddress, uint256 _tokenId) external returns (bool);
 
     function verify(
         uint256 _marketItemId,
