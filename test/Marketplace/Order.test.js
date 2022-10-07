@@ -162,9 +162,11 @@ describe.only("OrderManager:", () => {
         beforeEach(async () => {
             await orderManager.setPause(false);
             endTime = add(await getCurrentTime(), ONE_WEEK);
+
+            await admin.setMetaCitizen(metaCitizen.address);
         });
 
-        it.only("should revert when contract is paused", async () => {
+        it("should revert when contract is paused", async () => {
             await orderManager.setPause(true);
             expect(await orderManager.paused()).to.equal(true);
 
@@ -182,34 +184,41 @@ describe.only("OrderManager:", () => {
         });
 
         it("should be fail when insufficient allowance", async () => {
+            await metaCitizen.mint(owner.address);
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("Token is not existed");
+            ).to.revertedWith("ERC20: insufficient allowance");
         });
 
         it("Should be ok when create new offer", async () => {
+            await metaCitizen.mint(user1.address);
+
             await orderManager
                 .connect(user1)
-                .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
+                .makeWalletOrder(token.address, BID_PRICE, user2.address, nftTest.address, 1, 1, endTime);
 
-            const order = await mkpManager.getOrderIdToOrderInfo(1);
-            expect(order.orderId).to.equal(1);
-            expect(order.bidder).to.equal(user1.address);
+            const order = await orderManager.walletOrders(1);
+
+            expect(order.owner).to.equal(user1.address);
             expect(order.paymentToken).to.equal(token.address);
             expect(order.bidPrice).to.equal(BID_PRICE);
-            expect(order.marketItemId).to.equal(0);
-            expect(order.walletAsset.owner).to.equal(user1.address);
-            expect(order.walletAsset.nftAddress).to.equal(nftTest.address);
-            expect(order.walletAsset.tokenId).to.equal(1);
+
+            expect(order.to).to.equal(user2.address);
+            expect(order.nftAddress).to.equal(nftTest.address);
+            expect(order.tokenId).to.equal(1);
+            expect(order.expiredTime).to.equal(endTime);
         });
 
         it("Should be ok when update offer", async () => {
+            await metaCitizen.mint(user1.address);
+
             await orderManager
                 .connect(user1)
                 .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
 
-            let order = await mkpManager.getOrderIdToOrderInfo(1);
-            expect(order.bidPrice).to.equal(BID_PRICE);
+            let order = await orderManager.getOrderByWalletOrderId(1);
+            console.log("getOrderByWalletOrderId", order, order[1].bidPrice);
+            expect(order[1].bidPrice).to.equal(BID_PRICE);
 
             await orderManager
                 .connect(user1)
@@ -223,8 +232,8 @@ describe.only("OrderManager:", () => {
                     endTime
                 );
 
-            order = await mkpManager.getOrderIdToOrderInfo(1);
-            expect(order.bidPrice).to.equal(add(BID_PRICE, parseEther("100")));
+            order = await orderManager.getOrderByWalletOrderId(1);
+            expect(order[1].bidPrice).to.equal(add(BID_PRICE, parseEther("100")));
         });
     });
 
