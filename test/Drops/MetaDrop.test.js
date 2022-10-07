@@ -6,7 +6,6 @@ const { getCurrentTime, setTime, generateMerkleTree, generateLeaf } = require(".
 
 const TOTAL_SUPPLY = parseEther("1000000000000");
 const TOKEN_0_1 = parseEther("0.1");
-const TOKEN_0_2 = parseEther("0.2");
 const ONE_DAY = 3600 * 24;
 const DEFAULT_SERVICE_NUMERATOR = 100000;
 
@@ -35,6 +34,8 @@ describe("MetaDrop", () => {
             treasury.address,
             admin.address,
         ]);
+        await admin.setPermittedPaymentToken(token.address, true);
+        await admin.setPermittedPaymentToken(AddressZero, true);
 
         TokenERC721 = await ethers.getContractFactory("TokenERC721");
         tokenERC721 = await upgrades.deployProxy(TokenERC721, [
@@ -53,11 +54,10 @@ describe("MetaDrop", () => {
             TOKEN_0_1,
             admin.address,
         ]);
-        await metaCitizen.deployed();
+        await admin.setMetaCitizen(metaCitizen.address);
 
         MetaDrop = await ethers.getContractFactory("MetaDrop");
         metaDrop = await upgrades.deployProxy(MetaDrop, [
-            metaCitizen.address,
             admin.address,
             treasury.address,
             DEFAULT_SERVICE_NUMERATOR, // 10%
@@ -93,19 +93,29 @@ describe("MetaDrop", () => {
     });
 
     describe("Deployment", async () => {
+        it("Should revert when admin contract is invalid", async () => {
+            await expect(
+                upgrades.deployProxy(MetaDrop, [AddressZero, treasury.address, SERVICE_FEE_DENOMINATOR])
+            ).to.be.revertedWith("Invalid Admin contract");
+
+            await expect(
+                upgrades.deployProxy(MetaDrop, [treasury.address, treasury.address, SERVICE_FEE_DENOMINATOR])
+            ).to.be.revertedWith("Invalid Admin contract");
+        });
+
+        it("Should revert when Treasury contract is invalid", async () => {
+            await expect(
+                upgrades.deployProxy(MetaDrop, [admin.address, AddressZero, SERVICE_FEE_DENOMINATOR])
+            ).to.be.revertedWith("Invalid Treasury contract");
+        });
+
         it("Should throw error Service fee will exceed minting fee", async () => {
             await expect(
-                upgrades.deployProxy(MetaDrop, [
-                    metaCitizen.address,
-                    admin.address,
-                    treasury.address,
-                    SERVICE_FEE_DENOMINATOR.add(1),
-                ])
+                upgrades.deployProxy(MetaDrop, [admin.address, treasury.address, SERVICE_FEE_DENOMINATOR.add(1)])
             ).to.be.revertedWith("Service fee will exceed minting fee");
         });
 
         it("Set initial state successful", async () => {
-            expect(await metaDrop.metaCitizen()).to.equal(metaCitizen.address);
             expect(await metaDrop.mvtsAdmin()).to.equal(admin.address);
             expect(await metaDrop.treasury()).to.equal(treasury.address);
             expect(await metaDrop.serviceFeeNumerator()).to.equal(DEFAULT_SERVICE_NUMERATOR);
@@ -188,10 +198,10 @@ describe("MetaDrop", () => {
             await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid minting supply");
         });
 
-        it("Should throw error Invalid payment token", async () => {
-            drop.paymentToken = user1.address;
+        it("Should throw error Payment token is not supported", async () => {
+            drop.paymentToken = tokenERC721.address;
 
-            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid payment token");
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Payment token is not supported");
         });
 
         it("Should create drop successful", async () => {
@@ -283,10 +293,12 @@ describe("MetaDrop", () => {
             await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Invalid minting supply");
         });
 
-        it("Should throw error Invalid payment token", async () => {
-            drop.paymentToken = user1.address;
+        it("Should throw error Payment token is not supported", async () => {
+            drop.paymentToken = tokenERC721.address;
 
-            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Invalid payment token");
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
+                "Payment token is not supported"
+            );
         });
 
         it("Should update drop successful", async () => {

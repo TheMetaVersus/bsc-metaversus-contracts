@@ -6,13 +6,7 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeabl
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
-import "./lib/NFTHelper.sol";
 import "./interfaces/IAdmin.sol";
-import "./interfaces/ITokenMintERC721.sol";
-import "./interfaces/ITokenMintERC1155.sol";
-import "./interfaces/IMarketplaceManager.sol";
-import "./interfaces/IStakingPool.sol";
-import "./interfaces/IOrder.sol";
 import "./interfaces/IMetaCitizen.sol";
 
 /**
@@ -64,33 +58,41 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
 
     /**
      *  @notice Replace the admin role by another address.
+     *
      *  @dev    Only owner can call this function.
+     *
+     *  @param  _account   Address that will allow to Metaversus admin.
+     *  @param  _allow     Status of allowance (true is admin | false is banned).
      */
-    function setAdmin(address user, bool allow) external onlyOwner {
-        admins[user] = allow;
-        emit SetAdmin(user, allow);
+    function setAdmin(address _account, bool _allow) external onlyOwner {
+        require(_account != address(0), "Invalid admin address");
+
+        admins[_account] = _allow;
+        emit SetAdmin(_account, _allow);
     }
 
     /**
      *  @notice Replace the meta citizen address by another address.
+     *
      *  @dev    Only owner can call this function.
+     *
+     *  @param  _citizen    Address of Meta Citizen contract
      */
-    function setMetaCitizen(IMetaCitizen citizen) external onlyOwner {
+    function setMetaCitizen(IMetaCitizen _citizen) external onlyOwner {
+        require(address(_citizen) != address(0), "Invalid Meta Citizen address");
+
         IMetaCitizen oldMetaCitizen = metaCitizen;
-        metaCitizen = citizen;
+        metaCitizen = _citizen;
         emit SetMetaCitizen(oldMetaCitizen, metaCitizen);
     }
 
     /**
-     *  @notice Returns true if account own meta citizen NFT
-     *  @dev    Only owner can call this function.
-     */
-    function isOwnedMetaCitizen(address account) external view returns (bool) {
-        return IERC721Upgradeable(address(metaCitizen)).balanceOf(account) > 0;
-    }
-
-    /**
      *  @notice Set permit payment token
+     *
+     *  @dev    Only owner or admin can call this function.
+     *
+     *  @param  _paymentToken   Token ERC-20 that will accept as market payment token.
+     *  @param  _allow          Status of allowance (true is permitted | false is banned).
      */
     function setPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool _allow) external {
         require(isAdmin(_msgSender()), "Caller is not an owner or admin");
@@ -105,7 +107,12 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     }
 
     /**
-     *  @notice Set permit payment token
+     *  @notice Set an NFT that is allowed to trade in Metaversus
+     *
+     *  @dev    Only owner or admin can call this function.
+     *
+     *  @param  _nftAddress   Token ERC-721 that will allow trade in the market.
+     *  @param  _allow        Status of allowance (true is permitted | false is banned).
      */
     function setPermittedNFT(address _nftAddress, bool _allow) external {
         require(isAdmin(_msgSender()), "Caller is not an owner or admin");
@@ -121,6 +128,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
 
     /**
      * @notice Get owner of this contract
+     *
      * @dev Using in related contracts
      */
     function owner() public view override(IAdmin, OwnableUpgradeable) returns (address) {
@@ -136,30 +144,29 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
 
     /**
      *  @notice Return permit token payment
+     *
+     *  @param  _token  Address that need to check whether is permitted payment token.
      */
-    function getPermitedPaymentToken(uint256 _index) external view returns (IERC20Upgradeable) {
-        return IERC20Upgradeable(_permitedPaymentToken.at(_index));
+    function isPermittedPaymentToken(IERC20Upgradeable _token) public view returns (bool) {
+        return _permitedPaymentToken.contains(address(_token));
     }
 
     /**
      *  @notice Return permit token payment
-     */
-    function isPermittedPaymentToken(IERC20Upgradeable token) public view returns (bool) {
-        return _permitedPaymentToken.contains(address(token));
-    }
-
-    /**
-     *  @notice Return permit token payment
+     *
+     *  @param  _nftAddress  Address that need to check whether is permitted NFT.
      */
     function isPermittedNFT(address _nftAddress) public view returns (bool) {
         return _permitedNFTs.contains(_nftAddress);
     }
 
     /**
-     *  @notice Return permit token payment
+     *  @notice Returns true if account own meta citizen NFT
+     *
+     *  @param  _account  Address that need to check whether is hold an Citizen NFT.
      */
-    function numPermitedPaymentTokens() external view returns (uint256) {
-        return _permitedPaymentToken.length();
+    function isOwnedMetaCitizen(address _account) external view returns (bool) {
+        return IERC721Upgradeable(address(metaCitizen)).balanceOf(_account) > 0;
     }
 
     /**
