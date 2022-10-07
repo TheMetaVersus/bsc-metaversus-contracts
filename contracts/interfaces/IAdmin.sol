@@ -11,11 +11,7 @@ interface IAdmin is IERC165Upgradeable {
 
     function setPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool _allow) external;
 
-    function getPermitedPaymentToken(uint256 _index) external view returns (IERC20Upgradeable);
-
     function isPermittedPaymentToken(IERC20Upgradeable token) external view returns (bool);
-
-    function numPermitedPaymentTokens() external view returns (uint256);
 
     function isOwnedMetaCitizen(address account) external view returns (bool);
 }

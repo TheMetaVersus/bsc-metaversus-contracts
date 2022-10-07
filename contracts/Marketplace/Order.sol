@@ -193,7 +193,6 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         validWallet(_to)
         notZero(_amount)
     {
-        require(admin.isOwnedMetaCitizen(_msgSender()), "Require own MetaCitizen NFT");
         require(_time > block.timestamp, "Invalid order time");
 
         // Check exist make Offer
@@ -298,15 +297,20 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         uint256 _marketItemId,
         IERC20Upgradeable _paymentToken,
         uint256 _bidPrice,
-        uint256 _time
+        uint256 _time,
+        bytes32[] memory _proof
     ) external payable nonReentrant whenNotPaused validPaymentToken(_paymentToken) notZero(_bidPrice) {
-        require(admin.isOwnedMetaCitizen(_msgSender()), "Require own MetaCitizen NFT");
         require(_time > block.timestamp, "Invalid order time");
 
         // Check Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(_marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
-        // require(marketItem.endTime < block.timestamp, "Not expired yet");
+        if (marketItem.isPrivate) {
+            require(
+                admin.isOwnedMetaCitizen(_msgSender()) && marketplace.verify(_marketItemId, _proof, _msgSender()),
+                "Require own MetaCitizen NFT"
+            );
+        }
 
         OrderInfo storage current = marketItemOrderOfOwners[_marketItemId][_msgSender()];
 
@@ -375,13 +379,14 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         // Get Order
         MarketItemOrder storage marketItemOrder = marketItemOrders[_orderId];
         OrderInfo storage orderInfo = marketItemOrderOfOwners[marketItemOrder.marketItemId][marketItemOrder.owner];
-        require(marketItemOrder.owner != address(0), "Invalid order");
-        require(orderInfo.status == OrderStatus.PENDING, "Order is not available");
-        require(orderInfo.expiredTime >= block.timestamp, "Order is expired");
 
         // Get Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemOrder.marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
+
+        require(marketItem.seller == _msgSender(), "Invalid seller of asset !");
+        require(orderInfo.status == OrderStatus.PENDING, "Order is not available");
+        require(orderInfo.expiredTime >= block.timestamp, "Order is expired");
 
         // Update Order
         orderInfo.status = OrderStatus.ACCEPTED;
@@ -410,7 +415,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             marketItem.nftContractAddress,
             marketItem.tokenId,
             marketItem.amount,
-            marketItem.seller,
+            address(marketplace),
             marketItem.buyer
         );
 
@@ -428,8 +433,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         OrderInfo storage orderInfo = walletOrderOfOwners[walletOrder.nftAddress][walletOrder.tokenId][walletOrder.to][
             walletOrder.owner
         ];
-        require(walletOrder.owner != address(0), "Invalid order");
-        require(walletOrder.owner == _msgSender(), "Not the buyer");
+        require(walletOrder.owner == _msgSender(), "Not the owner of offer");
         require(orderInfo.status == OrderStatus.PENDING, "Order is not available");
 
         // Update order information
@@ -450,7 +454,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         // Get Order
         MarketItemOrder storage marketItemOrder = marketItemOrders[_orderId];
         OrderInfo storage orderInfo = marketItemOrderOfOwners[marketItemOrder.marketItemId][marketItemOrder.owner];
-        require(marketItemOrder.owner != address(0), "Invalid order");
+        require(marketItemOrder.owner == _msgSender(), "Not the owner of offer");
         require(orderInfo.status == OrderStatus.PENDING, "Order is not available");
 
         // Update Order

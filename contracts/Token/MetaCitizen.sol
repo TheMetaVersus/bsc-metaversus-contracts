@@ -34,7 +34,7 @@ contract MetaCitizen is
      *  @notice tokenCounter uint256 (counter). This is the counter for store
      *          current token ID value in storage.
      */
-    CountersUpgradeable.Counter public tokenCounter;
+    CountersUpgradeable.Counter private _tokenCounter;
 
     /**
      *  @notice paymentToken IERC20Upgradeable is interface of payment token
@@ -70,20 +70,27 @@ contract MetaCitizen is
         IERC20Upgradeable _paymentToken,
         uint256 _mintFee,
         IAdmin _admin
-    ) public initializer notZeroAddress(address(_paymentToken)) validTreasury(_treasury) notZero(_mintFee) {
+    ) public initializer validTreasury(_treasury) notZero(_mintFee) validAdmin(_admin) {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC721_init("MetaversusWorld Citizen", "MWC");
 
-        paymentToken = IERC20Upgradeable(_paymentToken);
+        require(
+            address(_paymentToken) != address(0) || admin.isPermittedPaymentToken(_paymentToken),
+            "Invalid payment token"
+        );
+
+        paymentToken = _paymentToken;
         treasury = _treasury;
         mintFee = _mintFee;
     }
 
     /**
      *  @notice Set base URI
-     *  @dev Only owner or admin can call this function
-     *  @param _newURI new base URI that need to replace
+     *
+     *  @dev    Only owner or admin can call this function
+     *
+     *  @param  _newURI new base URI that need to replace
      */
     function setBaseURI(string memory _newURI) external onlyOwner {
         baseURI = _newURI;
@@ -91,21 +98,26 @@ contract MetaCitizen is
 
     /**
      *  @notice Set payment token of minting fee
-     *  @dev Only owner or admin can call this function
-     *  @param _newToken new payment token need to replace
+     *
+     *  @dev    Only owner or admin can call this function
+     *
+     *  @param  _newToken new payment token need to replace
      */
-    function setPaymentToken(address _newToken) external onlyOwner notZeroAddress(_newToken) {
+    function setPaymentToken(IERC20Upgradeable _newToken) external onlyAdmin {
+        require(address(_newToken) != address(0) && admin.isPermittedPaymentToken(_newToken), "Invalid payment token");
         address oldToken = address(paymentToken);
         paymentToken = IERC20Upgradeable(_newToken);
-        emit SetPaymentToken(oldToken, _newToken);
+        emit SetPaymentToken(oldToken, address(_newToken));
     }
 
     /**
      *  @notice Set treasury to change TreasuryManager address.
-     *  @dev Only owner or admin can call this function.
-     *  @param _account new base URI that need to replace
+     *
+     *  @dev    Only owner or admin can call this function.
+     *
+     *  @param  _account new base URI that need to replace
      */
-    function setTreasury(ITreasury _account) external onlyOwner validTreasury(_account) {
+    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
         ITreasury oldTreasury = treasury;
         treasury = _account;
         emit SetTreasury(oldTreasury, _account);
@@ -113,10 +125,12 @@ contract MetaCitizen is
 
     /**
      *  @notice Set minting fee
-     *  @dev Only owner or admin can call this function.
-     *  @param _newFee new minting fee that need to replace
+     *
+     *  @dev    Only owner or admin can call this function.
+     *
+     *  @param  _newFee new minting fee that need to replace
      */
-    function setMintFee(uint256 _newFee) external onlyOwner notZero(_newFee) {
+    function setMintFee(uint256 _newFee) external onlyAdmin notZero(_newFee) {
         uint256 oldFee = mintFee;
         mintFee = _newFee;
         emit SetMintFee(oldFee, _newFee);
@@ -124,13 +138,14 @@ contract MetaCitizen is
 
     /**
      *  @notice Buy NFT by paying a fee
-     *  @dev Anyone can call this function.
+     *
+     *  @dev    Anyone can call this function.
      */
     function buy() external nonReentrant {
         require(balanceOf(_msgSender()) == 0, "Already have one");
 
-        tokenCounter.increment();
-        uint256 tokenId = tokenCounter.current();
+        _tokenCounter.increment();
+        uint256 tokenId = _tokenCounter.current();
 
         paymentToken.safeTransferFrom(_msgSender(), address(treasury), mintFee);
 
@@ -141,14 +156,16 @@ contract MetaCitizen is
 
     /**
      *  @notice Mint NFT without paying fee
-     *  @dev Only owner or admin can call this function.
-     *  @param _to address that be minted to
+     *
+     *  @dev    Only owner or admin can call this function.
+     *
+     *  @param  _to address that be minted to
      */
-    function mint(address _to) external onlyOwner notZeroAddress(_to) {
+    function mint(address _to) external onlyAdmin notZeroAddress(_to) {
         require(balanceOf(_to) == 0, "Already have one");
 
-        tokenCounter.increment();
-        uint256 tokenId = tokenCounter.current();
+        _tokenCounter.increment();
+        uint256 tokenId = _tokenCounter.current();
 
         _mint(_to, tokenId);
 
@@ -161,6 +178,13 @@ contract MetaCitizen is
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
         return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, ".json")) : ".json";
+    }
+
+    /**
+     *  @notice Get token counter
+     */
+    function getTokenCounter() external view returns (uint256) {
+        return _tokenCounter.current();
     }
 
     /**

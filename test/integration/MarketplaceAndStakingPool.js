@@ -18,7 +18,7 @@ const OVER_AMOUNT = ethers.utils.parseEther("1000000");
 const ONE_MILLION_ETHER = ethers.utils.parseEther("1000000");
 const ONE_YEAR = 31104000;
 const TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-
+const MINT_FEE = 1000;
 const abi = [
   {
     inputs: [
@@ -34,7 +34,7 @@ const abi = [
   }
 ];
 
-describe("Marketplace interact with Staking Pool:", () => {
+describe.only("Marketplace interact with Staking Pool:", () => {
   before(async () => {
     const accounts = await ethers.getSigners();
     owner = accounts[0];
@@ -76,6 +76,18 @@ describe("Marketplace interact with Staking Pool:", () => {
       treasury.address
     ]);
 
+    await admin.setPermittedPaymentToken(token.address, true);
+    await admin.setPermittedPaymentToken(usd.address, true);
+    await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
+
+    MetaCitizen = await ethers.getContractFactory("MetaCitizen");
+    metaCitizen = await upgrades.deployProxy(MetaCitizen, [
+      treasury.address,
+      token.address,
+      MINT_FEE,
+      admin.address
+    ]);
+    await admin.setMetaCitizen(metaCitizen.address);
     TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
     tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
       "NFT Metaversus",
@@ -159,10 +171,21 @@ describe("Marketplace interact with Staking Pool:", () => {
     await staking.setPause(false);
     await orderManager.setPause(false);
     await mkpManager.setOrder(orderManager.address);
+    await mkpManager.setMetaversusManager(mtvsManager.address);
   });
 
   describe("Setup: Set permitted tokens => Set start time for staking pool", () => {
     it("Set permitted tokens", async () => {
+      expect(await admin.isPermittedPaymentToken(token.address)).to.equal(true);
+      expect(await admin.isPermittedPaymentToken(usd.address)).to.equal(true);
+      expect(
+        await admin.isPermittedPaymentToken(constants.ZERO_ADDRESS)
+      ).to.equal(true);
+
+      await admin.setPermittedPaymentToken(token.address, false);
+      await admin.setPermittedPaymentToken(usd.address, false);
+      await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, false);
+
       expect(await admin.isPermittedPaymentToken(token.address)).to.equal(
         false
       );
@@ -170,26 +193,22 @@ describe("Marketplace interact with Staking Pool:", () => {
       expect(
         await admin.isPermittedPaymentToken(constants.ZERO_ADDRESS)
       ).to.equal(false);
-
-      await admin.setPermittedPaymentToken(token.address, true);
-      await admin.setPermittedPaymentToken(usd.address, true);
-      await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
-
-      expect(await admin.isPermittedPaymentToken(token.address)).to.equal(true);
-      expect(await admin.isPermittedPaymentToken(usd.address)).to.equal(true);
-      expect(
-        await admin.isPermittedPaymentToken(constants.ZERO_ADDRESS)
-      ).to.equal(true);
     });
 
     it("Set start time for staking pool", async () => {
       await staking.setStartTime(CURRENT);
-
       expect(await staking.startTime()).to.equal(CURRENT);
     });
 
     it("Buy NFT in marketplace to stake MTVS token", async () => {
+      await admin.setPermittedPaymentToken(token.address, true);
+      await admin.setPermittedPaymentToken(usd.address, true);
+      await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
+
+      await staking.setStartTime(CURRENT);
       const current = await getCurrentTime();
+      await metaCitizen.mint(user1.address);
+
       const leaves = [user1.address, user2.address].map(value =>
         keccak256(value)
       );
@@ -202,6 +221,7 @@ describe("Marketplace interact with Staking Pool:", () => {
       await mtvsManager
         .connect(user2)
         .createNFT(
+          true,
           0,
           1,
           "this_uri",
@@ -212,12 +232,14 @@ describe("Marketplace interact with Staking Pool:", () => {
           rootHash
         );
       await skipTime(1000);
+      // const mid = await mkpManager.fetchMarketItemsByMarketID(1);
 
       const leaf = keccak256(user1.address);
       const proof = merkleTree.getHexProof(leaf);
       await token.mint(user1.address, ONE_ETHER.mul(1000));
       await token.connect(user1).approve(orderManager.address, ONE_ETHER);
       await orderManager.connect(user1).buy(1, proof);
+
       await token.connect(user1).approve(staking.address, ONE_MILLION_ETHER);
       await token.connect(user3).approve(staking.address, ONE_MILLION_ETHER);
       await staking.connect(user1).stake(ONE_ETHER);
