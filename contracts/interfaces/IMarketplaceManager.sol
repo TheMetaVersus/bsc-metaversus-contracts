@@ -60,8 +60,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     function isRoyalty(address _contract) external view returns (bool);
 
-    function isNftTokenExist(address _nftAddress, uint256 _tokenId) external returns (bool);
-
     function verify(
         uint256 _marketItemId,
         bytes32[] memory _proof,

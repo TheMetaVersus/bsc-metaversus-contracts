@@ -48,7 +48,7 @@ struct WalletOrder {
     IERC20Upgradeable paymentToken;                 // Token to transfer
     uint256 bidPrice;                               // Bid price
     uint256 expiredTime;                            // Expired time
-    OrderStatus status;
+    OrderStatus status;                             // Order status
 }
 
 //  prettier-ignore
@@ -58,5 +58,5 @@ struct MarketItemOrder {
     IERC20Upgradeable paymentToken;                 // Token to transfer
     uint256 bidPrice;                               // Bid price
     uint256 expiredTime;                            // Expired time
-    OrderStatus status;
+    OrderStatus status;                             // Order status
 }

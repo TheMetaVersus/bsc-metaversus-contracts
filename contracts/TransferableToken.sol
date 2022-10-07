@@ -12,17 +12,29 @@ contract TransferableToken is Validatable {
     /**
      *  @notice Gas limit when transfer token
      */
-    uint256 public gasLimit;
+    uint256 public tokenTransferGasLimit;
+
+    event SetTokenTransferGasLimit(uint256 oldValue, uint256 newValue);
 
     /*------------------Initializer------------------*/
 
     function __TransferableToken_init(IAdmin _admin) internal onlyInitializing validAdmin(_admin) {
         __Validatable_init(_admin);
 
-        gasLimit = 2300;
+        tokenTransferGasLimit = 2300;
     }
 
     /*------------------External Funtions------------------*/
+
+    /**
+     *  @notice Check payment token or native token
+     */
+    function setTokenTransferGasLimit(uint256 _newValue) external onlyAdmin {
+        uint256 oldTokenTransferGasLimit = tokenTransferGasLimit;
+        tokenTransferGasLimit = _newValue;
+
+        emit SetTokenTransferGasLimit(oldTokenTransferGasLimit, tokenTransferGasLimit);
+    }
 
     /**
      *  @notice Check payment token or native token
@@ -61,7 +73,7 @@ contract TransferableToken is Validatable {
             }
         } else {
             if (isNativeToken(_paymentToken)) {
-                (bool success, ) = _to.call{ value: _amount, gas: gasLimit }(new bytes(0));
+                (bool success, ) = _to.call{ value: _amount, gas: tokenTransferGasLimit }(new bytes(0));
                 require(success, "SafeTransferNative: transfer failed");
             } else {
                 IERC20Upgradeable(_paymentToken).transfer(_to, _amount);

@@ -48,19 +48,35 @@ library NFTHelper {
      *  @notice Transfer nft call
      */
     function transferNFTCall(
-        address nftContractAddress,
-        uint256 tokenId,
-        uint256 amount,
-        address from,
-        address to
+        address _nftContractAddress,
+        uint256 _tokenId,
+        uint256 _amount,
+        address _from,
+        address _to
     ) internal {
-        NFTHelper.Type nftType = getType(nftContractAddress);
+        NFTHelper.Type nftType = getType(_nftContractAddress);
         require(nftType != NFTHelper.Type.NONE, "ERROR: NFT address is incompatible!");
 
         if (nftType == NFTHelper.Type.ERC721) {
-            IERC721Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId);
+            IERC721Upgradeable(_nftContractAddress).safeTransferFrom(_from, _to, _tokenId);
         } else {
-            IERC1155Upgradeable(nftContractAddress).safeTransferFrom(from, to, tokenId, amount, "");
+            IERC1155Upgradeable(_nftContractAddress).safeTransferFrom(_from, _to, _tokenId, _amount, "");
         }
+    }
+
+    /**
+     *  @notice Transfer nft call
+     */
+    function isTokenExist(address _nftContractAddress, uint256 _tokenId) internal view returns (bool) {
+        NFTHelper.Type nftType = getType(_nftContractAddress);
+        if (nftType == NFTHelper.Type.ERC721) {
+            return IERC721Upgradeable(_nftContractAddress).ownerOf(_tokenId) != address(0);
+        }
+
+        if (nftType == NFTHelper.Type.ERC1155) {
+            return true;
+        }
+
+        return false;
     }
 }
