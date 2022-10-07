@@ -29,7 +29,7 @@ describe("TokenERC721:", () => {
             "M",
             MAX_TOTAL_SUPPLY_NFT,
             treasury.address,
-            250
+            250,
         ]);
 
         await tokenERC721.deployed();
@@ -108,15 +108,13 @@ describe("TokenERC721:", () => {
 
     describe("batch mint function:", async () => {
         it("should revert when aller is not an owner or admin: ", async () => {
-            await expect(
-                tokenERC721.connect(user1).mintBatch(mkpManager.address, 3)
-            ).to.be.revertedWith("Caller is not an owner or admin");
+            await expect(tokenERC721.connect(user1).mintBatch(mkpManager.address, 3)).to.be.revertedWith(
+                "Caller is not an owner or admin"
+            );
         });
 
         it("should revert when receiver address equal to zero address: ", async () => {
-            await expect(
-                tokenERC721.mintBatch(constants.ZERO_ADDRESS, 3)
-            ).to.be.revertedWith("Invalid address");
+            await expect(tokenERC721.mintBatch(constants.ZERO_ADDRESS, 3)).to.be.revertedWith("Invalid address");
         });
 
         it("should revert when mint fewer in each batch: ", async () => {
@@ -132,9 +130,7 @@ describe("TokenERC721:", () => {
                 await tokenERC721.mint(owner.address, "this_uri");
             }
 
-            await expect(tokenERC721.mintBatch(mkpManager.address, 1)).to.be.revertedWith(
-                "Exceeding the totalSupply"
-            );
+            await expect(tokenERC721.mintBatch(mkpManager.address, 1)).to.be.revertedWith("Exceeding the totalSupply");
         });
 
         it("should mint success: ", async () => {
@@ -146,7 +142,9 @@ describe("TokenERC721:", () => {
     describe("batch mint with uri function:", async () => {
         it("should revert when aller is not an owner or admin: ", async () => {
             await expect(
-                tokenERC721.connect(user1).mintBatchWithUri(mkpManager.address, ["this_uri", "this_uri_1", "this_uri_2"])
+                tokenERC721
+                    .connect(user1)
+                    .mintBatchWithUri(mkpManager.address, ["this_uri", "this_uri_1", "this_uri_2"])
             ).to.be.revertedWith("Caller is not an owner or admin");
         });
 
@@ -159,9 +157,9 @@ describe("TokenERC721:", () => {
         it("should revert when mint fewer in each batch: ", async () => {
             const max_batch = await tokenERC721.maxBatch();
 
-            await expect(tokenERC721.mintBatchWithUri(mkpManager.address, Array(Number(max_batch.add(1))).fill("this_uri"))).to.be.revertedWith(
-                "Must mint fewer in each batch"
-            );
+            await expect(
+                tokenERC721.mintBatchWithUri(mkpManager.address, Array(Number(max_batch.add(1))).fill("this_uri"))
+            ).to.be.revertedWith("Must mint fewer in each batch");
         });
 
         it("should revert when amount of tokens is exceeded: ", async () => {
@@ -174,7 +172,9 @@ describe("TokenERC721:", () => {
         });
 
         it("should mint success: ", async () => {
-            await expect(() => tokenERC721.mintBatchWithUri(user1.address, ["this_uri", "this_uri_1", "this_uri_2"])).to.changeTokenBalance(tokenERC721, user1, 3);
+            await expect(() =>
+                tokenERC721.mintBatchWithUri(user1.address, ["this_uri", "this_uri_1", "this_uri_2"])
+            ).to.changeTokenBalance(tokenERC721, user1, 3);
         });
     });
 });

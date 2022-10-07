@@ -13,6 +13,7 @@ import "./interfaces/IMarketplaceManager.sol";
 import "./interfaces/Collection/ICollectionFactory.sol";
 import "./interfaces/IStakingPool.sol";
 import "./interfaces/IOrder.sol";
+import "./interfaces/IMetaCitizen.sol";
 import "./interfaces/Collection/ITokenERC721.sol";
 import "./interfaces/Collection/ITokenERC1155.sol";
 
@@ -124,6 +125,14 @@ contract Validatable is PausableUpgradeable {
         _;
     }
 
+    modifier validMetaCitizen(IOrder _account) {
+        require(
+            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IMetaCitizen).interfaceId),
+            "Invalid MetaCitizen contract"
+        );
+        _;
+    }
+
     modifier validTokenCollectionERC721(ITokenERC721 _account) {
         require(
             ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenERC721).interfaceId),
@@ -187,7 +196,7 @@ contract Validatable is PausableUpgradeable {
         return MerkleProofUpgradeable.verify(_proof, _root, leaf);
     }
 
-    function isWallet(address _account) public returns (bool) {
+    function isWallet(address _account) public view returns (bool) {
         return _account != address(0) && !AddressUpgradeable.isContract(_account);
     }
 }

@@ -21,17 +21,35 @@ describe("CollectionFactory", () => {
         admin = await upgrades.deployProxy(Admin, [owner.address]);
 
         CollectionFactory = await ethers.getContractFactory("CollectionFactory");
-        collectionFactory = await upgrades.deployProxy(CollectionFactory, [tokenERC721.address, tokenERC1155.address, admin.address, user1.address, user2.address]);
+        collectionFactory = await upgrades.deployProxy(CollectionFactory, [
+            tokenERC721.address,
+            tokenERC1155.address,
+            admin.address,
+            user1.address,
+            user2.address,
+        ]);
     });
 
     describe("Deployment", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(upgrades.deployProxy(CollectionFactory, [tokenERC721.address, tokenERC1155.address, constants.ZERO_ADDRESS, user1.address, user2.address])).to.revertedWith(
-                "Invalid Admin contract"
-            );
-            await expect(upgrades.deployProxy(CollectionFactory, [tokenERC721.address, tokenERC1155.address, user1.address, user1.address, user2.address])).to.revertedWith(
-                "Invalid Admin contract"
-            );
+            await expect(
+                upgrades.deployProxy(CollectionFactory, [
+                    tokenERC721.address,
+                    tokenERC1155.address,
+                    constants.ZERO_ADDRESS,
+                    user1.address,
+                    user2.address,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
+            await expect(
+                upgrades.deployProxy(CollectionFactory, [
+                    tokenERC721.address,
+                    tokenERC1155.address,
+                    user1.address,
+                    user1.address,
+                    user2.address,
+                ])
+            ).to.revertedWith("Invalid Admin contract");
         });
     });
 
@@ -43,9 +61,7 @@ describe("CollectionFactory", () => {
         });
 
         it("Should revert Invalid maxCollection", async () => {
-            await expect(collectionFactory.setMaxCollection(0)).to.revertedWith(
-                "Invalid maxCollection"
-            );
+            await expect(collectionFactory.setMaxCollection(0)).to.revertedWith("Invalid maxCollection");
         });
 
         it("Should setMaxCollection successfully", async () => {
@@ -63,9 +79,7 @@ describe("CollectionFactory", () => {
         });
 
         it("Should revert Invalid maxTotalSuply", async () => {
-            await expect(collectionFactory.setMaxTotalSuply(0)).to.revertedWith(
-                "Invalid maxTotalSuply"
-            );
+            await expect(collectionFactory.setMaxTotalSuply(0)).to.revertedWith("Invalid maxTotalSuply");
         });
 
         it("Should setMaxTotalSuply successfully", async () => {
@@ -108,43 +122,17 @@ describe("CollectionFactory", () => {
 
         it("should revert Exceeding the maxCollection", async () => {
             await collectionFactory.setMaxCollection(1);
-            await collectionFactory
-                .create(
-                    0,
-                    "NFT",
-                    "NFT",
-                    user1.address,
-                    250
-                );
+            await collectionFactory.create(0, "NFT", "NFT", user1.address, 250);
 
-            await expect(collectionFactory
-                .create(
-                    1,
-                    "NFT1155",
-                    "NFT1155",
-                    user1.address,
-                    250
-                )).to.be.revertedWith("Exceeding the maxCollection");
+            await expect(collectionFactory.create(1, "NFT1155", "NFT1155", user1.address, 250)).to.be.revertedWith(
+                "Exceeding the maxCollection"
+            );
         });
 
         it("should create success", async () => {
-            await collectionFactory
-                .create(
-                    0,
-                    "NFT",
-                    "NFT",
-                    user1.address,
-                    250
-                );
+            await collectionFactory.create(0, "NFT", "NFT", user1.address, 250);
 
-            await collectionFactory
-                .create(
-                    1,
-                    "NFT1155",
-                    "NFT1155",
-                    user1.address,
-                    250
-                );
+            await collectionFactory.create(1, "NFT1155", "NFT1155", user1.address, 250);
 
             const totalCollection = await collectionFactory.getCollectionLength();
             expect(totalCollection).to.equal(2);

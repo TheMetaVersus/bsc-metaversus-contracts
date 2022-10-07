@@ -15,7 +15,7 @@ const MINT_FEE = 1000;
 const BID_PRICE = parseEther("100");
 const BUY_BID_PRICE = add(BID_PRICE, parseEther("100"));
 
-describe("OrderManager:", () => {
+describe.only("OrderManager:", () => {
     beforeEach(async () => {
         [owner, user1, user2, user3] = await ethers.getSigners();
 
@@ -119,6 +119,11 @@ describe("OrderManager:", () => {
         await token.mint(user2.address, parseEther("1000"));
 
         await mkpManager.setOrder(orderManager.address);
+
+        const leaves = [user1.address, user2.address].map(value => keccak256(value));
+        merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+
+        rootHash = merkleTree.getHexRoot();
     });
 
     describe("Deployment:", async () => {
@@ -153,55 +158,39 @@ describe("OrderManager:", () => {
         });
     });
 
-    describe("makeOfferWalletAsset function:", async () => {
+    describe.only("makeWalletOrder function:", async () => {
         beforeEach(async () => {
             await orderManager.setPause(false);
             endTime = add(await getCurrentTime(), ONE_WEEK);
         });
 
-        it("should revert when contract is paused", async () => {
+        it.only("should revert when contract is paused", async () => {
             await orderManager.setPause(true);
             expect(await orderManager.paused()).to.equal(true);
 
             await expect(
                 orderManager
                     .connect(user1)
-                    .makeOfferWalletAsset(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
+                    .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
             ).to.revertedWith("Pausable: paused");
         });
 
         it("should be fail when invalid payment token", async () => {
             await expect(
-                orderManager.makeOfferWalletAsset(
-                    treasury.address,
-                    BID_PRICE,
-                    user1.address,
-                    nftTest.address,
-                    1,
-                    1,
-                    endTime
-                )
-            ).to.revertedWith("ERROR: payment token is not supported !");
+                orderManager.makeWalletOrder(treasury.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
+            ).to.revertedWith("Payment token is not supported");
         });
 
         it("should be fail when insufficient allowance", async () => {
             await expect(
-                orderManager.makeOfferWalletAsset(
-                    token.address,
-                    BID_PRICE,
-                    user1.address,
-                    nftTest.address,
-                    1,
-                    1,
-                    endTime
-                )
-            ).to.revertedWith("ERC20: insufficient allowance");
+                orderManager.makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
+            ).to.revertedWith("Token is not existed");
         });
 
         it("Should be ok when create new offer", async () => {
             await orderManager
                 .connect(user1)
-                .makeOfferWalletAsset(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
+                .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
 
             const order = await mkpManager.getOrderIdToOrderInfo(1);
             expect(order.orderId).to.equal(1);
@@ -217,14 +206,14 @@ describe("OrderManager:", () => {
         it("Should be ok when update offer", async () => {
             await orderManager
                 .connect(user1)
-                .makeOfferWalletAsset(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
+                .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
 
             let order = await mkpManager.getOrderIdToOrderInfo(1);
             expect(order.bidPrice).to.equal(BID_PRICE);
 
             await orderManager
                 .connect(user1)
-                .makeOfferWalletAsset(
+                .makeWalletOrder(
                     token.address,
                     add(BID_PRICE, parseEther("100")),
                     user1.address,
