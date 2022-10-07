@@ -25,6 +25,5 @@ jobs:
       - name: Run test and solhint
         run: |
           npm install
-          npx solhint --formatter table 'contracts/**/*.sol'
           mv .env.dev .env
           npx hardhat test

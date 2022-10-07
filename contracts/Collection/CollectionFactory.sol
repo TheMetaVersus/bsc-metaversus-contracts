@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 import "../interfaces/Collection/ICollection.sol";
 import "../interfaces/Collection/ICollectionFactory.sol";
 import "../Validatable.sol";
+import "../lib/NFTHelper.sol";
 
 contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable {
     using CountersUpgradeable for CountersUpgradeable.Counter;
@@ -25,22 +26,17 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
     CountersUpgradeable.Counter private _collectionCounter;
 
     struct CollectionInfo {
-        TypeNft typeNft;
+        NFTHelper.Type typeNft;
         bytes32 salt;
         address collectionAddress;
         address owner;
-    }
-
-    enum TypeNft {
-        ERC721,
-        ERC1155
     }
 
     mapping(address => uint256) public maxCollectionOfUsers;
     mapping(uint256 => CollectionInfo) public collectionIdToCollectionInfos;
     mapping(address => EnumerableSetUpgradeable.AddressSet) private _ownerToCollectionAddress;
 
-    event CollectionDeployed(TypeNft collectType, address collection, string name, string symbol, address deployer);
+    event CollectionDeployed(NFTHelper.Type collectType, address collection, string name, string symbol, address deployer);
     event SetMaxCollection(uint256 indexed oldValue, uint256 indexed newValue);
     event SetMaxTotalSuply(uint256 indexed oldValue, uint256 indexed newValue);
     event SetTemplateAddress(address indexed templateERC721, address indexed templateERC1155);
@@ -68,7 +64,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
     }
 
     function create(
-        TypeNft _typeNft,
+        NFTHelper.Type _typeNft,
         string memory _name,
         string memory _symbol,
         address _receiverRoyalty,
@@ -86,7 +82,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
         _collectionCounter.increment();
         uint256 _currentId = _collectionCounter.current();
         bytes32 salt = bytes32(_currentId);
-        address _template = _typeNft == TypeNft.ERC721 ? address(templateERC721) : address(templateERC1155);
+        address _template = _typeNft == NFTHelper.Type.ERC721 ? address(templateERC721) : address(templateERC1155);
         ICollection _collection = ICollection(ClonesUpgradeable.cloneDeterministic(address(_template), salt));
         require(address(_collection) != address(0), "Non Exist Collection, Please check your transfer");
 

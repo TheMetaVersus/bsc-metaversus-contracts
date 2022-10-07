@@ -1,10 +1,12 @@
 const { expect } = require("chai");
 const { upgrades } = require("hardhat");
 const { constants } = require("@openzeppelin/test-helpers");
-const { generateMerkleTree } = require("../../utils");
+const { getCurrentTime, generateMerkleTree } = require("../../utils");
 
 const TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-ONE_ETHER = ethers.utils.parseEther("1");
+const ONE_ETHER = ethers.utils.parseEther("1");
+const ONE_DAY = 86400;
+const ONE_HOUR = 3600;
 
 describe("CollectionFactory", () => {
     before(async () => {
@@ -14,6 +16,9 @@ describe("CollectionFactory", () => {
         user2 = accounts[2];
         user3 = accounts[3];
         treasury = accounts[4];
+
+        startTime = (await getCurrentTime()) + ONE_HOUR;
+        endTime = startTime + ONE_DAY;
 
         Admin = await ethers.getContractFactory("Admin");
         admin = await upgrades.deployProxy(Admin, [owner.address]);
@@ -67,115 +72,49 @@ describe("CollectionFactory", () => {
             admin.address,
         ]);
 
-        await collectionFactory.setMetaversusManager(mtvsManager.address);
         await collectionFactory.setPause(false);
+        await collectionFactory.setMetaversusManager(mtvsManager.address);
 
         await mtvsManager.setPause(false);
+        await mkpManager.setMetaversusManager(mtvsManager.address);
 
         merkleTree = generateMerkleTree([owner.address, user1.address, user2.address]);
     });
 
     it("User 1,2 create collection 721", async () => {
-        await collectionFactory
-            .connect(user1).create(
-                0,
-                "NFT",
-                "NFT",
-                treasury.address,
-                250
-            );
-
-        await collectionFactory
-            .connect(user2).create(
-                0,
-                "NFT",
-                "NFT",
-                treasury.address,
-                250
-            );
+        await collectionFactory.connect(user1).create(0, "NFT", "NFT", treasury.address, 250);
+        await collectionFactory.connect(user2).create(0, "NFT", "NFT", treasury.address, 250);
     });
 
     it("User 1,2 create collection 1155", async () => {
-        await collectionFactory
-            .connect(user1).create(
-                1,
-                "NFT_1155",
-                "NFT_1155",
-                treasury.address,
-                250
-            );
-
-        await collectionFactory
-            .connect(user2).create(
-                1,
-                "NFT_1155",
-                "NFT_1155",
-                treasury.address,
-                250
-            );
+        await collectionFactory.connect(user1).create(1, "NFT_1155", "NFT_1155", treasury.address, 250);
+        await collectionFactory.connect(user2).create(1, "NFT_1155", "NFT_1155", treasury.address, 250);
     });
 
     it("setMaxCollectionOfUser is 1 should revert Exceeding the maxCollection", async () => {
         await collectionFactory.setMaxCollectionOfUser(user1.address, 1);
         await collectionFactory.setMaxCollectionOfUser(user2.address, 1);
 
-        await expect(collectionFactory
-            .connect(user1).create(
-                0,
-                "NFT_1155",
-                "NFT_1155",
-                treasury.address,
-                250
-            )).to.revertedWith("Exceeding the maxCollection");
-
-        await expect(collectionFactory
-            .connect(user2).create(
-                0,
-                "NFT_1155",
-                "NFT_1155",
-                treasury.address,
-                250
-            )).to.revertedWith("Exceeding the maxCollection");
+        await expect(collectionFactory.connect(user1).create(0, "NFT_1155", "NFT_1155", treasury.address, 250)).to.revertedWith("Exceeding the maxCollection");
+        await expect(collectionFactory.connect(user2).create(0, "NFT_1155", "NFT_1155", treasury.address, 250)).to.revertedWith("Exceeding the maxCollection");
     });
 
     it("setMaxCollectionOfUser is 5", async () => {
         await collectionFactory.setMaxCollectionOfUser(user1.address, 5);
         await collectionFactory.setMaxCollectionOfUser(user2.address, 5);
 
-        await collectionFactory
-            .connect(user1).create(
-                0,
-                "NFT_721",
-                "NFT_721",
-                treasury.address,
-                250
-            );
-
-        await collectionFactory
-            .connect(user2).create(
-                0,
-                "NFT_721",
-                "NFT_721",
-                treasury.address,
-                250
-            );
+        await collectionFactory.connect(user1).create(0, "NFT_721", "NFT_721", treasury.address, 250);
+        await collectionFactory.connect(user2).create(0, "NFT_721", "NFT_721", treasury.address, 250);
     });
 
-    it("User 1 create NFT 721 with collection by mtvs manager", async () => {
+    it("User 1 create NFT 721 with collection by mtvs manager to Sale", async () => {
         let collectionByUser = await collectionFactory.getCollectionByUser(user1.address);
         expect(collectionByUser.length).to.equal(3);
 
         nft_721 = await TokenERC721.attach(collectionByUser[0]);
 
         const balance_before = await nft_721.balanceOf(mkpManager.address);
-        await mtvsManager.connect(user1).createNFTLimit(nft_721.address,
-            1,
-            "this_uri",
-            ONE_ETHER,
-            0,
-            0,
-            token.address,
-            merkleTree.getHexRoot());
+        await mtvsManager.connect(user1).createNFTLimit(true, nft_721.address, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot());
 
         const balance_after = await nft_721.balanceOf(mkpManager.address);
 
@@ -183,17 +122,10 @@ describe("CollectionFactory", () => {
 
         collectionByUser = await collectionFactory.getCollectionByUser(user2.address);
         nft_721 = await TokenERC721.attach(collectionByUser[0]);
-        await expect(mtvsManager.connect(user1).createNFTLimit(nft_721.address,
-            1,
-            "this_uri",
-            ONE_ETHER,
-            0,
-            0,
-            token.address,
-            merkleTree.getHexRoot())).to.revertedWith("User is not create collection");
+        await expect(mtvsManager.connect(user1).createNFTLimit(true, nft_721.address, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot())).to.revertedWith("User is not create collection");
     });
 
-    it("User 1 create NFT 721 max total suply with collection by mtvs manager", async () => {
+    it("User 1 create NFT 721 max total suply with collection by mtvs manager to Sale", async () => {
         let collectionByUser = await collectionFactory.getCollectionByUser(user1.address);
         expect(collectionByUser.length).to.equal(3);
 
@@ -206,64 +138,35 @@ describe("CollectionFactory", () => {
 
         const balance_before = await nft_721.balanceOf(mkpManager.address);
         for (let i = 0; i < Number(times); i++) {
-            await mtvsManager.connect(user1).createNFTLimit(nft_721.address,
-                1,
-                "this_uri",
-                ONE_ETHER,
-                0,
-                0,
-                token.address,
-                merkleTree.getHexRoot());
-
+            await mtvsManager.connect(user1).createNFTLimit(true, nft_721.address, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot());
         }
 
         const balance_after = await nft_721.balanceOf(mkpManager.address);
 
         expect(balance_after.sub(balance_before)).to.equal(times);
 
-        await expect(mtvsManager.connect(user1).createNFTLimit(nft_721.address,
-            1,
-            "this_uri",
-            ONE_ETHER,
-            0,
-            0,
-            token.address,
-            merkleTree.getHexRoot())).to.revertedWith("Exceeding the totalSupply");
+        await expect(mtvsManager.connect(user1).createNFTLimit(true, nft_721.address, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot())).to.revertedWith("Exceeding the totalSupply");
     });
 
-    it("User 2 create NFT 1155 with collection by mtvs manager", async () => {
+    it("User 2 create NFT 1155 with collection by mtvs manager to Wallet", async () => {
         let collectionByUser = await collectionFactory.getCollectionByUser(user2.address);
         expect(collectionByUser.length).to.equal(3);
 
         nft_1155 = await TokenERC1155.attach(collectionByUser[1]);
 
-        const balance_before = await nft_1155.balanceOf(mkpManager.address, 1);
-        await mtvsManager.connect(user2).createNFTLimit(nft_1155.address,
-            100,
-            "this_uri",
-            ONE_ETHER,
-            0,
-            0,
-            token.address,
-            merkleTree.getHexRoot());
+        const balance_before = await nft_1155.balanceOf(user2.address, 1);
+        await mtvsManager.connect(user2).createNFTLimit(false, nft_1155.address, 100, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot());
 
-        const balance_after = await nft_1155.balanceOf(mkpManager.address, 1);
+        const balance_after = await nft_1155.balanceOf(user2.address, 1);
 
         expect(balance_after.sub(balance_before)).to.equal(100);
 
         collectionByUser = await collectionFactory.getCollectionByUser(user1.address);
         nft_1155 = await TokenERC1155.attach(collectionByUser[1]);
-        await expect(mtvsManager.connect(user2).createNFTLimit(nft_1155.address,
-            100,
-            "this_uri",
-            ONE_ETHER,
-            0,
-            0,
-            token.address,
-            merkleTree.getHexRoot())).to.revertedWith("User is not create collection");
+        await expect(mtvsManager.connect(user2).createNFTLimit(false, nft_1155.address, 100, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot())).to.revertedWith("User is not create collection");
     });
 
-    it("User 2 create NFT 1155 max total suply with collection by mtvs manager", async () => {
+    it("User 2 create NFT 1155 max total suply with collection by mtvs manager to Wallet", async () => {
         let collectionByUser = await collectionFactory.getCollectionByUser(user2.address);
         expect(collectionByUser.length).to.equal(3);
 
@@ -276,28 +179,14 @@ describe("CollectionFactory", () => {
         const amount = 100;
 
         for (let i = 0; i < Number(times); i++) {
-            const balance_before = await nft_1155.balanceOf(mkpManager.address, totalSupply.add(i + 1));
-            await mtvsManager.connect(user2).createNFTLimit(nft_1155.address,
-                amount,
-                "this_uri",
-                ONE_ETHER,
-                0,
-                0,
-                token.address,
-                merkleTree.getHexRoot());
+            const balance_before = await nft_1155.balanceOf(user2.address, totalSupply.add(i + 1));
+            await mtvsManager.connect(user2).createNFTLimit(false, nft_1155.address, amount, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot());
 
-            const balance_after = await nft_1155.balanceOf(mkpManager.address, totalSupply.add(i + 1));
+            const balance_after = await nft_1155.balanceOf(user2.address, totalSupply.add(i + 1));
 
             expect(balance_after.sub(balance_before)).to.equal(amount);
         }
 
-        await expect(mtvsManager.connect(user2).createNFTLimit(nft_1155.address,
-            1,
-            "this_uri",
-            ONE_ETHER,
-            0,
-            0,
-            token.address,
-            merkleTree.getHexRoot())).to.revertedWith("Exceeding the totalSupply");
+        await expect(mtvsManager.connect(user2).createNFTLimit(false, nft_1155.address, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot())).to.revertedWith("Exceeding the totalSupply");
     });
 });
