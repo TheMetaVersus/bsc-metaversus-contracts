@@ -187,7 +187,7 @@ contract Validatable is PausableUpgradeable {
         return MerkleProofUpgradeable.verify(_proof, _root, leaf);
     }
 
-    function isWallet(address _account) public returns (bool) {
+    function isWallet(address _account) public view returns (bool) {
         return _account != address(0) && !AddressUpgradeable.isContract(_account);
     }
 }

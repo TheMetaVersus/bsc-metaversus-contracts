@@ -65,19 +65,14 @@ contract MarketPlaceManager is
     IOrder public orderManager;
 
     /**
+     *  @notice wasBuyer is mapping owner address to Market ID
+     */
+    mapping(address => bool) public isBuyer;
+
+    /**
      *  @notice _marketItemOfOwner is mapping owner address to Market ID
      */
     mapping(address => EnumerableSetUpgradeable.UintSet) private _marketItemOfOwner;
-
-    /**
-     *  @notice _orderOfOwner is mapping owner address to order ID
-     */
-    mapping(address => EnumerableSetUpgradeable.UintSet) private _orderOfOwner;
-
-    /**
-     *  @notice _orderIdFromAssetOfOwner is mapping owner's asset address to order ID
-     */
-    mapping(address => EnumerableSetUpgradeable.UintSet) private _orderIdFromAssetOfOwner;
 
     /**
      *  @notice _rootHashesToMarketItems is mapping owner's asset address to order ID
@@ -119,7 +114,8 @@ contract MarketPlaceManager is
         uint256 startTime,
         uint256 endTime,
         IERC20Upgradeable paymentToken,
-        bytes rootHash
+        bytes rootHash,
+        bool isPrivate
     );
     event MarketItemUpdated(
         uint256 indexed marketItemId,
@@ -259,9 +255,8 @@ contract MarketPlaceManager is
         require(block.timestamp <= _startTime && _startTime < _endTime, "ERROR: Invalid time");
 
         _marketItemIds.increment();
-        uint256 marketItemId = _marketItemIds.current();
 
-        marketItemIdToMarketItem[marketItemId] = MarketItem(
+        marketItemIdToMarketItem[_marketItemIds.current()] = MarketItem(
             _nftAddress,
             _tokenId,
             nftType == NFTHelper.Type.ERC1155 ? _amount : 1,
@@ -276,8 +271,8 @@ contract MarketPlaceManager is
             keccak256(abi.encodePacked((""))) != keccak256(_rootHash)
         );
 
-        _marketItemOfOwner[_seller].add(marketItemId);
-        _rootHashesToMarketItemIds[bytes32(_rootHash)].add(marketItemId);
+        _marketItemOfOwner[_seller].add(_marketItemIds.current());
+        _rootHashesToMarketItemIds[bytes32(_rootHash)].add(_marketItemIds.current());
 
         // approve
         if (nftType == NFTHelper.Type.ERC1155) {
@@ -287,7 +282,7 @@ contract MarketPlaceManager is
         }
 
         emit MarketItemCreated(
-            marketItemId,
+            _marketItemIds.current(),
             _nftAddress,
             _tokenId,
             nftType == NFTHelper.Type.ERC1155 ? _amount : 1,
@@ -297,27 +292,16 @@ contract MarketPlaceManager is
             _startTime,
             _endTime,
             _paymentToken,
-            _rootHash
+            _rootHash,
+            keccak256(abi.encodePacked((""))) != keccak256(_rootHash)
         );
     }
 
     /**
      * @dev Get Latest Market Item by the token id
      */
-    function getLatestMarketItemByTokenId(address nftAddress, uint256 tokenId)
-        external
-        view
-        returns (MarketItem memory, bool)
-    {
-        uint256 itemsCount = _marketItemIds.current();
-
-        for (uint256 i = itemsCount; i > 0; i--) {
-            MarketItem memory item = marketItemIdToMarketItem[i];
-            if (item.tokenId != tokenId || item.nftContractAddress != nftAddress) continue;
-            return (item, true);
-        }
-        // return empty value
-        return (marketItemIdToMarketItem[0], false);
+    function getLatestMarketItem() external view returns (MarketItem memory) {
+        return marketItemIdToMarketItem[_marketItemIds.current()];
     }
 
     /**
@@ -327,38 +311,6 @@ contract MarketPlaceManager is
      */
     function fetchMarketItemsByMarketID(uint256 marketId) external view returns (MarketItem memory) {
         return marketItemIdToMarketItem[marketId];
-    }
-
-    /**
-     *  @notice Fetch all Market Items by owner address
-     *
-     *  @dev    All caller can call this function.
-     */
-    function fetchMarketItemsByAddress(address account) external view returns (MarketItem[] memory) {
-        MarketItem[] memory data = new MarketItem[](_marketItemOfOwner[account].length());
-        for (uint256 i = 0; i < _marketItemOfOwner[account].length(); i++) {
-            data[i] = marketItemIdToMarketItem[_marketItemOfOwner[account].at(i)];
-        }
-        return data;
-    }
-
-    /**
-     *  @notice Fetch all nft in marketplace contract
-     *
-     *  @dev    All caller can call this function.
-     */
-    function fetchAvailableMarketItems() external view returns (MarketItem[] memory) {
-        uint256 itemsCount = _marketItemIds.current();
-
-        MarketItem[] memory marketItems = new MarketItem[](itemsCount);
-        uint256 currentIndex = 0;
-        for (uint256 i = 0; i < itemsCount; i++) {
-            MarketItem memory item = marketItemIdToMarketItem[i + 1];
-            marketItems[currentIndex] = item;
-            currentIndex += 1;
-        }
-
-        return marketItems;
     }
 
     /**
@@ -378,11 +330,7 @@ contract MarketPlaceManager is
      *  @notice Check account bought or not to check in staking pool
      */
     function wasBuyer(address account) external view returns (bool) {
-        for (uint256 i = 0; i < _marketItemIds.current(); i++) {
-            MarketItem memory item = marketItemIdToMarketItem[i + 1];
-            if (account == item.buyer) return true;
-        }
-        return false;
+        return isBuyer[account];
     }
 
     /**
@@ -486,57 +434,19 @@ contract MarketPlaceManager is
     /**
      *  @notice set market item info at market item ID
      */
-    function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value) external validId(marketItemId) {
+    function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value)
+        external
+        onlyOrder
+        validId(marketItemId)
+    {
         marketItemIdToMarketItem[marketItemId] = value;
     }
 
     /**
-     *  @notice remove order id from owner asset
+     *  @notice set market item info at market item ID
      */
-    function removeOrderIdFromAssetOfOwner(address owner, uint256 orderId) external {
-        _orderIdFromAssetOfOwner[owner].remove(orderId);
-    }
-
-    /**
-     *  @notice remove order id from owner
-     */
-    function removeOrderOfOwner(address owner, uint256 orderId) external {
-        _orderOfOwner[owner].remove(orderId);
-    }
-
-    /**
-     *  @notice get order info from owner asset
-     */
-    function getOrderIdFromAssetOfOwner(address owner, uint256 index) external view returns (uint256) {
-        return _orderIdFromAssetOfOwner[owner].at(index);
-    }
-
-    /**
-     *  @notice get length of order info from owner asset
-     */
-    function getLengthOrderIdFromAssetOfOwner(address owner) external view returns (uint256) {
-        return _orderIdFromAssetOfOwner[owner].length();
-    }
-
-    /**
-     *  @notice get order info at order ID
-     */
-    function getOrderOfOwner(address owner, uint256 index) external view returns (uint256) {
-        return _orderOfOwner[owner].at(index);
-    }
-
-    /**
-     *  @notice get length of order info from owner
-     */
-    function getLengthOrderOfOwner(address owner) external view returns (uint256) {
-        return _orderOfOwner[owner].length();
-    }
-
-    /**
-     *  @notice get owner addresses of token id
-     */
-    function getOwnerOfTokenId(address owner, uint256 index) external view returns (uint256) {
-        return _orderOfOwner[owner].at(index);
+    function setIsBuyer(address newBuyer) external onlyOrder notZeroAddress(newBuyer) {
+        isBuyer[newBuyer] = true;
     }
 
     /**

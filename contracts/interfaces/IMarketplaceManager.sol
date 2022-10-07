@@ -14,19 +14,7 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     function setMarketItemIdToMarketItem(uint256 marketItemId, MarketItem memory value) external;
 
-    // AssetOfOwner
-    function getOrderIdFromAssetOfOwner(address owner, uint256 index) external view returns (uint256);
-
-    function removeOrderIdFromAssetOfOwner(address owner, uint256 orderId) external;
-
-    function getLengthOrderIdFromAssetOfOwner(address owner) external view returns (uint256);
-
-    // OrderOfOwner
-    function getOrderOfOwner(address owner, uint256 index) external view returns (uint256);
-
-    function removeOrderOfOwner(address owner, uint256 orderId) external;
-
-    function getLengthOrderOfOwner(address owner) external view returns (uint256);
+    function setIsBuyer(address newBuyer) external;
 
     // MarketItemOfOwner
     function removeMarketItemOfOwner(address owner, uint256 marketItemId) external;
@@ -73,4 +61,10 @@ interface IMarketplaceManager is IERC165Upgradeable {
     function isRoyalty(address _contract) external view returns (bool);
 
     function isNftTokenExist(address _nftAddress, uint256 _tokenId) external returns (bool);
+
+    function verify(
+        uint256 _marketItemId,
+        bytes32[] memory _proof,
+        address _account
+    ) external view returns (bool);
 }

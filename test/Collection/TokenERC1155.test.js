@@ -26,7 +26,8 @@ describe("TokenERC1155:", () => {
             "M",
             MAX_TOTAL_SUPPLY_NFT,
             treasury.address,
-            250]);
+            250,
+        ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
@@ -83,7 +84,7 @@ describe("TokenERC1155:", () => {
         });
 
         it("should revert when exceeding total supply: ", async () => {
-            for(let i = 0; i < MAX_TOTAL_SUPPLY_NFT; i++) {
+            for (let i = 0; i < MAX_TOTAL_SUPPLY_NFT; i++) {
                 await tokenERC1155.mint(owner.address, 100, "this_uri");
             }
 

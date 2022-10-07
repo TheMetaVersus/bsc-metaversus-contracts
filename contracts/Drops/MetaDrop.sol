@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "./MetaDropStructs.sol";
 import "../Validatable.sol";
 import "../interfaces/Collection/ITokenERC721.sol";
+import "hardhat/console.sol";
 
 /**
  *  @title  MetaVersus NFT Drop
@@ -39,7 +40,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
      *  @notice this data contains private minting histories of users.
      *  @dev user address => (drop id => minted counter)
      */
-    mapping(address => mapping(uint256 => uint256)) public privateHistories;
+    mapping(address => mapping(uint256 => uint256)) public mintedHistories;
 
     /**
      *  @notice address of Meta Citizen NFT
@@ -123,8 +124,8 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         require(_drop.fundingReceiver != address(0), "Invalid funding receiver");
         require(_drop.maxSupply > 0, "Invalid minting supply");
 
-        require(_drop.privateRound.startTime > block.timestamp, "Invalid private sale start time");
-        require(_drop.privateRound.endTime > _drop.privateRound.startTime, "Invalid private sale end time");
+        require(_drop.startTime > block.timestamp, "Invalid start time");
+        require(_drop.endTime > _drop.startTime, "Invalid end time");
 
         if (_drop.paymentToken != address(0)) {
             require(mvtsAdmin.isPermittedPaymentToken(IERC20Upgradeable(_drop.paymentToken)), "Invalid payment token");
@@ -141,8 +142,11 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
             paymentToken: _drop.paymentToken,
             serviceFeeNumerator: serviceFeeNumerator,
             mintedTotal: 0,
+            mintFee: _drop.mintFee,
+            mintableLimit: _drop.mintableLimit,
             maxSupply: _drop.maxSupply,
-            privateRound: _drop.privateRound
+            startTime: _drop.startTime,
+            endTime: _drop.endTime
         });
 
         emit CreatedDrop(drops[dropId]);
@@ -168,8 +172,8 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         require(_newDrop.fundingReceiver != address(0), "Invalid funding receiver");
         require(_newDrop.maxSupply > 0, "Invalid minting supply");
 
-        require(_newDrop.privateRound.startTime > 0, "Invalid private sale start time");
-        require(_newDrop.privateRound.endTime > _newDrop.privateRound.startTime, "Invalid private sale end time");
+        require(_newDrop.startTime > 0, "Invalid start time");
+        require(_newDrop.endTime > _newDrop.startTime, "Invalid end time");
 
         if (_newDrop.paymentToken != address(0)) {
             require(
@@ -182,9 +186,12 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
 
         drop.root = _newDrop.root;
         drop.fundingReceiver = _newDrop.fundingReceiver;
-        drop.maxSupply = _newDrop.maxSupply;
         drop.paymentToken = _newDrop.paymentToken;
-        drop.privateRound = _newDrop.privateRound;
+        drop.maxSupply = _newDrop.maxSupply;
+        drop.mintFee = _newDrop.mintFee;
+        drop.mintableLimit = _newDrop.mintableLimit;
+        drop.startTime = _newDrop.startTime;
+        drop.endTime = _newDrop.endTime;
 
         emit UpdatedDrop(oldDrop, drop);
     }
@@ -209,17 +216,16 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         require(canBuy, "Not permitted to mint token at the moment");
 
         uint256 mintable = mintableAmount(_dropId, _msgSender());
-        require(mintable >= _amount, "Mint more than allocated portion");
+        require(mintable >= _amount, "Can not mint tokens anymore");
+
+        // record minted history
+        mintedHistories[_msgSender()][_dropId] += _amount;
 
         DropRecord storage drop = drops[_dropId];
-
         drop.mintedTotal += _amount;
-        require(drop.mintedTotal <= drop.maxSupply, "Mint more tokens than available");
-
-        privateHistories[_msgSender()][_dropId] += _amount;
 
         // payout fee
-        uint256 fee = _estimateMintFee(_dropId, _amount);
+        uint256 fee = drop.mintFee * _amount;
         _splitPayout(_msgSender(), drop, fee);
 
         // Mint tokens for user
@@ -268,31 +274,26 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     *  @notice Estimate minting fee from amount of tokens that user want to mint.
-     *
-     *  @param  _dropId     Id of drop
-     *  @param  _amount     Amount of token that user want to mint
-     */
-    function _estimateMintFee(uint256 _dropId, uint256 _amount) private view returns (uint256) {
-        return drops[_dropId].privateRound.mintFee * _amount;
-    }
-
-    /**
      *  @notice Estimate the maximum token amount that an address can buy.
      *
      *  @param  _dropId     Id of drop
      *  @param  _account    Address of an account to query with
      */
     function mintableAmount(uint256 _dropId, address _account) public view returns (uint256) {
-        uint256 mintableLimit = drops[_dropId].privateRound.mintableLimit;
-        uint256 mintedAmount = privateHistories[_account][_dropId];
+        uint256 mintableLimit = drops[_dropId].mintableLimit;
+        uint256 userMinted = mintedHistories[_account][_dropId];
+        uint256 available = drops[_dropId].maxSupply - drops[_dropId].mintedTotal;
 
+        // Return available tokens for minting when drop mintable limit is not set
         if (mintableLimit == 0) {
-            return drops[_dropId].maxSupply - drops[_dropId].mintedTotal;
+            return available;
         }
 
-        if (mintedAmount == mintableLimit) return 0;
-        return mintableLimit - mintedAmount;
+        // Return 0 when user has minted all their portion.
+        if (userMinted == mintableLimit) return 0;
+
+        uint256 mintable = mintableLimit - userMinted;
+        return mintable <= available ? mintable : available;
     }
 
     /**
@@ -310,18 +311,19 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         bytes32[] memory _proof
     ) public view returns (bool) {
         if (metaCitizen.balanceOf(_account) == 0) return false;
+        if (!isDropActive(_dropId)) return false;
         return Validatable.isValidProof(_proof, drops[_dropId].root, _account);
     }
 
     /**
-     *  @notice Check if the Drop was still in the first phase where only whitelisted users can buy tokens.
+     *  @notice Check if the Drop was still active where only whitelisted users can buy tokens.
      *
      *  @param  _dropId     Id of drop
      */
-    function isPrivateRound(uint256 _dropId) private view returns (bool) {
+    function isDropActive(uint256 _dropId) private view returns (bool) {
         return
-            block.timestamp >= drops[_dropId].privateRound.startTime && // solhint-disable-line not-rely-on-time
-            block.timestamp <= drops[_dropId].privateRound.endTime; // solhint-disable-line not-rely-on-time
+            block.timestamp >= drops[_dropId].startTime && // solhint-disable-line not-rely-on-time
+            block.timestamp <= drops[_dropId].endTime; // solhint-disable-line not-rely-on-time
     }
 
     /**
