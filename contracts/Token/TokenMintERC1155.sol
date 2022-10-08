@@ -35,16 +35,10 @@ contract TokenMintERC1155 is
     CountersUpgradeable.Counter private _tokenCounter;
 
     /**
-     *  @notice treasury store the address of the TreasuryManager contract
-     */
-    ITreasury public treasury;
-
-    /**
      *  @notice uris mapping from token ID to token uri
      */
     mapping(uint256 => string) public uris;
 
-    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
     event MintedBatch(uint256[] tokenIds, address indexed to);
 
@@ -52,15 +46,13 @@ contract TokenMintERC1155 is
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        ITreasury _treasury,
         uint96 _feeNumerator,
         IAdmin _admin
     ) public initializer {
         __Validatable_init(_admin);
         __ERC1155_init("");
 
-        treasury = _treasury;
-        _setDefaultRoyalty(address(_treasury), _feeNumerator);
+        _setDefaultRoyalty(address(admin.treasury()), _feeNumerator);
     }
 
     /**
@@ -68,17 +60,6 @@ contract TokenMintERC1155 is
      */
     function setURI(string memory newuri, uint256 tokenId) external onlyAdmin {
         uris[tokenId] = newuri;
-    }
-
-    /**
-     *  @notice set treasury to change TreasuryManager address.
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
-        ITreasury oldTreasury = treasury;
-        treasury = _account;
-        emit SetTreasury(oldTreasury, treasury);
     }
 
     /**

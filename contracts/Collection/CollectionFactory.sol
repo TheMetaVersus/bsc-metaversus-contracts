@@ -17,7 +17,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     uint256 public maxCollection;
-    uint256 public maxTotalSuply;
+    uint256 public maxTotalSupply;
     ICollection public templateERC721;
     ICollection public templateERC1155;
     address public metaversusManager;
@@ -60,7 +60,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
         metaDrop = _metaDrop;
 
         maxCollection = 5;
-        maxTotalSuply = 100;
+        maxTotalSupply = 100;
     }
 
     function create(
@@ -91,7 +91,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
         collectionIdToCollectionInfos[_currentId] = newInfo;
 
         // initialize
-        _collection.initialize(admin.owner(), _name, _symbol, maxTotalSuply, _receiverRoyalty, _feeNumerator);
+        _collection.initialize(admin.owner(), _name, _symbol, maxTotalSupply, _receiverRoyalty, _feeNumerator);
 
         // setAdmin
         _collection.setAdminByFactory(metaDrop, true);
@@ -114,14 +114,14 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
     }
 
     /**
-     *  @notice Set maxTotalSuply value to mint
-     *  @param  _newValue that set maxTotalSuply value
+     *  @notice Set maxTotalSupply value to mint
+     *  @param  _newValue that set maxTotalSupply value
      */
     function setMaxTotalSuply(uint256 _newValue) external onlyAdmin {
-        require(_newValue > 0, "Invalid maxTotalSuply");
-        uint256 _oldValue = maxTotalSuply;
-        maxTotalSuply = _newValue;
-        emit SetMaxTotalSuply(_oldValue, maxTotalSuply);
+        require(_newValue > 0, "Invalid maxTotalSupply");
+        uint256 _oldValue = maxTotalSupply;
+        maxTotalSupply = _newValue;
+        emit SetMaxTotalSuply(_oldValue, maxTotalSupply);
     }
 
     /**
@@ -141,7 +141,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
      *  @param  _templateERC1155 that set erc1155 address
      */
     function setTemplateAddress(address _templateERC721, address _templateERC1155) external onlyAdmin {
-        require(_templateERC721 != address(0) && _templateERC1155 != address(0), "Invalid address input");
+        require(_templateERC721 != address(0) && _templateERC1155 != address(0), "Invalid address");
         templateERC721 = ICollection(_templateERC721);
         templateERC1155 = ICollection(_templateERC1155);
 
@@ -171,7 +171,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
      *  @param  _newAddress that set erc721 address
      */
     function setMetaversusManager(address _newAddress) external onlyAdmin {
-        require(_newAddress != address(0), "Invalid address input");
+        require(_newAddress != address(0), "Invalid address");
         address _oldAddress = metaversusManager;
         metaversusManager = _newAddress;
 
@@ -183,7 +183,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
      *  @param  _newAddress that set metaDrop address
      */
     function setMetaDrop(address _newAddress) external onlyAdmin {
-        require(_newAddress != address(0), "Invalid address input");
+        require(_newAddress != address(0), "Invalid address");
         address _oldAddress = metaDrop;
         metaDrop = _newAddress;
 

@@ -15,7 +15,6 @@ describe("CollectionFactory", () => {
         user1 = accounts[1];
         user2 = accounts[2];
         user3 = accounts[3];
-        treasury = accounts[4];
 
         startTime = (await getCurrentTime()) + ONE_HOUR;
         endTime = startTime + ONE_DAY;
@@ -32,7 +31,6 @@ describe("CollectionFactory", () => {
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
             admin.address,
         ]);
 
@@ -40,16 +38,15 @@ describe("CollectionFactory", () => {
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
             "nMTVS",
-            treasury.address,
             250,
             admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         // Collection
         TokenERC721 = await ethers.getContractFactory("TokenERC721");
@@ -72,7 +69,6 @@ describe("CollectionFactory", () => {
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
-            treasury.address,
             mkpManager.address,
             collectionFactory.address,
             admin.address,

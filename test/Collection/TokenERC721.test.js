@@ -20,7 +20,7 @@ describe("TokenERC721:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         TokenERC721 = await ethers.getContractFactory("TokenERC721");
         tokenERC721 = await upgrades.deployProxy(TokenERC721, [
@@ -56,6 +56,15 @@ describe("TokenERC721:", () => {
 
             expect(newURI).to.equal(URI);
         });
+
+        it("Check variable", async () => {
+            expect(await tokenERC721.name()).equal("My NFT");
+            expect(await tokenERC721.symbol()).equal("M");
+            expect(await tokenERC721.factory()).equal(owner.address);
+            expect(await tokenERC721.owner()).equal(owner.address);
+            expect(await tokenERC721.maxTotalSupply()).equal(100);
+            expect(await tokenERC721.maxBatch()).equal(100);
+        });
     });
 
     describe("tokenURI function:", async () => {
@@ -76,6 +85,74 @@ describe("TokenERC721:", () => {
             expect(newURI).to.equal(URI);
             await tokenERC721.setTokenURI("new_uri.json", 1);
             expect(await tokenERC721.tokenURI(1)).to.equal("new_uri.json");
+        });
+    });
+
+    describe("setMaxBatch", async () => {
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(tokenERC721.connect(user1).setMaxBatch(50)).to.revertedWith(
+                "Caller is not an owner or admin"
+            );
+        });
+
+        it("Should revert Invalid maxBatch", async () => {
+            await expect(tokenERC721.setMaxBatch(0)).to.revertedWith("Invalid maxBatch");
+        });
+
+        it("Should setMaxBatch successfully", async () => {
+            await tokenERC721.setMaxBatch(50);
+            let maxBatch = await tokenERC721.maxBatch();
+            expect(maxBatch).equal(50);
+
+            await tokenERC721.setAdmin(user1.address, true);
+            await tokenERC721.connect(user1).setMaxBatch(100);
+            maxBatch = await tokenERC721.maxBatch();
+            expect(maxBatch).equal(100);
+        });
+    });
+
+    describe("setAdminByFactory", async () => {
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(tokenERC721.connect(user1).setAdminByFactory(user1.address, true)).to.revertedWith(
+                "Caller is not the factory"
+            );
+        });
+
+        it("Should revert Invalid address", async () => {
+            await expect(tokenERC721.setAdminByFactory(AddressZero, true)).to.revertedWith("Invalid address");
+        });
+
+        it("Should setAdminByFactory successfully", async () => {
+            await tokenERC721.setAdminByFactory(user1.address, true);
+            let isAdmin = await tokenERC721.isAdmin(user1.address);
+            expect(isAdmin).to.be.true;
+
+            await tokenERC721.setAdminByFactory(user1.address, false);
+            isAdmin = await tokenERC721.isAdmin(user1.address);
+            expect(isAdmin).to.be.false;
+        });
+    });
+
+    describe("setAdmin", async () => {
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(tokenERC721.connect(user1).setAdmin(user1.address, true)).to.revertedWith(
+                "Ownable: caller is not the owner"
+            );
+        });
+
+        it("Should revert Invalid maxBatch", async () => {
+            await expect(tokenERC721.setAdmin(AddressZero, true)).to.revertedWith("Invalid address");
+        });
+
+        it("Should setAdmin successfully", async () => {
+            await tokenERC721.setAdmin(user1.address, true);
+
+            let isAdmin = await tokenERC721.isAdmin(user1.address);
+            expect(isAdmin).to.be.true;
+
+            await tokenERC721.setMaxBatch(50);
+            let maxBatch = await tokenERC721.maxBatch();
+            expect(maxBatch).equal(50);
         });
     });
 
@@ -118,6 +195,10 @@ describe("TokenERC721:", () => {
         });
 
         it("should revert when mint fewer in each batch: ", async () => {
+            await expect(tokenERC721.mintBatch(mkpManager.address, 0)).to.be.revertedWith(
+                "Must mint fewer in each batch"
+            );
+
             const max_batch = await tokenERC721.maxBatch();
 
             await expect(tokenERC721.mintBatch(mkpManager.address, max_batch.add(1))).to.be.revertedWith(

@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 
 const { AddressZero } = ethers.constants;
-describe.only("MTVS Token:", () => {
+describe("MTVS Token:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         const accounts = await ethers.getSigners();
@@ -23,7 +23,6 @@ describe.only("MTVS Token:", () => {
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
             admin.address,
         ]);
     });
@@ -36,7 +35,6 @@ describe.only("MTVS Token:", () => {
                     "Metaversus Token",
                     "MTVS",
                     TOTAL_SUPPLY,
-                    treasury.address,
                     AddressZero,
                 ])
             ).to.revertedWith("Invalid Admin contract");
@@ -46,7 +44,6 @@ describe.only("MTVS Token:", () => {
                     "Metaversus Token",
                     "MTVS",
                     TOTAL_SUPPLY,
-                    treasury.address,
                     user1.address,
                 ])
             ).to.revertedWith("Invalid Admin contract");
@@ -56,7 +53,6 @@ describe.only("MTVS Token:", () => {
                     "Metaversus Token",
                     "MTVS",
                     TOTAL_SUPPLY,
-                    treasury.address,
                     treasury.address,
                 ])
             ).to.revertedWith("Invalid Admin contract");
@@ -103,14 +99,14 @@ describe.only("MTVS Token:", () => {
     describe("mint function:", async () => {
         it("should revert when caller not be controller: ", async () => {
             await expect(token.connect(user1).mint(user1.address, 100)).to.be.revertedWith(
-                "Ownable: caller is not a controller"
+                "Caller is not an owner or admin"
             );
         });
         it("should revert when receiver is zero address: ", async () => {
-            await expect(token.mint(AddressZero, 100)).to.be.revertedWith("ERROR: invalid address !");
+            await expect(token.mint(AddressZero, 100)).to.be.revertedWith("Invalid address");
         });
         it("should revert when amount equal to zero: ", async () => {
-            await expect(token.mint(user1.address, 0)).to.be.revertedWith("ERROR: Amount equal to zero !");
+            await expect(token.mint(user1.address, 0)).to.be.revertedWith("Invalid amount");
         });
         it("should mint success: ", async () => {
             await token.mint(user1.address, 100);
@@ -120,7 +116,7 @@ describe.only("MTVS Token:", () => {
 
     describe("burn function:", async () => {
         it("should revert when amount equal to zero: ", async () => {
-            await expect(token.burn(0)).to.be.revertedWith("ERROR: Amount equal to zero !");
+            await expect(token.burn(0)).to.be.revertedWith("Invalid amount");
         });
 
         it("should burn success: ", async () => {

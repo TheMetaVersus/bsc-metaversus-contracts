@@ -49,11 +49,6 @@ contract MarketPlaceManager is
     address public metaversusManager;
 
     /**
-     *  @notice treasury store the address of the TreasuryManager contract
-     */
-    ITreasury public treasury;
-
-    /**
      *  @notice listingFee is fee user must pay for contract when create
      */
     uint256 public listingFee;
@@ -113,8 +108,7 @@ contract MarketPlaceManager is
         bytes rootHash,
         bool isPrivate
     );
-    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
-    event SetOrder(IOrder indexed oldTreasury, IOrder indexed newTreasury);
+    event SetOrder(IOrder indexed oldOrder, IOrder indexed newOrder);
     event SetMetaversusManager(address indexed oldMetaversusManager, address indexed newMetaversusManager);
     event SetNewRootHash(address nftAddress, bytes newRoot);
     event SetCollectionFactory(ICollectionFactory indexed oldValue, ICollectionFactory indexed newValue);
@@ -127,11 +121,10 @@ contract MarketPlaceManager is
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(ITreasury _treasury, IAdmin _admin) public initializer validTreasury(_treasury) {
+    function initialize(IAdmin _admin) public initializer {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
 
-        treasury = _treasury;
         listingFee = 25e2; // 2.5%
     }
 
@@ -151,17 +144,6 @@ contract MarketPlaceManager is
     receive() external payable {}
 
     /**
-     *  @notice set treasury to change TreasuryManager address.
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
-        ITreasury oldTreasury = treasury;
-        treasury = _account;
-        emit SetTreasury(oldTreasury, treasury);
-    }
-
-    /**
      *  @notice set marketplaceManager to change MarketplaceManager address.
      *
      *  @dev    Only owner or admin can call this function.
@@ -173,7 +155,7 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice set treasury to change TreasuryManager address.
+     *  @notice set order to change Order address.
      *
      *  @dev    Only owner or admin can call this function.
      */

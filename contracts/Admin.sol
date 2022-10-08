@@ -39,10 +39,17 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      */
     IMetaCitizen public metaCitizen;
 
+    /**
+     *  @notice treasury is address of Treasury
+     */
+    address public treasury;
+
     event SetAdmin(address indexed user, bool allow);
     event SetMetaCitizen(IMetaCitizen oldMetaCitizen, IMetaCitizen newMetaCitizen);
     event SetPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
     event SetPermittedNFT(address _nftAddress, bool allow);
+    event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
+    event RegisterTreasury(address indexed account);
 
     /**
      *  @notice Initialize new logic contract.
@@ -54,6 +61,17 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
         __ERC165_init();
 
         transferOwnership(_owner);
+    }
+
+    /**
+     *  @notice Register Treasury to allow it order methods of this contract
+     *
+     *  @dev    Register can only be called once
+     */
+    function registerTreasury() external {
+        require(treasury == address(0), "Treasury has been registered");
+        treasury = _msgSender();
+        emit RegisterTreasury(treasury);
     }
 
     /**
@@ -84,6 +102,22 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
         IMetaCitizen oldMetaCitizen = metaCitizen;
         metaCitizen = _citizen;
         emit SetMetaCitizen(oldMetaCitizen, metaCitizen);
+    }
+
+    /**
+     *  @notice Replace the treasury by another address.
+     *
+     *  @dev    Only owner can call this function.
+     *
+     *  @param  _treasury  Address of Treasury contract.
+     */
+    function setTreasury(address _treasury) external onlyOwner {
+        require(_treasury != address(0), "Invalid Treasury address");
+
+        address oldTreasury = treasury;
+        treasury = _treasury;
+
+        emit SetTreasury(oldTreasury, treasury);
     }
 
     /**

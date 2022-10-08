@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /**
  *  @title  Dev Fungible token
@@ -12,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
  *          by the only controllers and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial.
  */
-contract USD is ERC20Upgradeable {
+contract USD is ERC20Upgradeable, OwnableUpgradeable {
     /**
      *  @notice controllers mapping from token ID to isComtroller status
      */
@@ -37,8 +38,11 @@ contract USD is ERC20Upgradeable {
         address _treasury
     ) public initializer {
         __ERC20_init(_name, _symbol);
+        __Ownable_init();
 
+        transferOwnership(_curator);
         controllers[_curator] = true;
+
         _mint(_treasury, _totalSupply);
     }
 
@@ -47,7 +51,8 @@ contract USD is ERC20Upgradeable {
      *
      *  @dev    Only owner can call this function.
      */
-    function setController(address user, bool allow) external onlyController {
+    function setController(address user, bool allow) external onlyOwner {
+        require(user != address(0), "Invalid address");
         controllers[user] = allow;
         emit SetController(user, allow);
     }
@@ -58,6 +63,9 @@ contract USD is ERC20Upgradeable {
      *  @dev    Only controllers can call this function.
      */
     function mint(address receiver, uint256 amount) external onlyController {
+        require(receiver != address(0), "Invalid address");
+        require(amount > 0, "Invalid amount");
+
         _mint(receiver, amount);
 
         emit Minted(receiver, amount);
@@ -69,6 +77,7 @@ contract USD is ERC20Upgradeable {
      *  @dev   All caller can call this function.
      */
     function burn(uint256 amount) external {
+        require(amount > 0, "Invalid amount");
         _burn(_msgSender(), amount);
     }
 }

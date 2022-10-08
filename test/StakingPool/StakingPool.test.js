@@ -54,13 +54,12 @@ describe("Staking Pool:", () => {
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
             admin.address,
         ]);
 
+        await admin.setPermittedPaymentToken(token.address, true);
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            treasury.address,
             token.address,
             MINT_FEE,
             admin.address,
@@ -70,27 +69,25 @@ describe("Staking Pool:", () => {
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
             "nMTVS",
-            treasury.address,
             250,
             admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, [
             "NFT test",
             "NFT",
             token.address,
-            treasury.address,
             250,
             PRICE,
             admin.address,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         TemplateERC721 = await ethers.getContractFactory("TokenERC721");
         templateERC721 = await TemplateERC721.deploy();
@@ -118,14 +115,13 @@ describe("Staking Pool:", () => {
         tokenERC1155 = await TokenERC1155.deploy();
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
-            treasury.address,
             mkpManager.address,
             collectionFactory.address,
             admin.address,
@@ -150,7 +146,6 @@ describe("Staking Pool:", () => {
         CURRENT = await getCurrentTime();
         await staking.setStartTime(CURRENT);
 
-        await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
         await admin.setMetaCitizen(metaCitizen.address);
 

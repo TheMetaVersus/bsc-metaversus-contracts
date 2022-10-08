@@ -36,7 +36,6 @@ describe("Pool Factory:", () => {
         user1 = accounts[1];
         user2 = accounts[2];
         user3 = accounts[3];
-        treasury = accounts[4];
 
         Admin = await ethers.getContractFactory("Admin");
         admin = await upgrades.deployProxy(Admin, [owner.address]);
@@ -56,7 +55,6 @@ describe("Pool Factory:", () => {
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
             admin.address,
         ]);
 
@@ -67,27 +65,25 @@ describe("Pool Factory:", () => {
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
             "nMTVS",
-            treasury.address,
             250,
             admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, [
             "NFT test",
             "NFT",
             token.address,
-            treasury.address,
             250,
             PRICE,
             admin.address,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         OrderManager = await ethers.getContractFactory("OrderManager");
         orderManager = await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
@@ -111,7 +107,6 @@ describe("Pool Factory:", () => {
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
-            treasury.address,
             mkpManager.address,
             collectionFactory.address,
             admin.address,

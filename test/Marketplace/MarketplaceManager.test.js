@@ -30,7 +30,6 @@ describe("Marketplace Manager:", () => {
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
             admin.address,
         ]);
 
@@ -38,27 +37,25 @@ describe("Marketplace Manager:", () => {
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
             "nMTVS",
-            treasury.address,
             250,
             admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, [
             "NFT test",
             "NFT",
             token.address,
-            treasury.address,
             250,
             PRICE,
             admin.address,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         OrderManager = await ethers.getContractFactory("OrderManager");
         orderManager = await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
@@ -82,7 +79,6 @@ describe("Marketplace Manager:", () => {
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
-            treasury.address,
             mkpManager.address,
             collectionFactory.address,
             admin.address,
@@ -106,39 +102,15 @@ describe("Marketplace Manager:", () => {
 
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(upgrades.deployProxy(MkpManager, [treasury.address, AddressZero])).to.revertedWith(
+            await expect(upgrades.deployProxy(MkpManager, [AddressZero])).to.revertedWith(
                 "Invalid Admin contract"
             );
-            await expect(upgrades.deployProxy(MkpManager, [treasury.address, user1.address])).to.revertedWith(
+            await expect(upgrades.deployProxy(MkpManager, [user1.address])).to.revertedWith(
                 "Invalid Admin contract"
             );
-            await expect(upgrades.deployProxy(MkpManager, [treasury.address, treasury.address])).to.revertedWith(
+            await expect(upgrades.deployProxy(MkpManager, [treasury.address])).to.revertedWith(
                 "Invalid Admin contract"
             );
-        });
-
-        it("Check all address token were set: ", async () => {
-            expect(await mkpManager.treasury()).to.equal(treasury.address);
-        });
-    });
-
-    describe("setTreasury function:", async () => {
-        it("Only admin can call this function", async () => {
-            await expect(mkpManager.connect(user1).setTreasury(treasury.address)).to.revertedWith(
-                "Caller is not an owner or admin"
-            );
-        });
-
-        it("Only admin can call this function", async () => {
-            await expect(mkpManager.setTreasury(user1.address)).to.revertedWith("Invalid Treasury contract");
-        });
-
-        it("should set treasury success: ", async () => {
-            await mkpManager.setTreasury(treasury.address);
-            expect(await mkpManager.treasury()).to.equal(treasury.address);
-
-            await mkpManager.setTreasury(treasury.address);
-            expect(await mkpManager.treasury()).to.equal(treasury.address);
         });
     });
 

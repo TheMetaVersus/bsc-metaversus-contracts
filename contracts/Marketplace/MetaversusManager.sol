@@ -49,14 +49,8 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
      */
     ICollectionFactory public collectionFactory;
 
-    /**
-     *  @notice treasury store the address of the TreasuryManager contract
-     */
-    ITreasury public treasury;
-
     event BoughtTicket(address indexed to);
     event BoughtTicketEvent(address indexed to, string indexed eventid);
-    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event SetMarketplace(IMarketplaceManager indexed oldMarketplace, IMarketplaceManager indexed newMarketplace);
     event SetCollectionFactory(ICollectionFactory indexed oldValue, ICollectionFactory indexed newValue);
     event Created(
@@ -75,7 +69,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         ITokenMintERC721 nft721Addr,
         ITokenMintERC1155 nft1155Addr,
         IERC20Upgradeable _paymentToken,
-        ITreasury _treasury,
         IMarketplaceManager _marketplaceAddr,
         ICollectionFactory _collectionFactoryAddr,
         IAdmin _admin
@@ -85,7 +78,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         validTokenMintERC721(nft721Addr)
         validTokenMintERC1155(nft1155Addr)
         notZeroAddress(address(_paymentToken))
-        validTreasury(_treasury)
         validMarketplaceManager(_marketplaceAddr)
         validCollectionFactory(_collectionFactoryAddr)
     {
@@ -93,23 +85,11 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         __ReentrancyGuard_init();
         __ERC165_init();
 
-        treasury = _treasury;
         marketplace = _marketplaceAddr;
         paymentToken = _paymentToken;
         tokenMintERC721 = nft721Addr;
         tokenMintERC1155 = nft1155Addr;
         collectionFactory = _collectionFactoryAddr;
-    }
-
-    /**
-     *  @notice Set treasury to change TreasuryManager address.
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
-        ITreasury oldTreasury = treasury;
-        treasury = _account;
-        emit SetTreasury(oldTreasury, treasury);
     }
 
     /**
@@ -193,7 +173,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
      *  @dev    All caller can call this function.
      */
     function buyTicketEvent(string memory eventId, uint256 amount) external nonReentrant notZero(amount) whenNotPaused {
-        paymentToken.safeTransferFrom(_msgSender(), address(treasury), amount);
+        paymentToken.safeTransferFrom(_msgSender(), address(admin.treasury()), amount);
 
         emit BoughtTicketEvent(_msgSender(), eventId);
     }

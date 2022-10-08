@@ -10,8 +10,11 @@ describe("USD Token:", () => {
         user2 = accounts[2];
         user3 = accounts[3];
 
+        Admin = await ethers.getContractFactory("Admin");
+        admin = await upgrades.deployProxy(Admin, [owner.address]);
+
         Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("USD");
         token = await upgrades.deployProxy(Token, [
@@ -41,59 +44,55 @@ describe("USD Token:", () => {
         });
     });
 
-    describe("isController function:", async () => {
-        it("should return role of account checking: ", async () => {
-            expect(await token.isController(user1.address)).to.equal(false);
-            await token.setController(user1.address, true);
-            expect(await token.isController(user1.address)).to.equal(true);
-        });
-    });
-
     describe("setController function:", async () => {
         it("should revert when caller not be owner: ", async () => {
             await expect(token.connect(user1).setController(user1.address, true)).to.be.revertedWith(
                 "Ownable: caller is not the owner"
             );
         });
+
         it("should revert when user address equal to zero address: ", async () => {
-            await expect(token.setController(AddressZero, true)).to.be.revertedWith("ERROR: invalid address !");
+            await expect(token.setController(AddressZero, true)).to.be.revertedWith("Invalid address");
         });
+
         it("should set controller success: ", async () => {
-            expect(await token.isController(user1.address)).to.equal(false);
+            expect(await token.controllers(user1.address)).to.equal(false);
             await token.setController(user1.address, true);
-            expect(await token.isController(user1.address)).to.equal(true);
+            expect(await token.controllers(user1.address)).to.equal(true);
             await token.setController(user1.address, false);
-            expect(await token.isController(user1.address)).to.equal(false);
+            expect(await token.controllers(user1.address)).to.equal(false);
         });
     });
 
     describe("mint function:", async () => {
         it("should revert when caller not be controller: ", async () => {
             await expect(token.connect(user1).mint(user1.address, 100)).to.be.revertedWith(
-                "Ownable: caller is not a controller"
+                "Only controller can call"
             );
         });
+
         it("should revert when receiver is zero address: ", async () => {
-            await expect(token.mint(AddressZero, 100)).to.be.revertedWith("ERROR: invalid address !");
+            await expect(token.mint(AddressZero, 100)).to.be.revertedWith("Invalid address");
         });
+
         it("should revert when amount equal to zero: ", async () => {
-            await expect(token.mint(user1.address, 0)).to.be.revertedWith("ERROR: Amount equal to zero !");
+            await expect(token.mint(user1.address, 0)).to.be.revertedWith("Invalid amount");
         });
+
         it("should mint success: ", async () => {
-            await token.mint(user1.address, 100);
-            expect(await token.balanceOf(user1.address)).to.equal(100);
+            await expect(() => token.mint(user1.address, 100)).to.changeTokenBalance(token, user1, 100);
         });
     });
 
     describe("burn function:", async () => {
         it("should revert when amount equal to zero: ", async () => {
-            await expect(token.burn(0)).to.be.revertedWith("ERROR: Amount equal to zero !");
+            await expect(token.burn(0)).to.be.revertedWith("Invalid amount");
         });
 
         it("should burn success: ", async () => {
             await token.mint(user1.address, 100);
 
-            await token.connect(user1).burn(50);
+            await expect(() => token.connect(user1).burn(50)).to.changeTokenBalance(token, user1, -50);
 
             expect(await token.balanceOf(user1.address)).to.equal(50);
         });
