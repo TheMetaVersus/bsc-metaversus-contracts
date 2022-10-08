@@ -104,7 +104,7 @@ contract MetaCitizen is
      *  @param  _newToken new payment token need to replace
      */
     function setPaymentToken(IERC20Upgradeable _newToken) external onlyAdmin {
-        require(address(_newToken) != address(0) && admin.isPermittedPaymentToken(_newToken), "Invalid payment token");
+        require(address(_newToken) == address(0) || admin.isPermittedPaymentToken(_newToken), "Invalid payment token");
         address oldToken = address(paymentToken);
         paymentToken = IERC20Upgradeable(_newToken);
         emit SetPaymentToken(oldToken, address(_newToken));

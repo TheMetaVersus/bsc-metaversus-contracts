@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { AddressZero } = ethers.constants;
 
-describe("Treasury:", () => {
+describe("Treasury", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
 
@@ -12,101 +12,82 @@ describe("Treasury:", () => {
         user2 = accounts[2];
         user3 = accounts[3];
 
+        Admin = await ethers.getContractFactory("Admin");
+        admin = await upgrades.deployProxy(Admin, [owner.address]);
+
         Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            owner.address,
-            "Vetaversus Token",
+            user1.address,
+            "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
             treasury.address,
+            admin.address,
         ]);
     });
 
-    describe("Deployment:", async () => {
-        it("Check Owner: ", async () => {
-            const ownerAddress = await token.owner();
-            expect(ownerAddress).to.equal(owner.address);
+    describe("Deployment", async () => {
+        it("Should initialize correctly", async () => {
+            expect(await treasury.admin()).to.equal(admin.address);
         });
     });
 
-    describe("setAdmin function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
-            await expect(treasury.connect(user1).setAdmin(user2.address, true)).to.be.revertedWith(
-                "Ownable: caller is not the owner"
-            );
-        });
-        it("should set admin success: ", async () => {
-            await treasury.setAdmin(user2.address, true);
-            expect(await treasury.isAdmin(user2.address)).to.equal(true);
+    describe("distribute", async () => {
+        beforeEach(async () => {
+            await owner.sendTransaction({ to: treasury.address, value: 100 });
 
-            await treasury.setAdmin(user1.address, false);
-            expect(await treasury.isAdmin(user1.address)).to.equal(false);
-
-            await treasury.setAdmin(user2.address, false);
-            expect(await treasury.isAdmin(user2.address)).to.equal(false);
+            await admin.setPermittedPaymentToken(token.address, true);
+            await admin.setPermittedPaymentToken(AddressZero, true);
         });
-    });
 
-    describe("setPermittedPaymentToken function:", async () => {
-        it("should revert when caller not be an owner or admin: ", async () => {
-            await expect(treasury.connect(user1).setPermittedPaymentToken(token.address, true)).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
-            );
-        });
-        it("should revert when payment token is invalid address: ", async () => {
-            await expect(treasury.setPermittedPaymentToken(AddressZero, true)).to.be.revertedWith(
-                "ERROR: invalid address !"
-            );
-        });
-        it("should set payment token success: ", async () => {
-            await treasury.setPermittedPaymentToken(token.address, true);
-            expect(await treasury.isPermitedToken(token.address)).to.equal(true);
-
-            await treasury.setPermittedPaymentToken(token.address, false);
-            expect(await treasury.isPermitedToken(token.address)).to.equal(false);
-        });
-    });
-
-    describe("distribute function:", async () => {
-        it("should revert when caller not be an owner or admin: ", async () => {
+        it("should revert when caller is not an owner or admin", async () => {
             await expect(treasury.connect(user1).distribute(token.address, user1.address, 10)).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
+                "Caller is not an owner or admin"
             );
         });
-        it("should revert when payment token is not permit: ", async () => {
-            await expect(treasury.distribute(token.address, user1.address, 10)).to.be.revertedWith(
-                "ERROR: token is not permit !"
+
+        it("should revert when payment token is not supported", async () => {
+            await expect(treasury.distribute(user1.address, user1.address, 10)).to.be.revertedWith(
+                "Payment token is not supported"
             );
         });
-        it("should revert when payment token is invalid address: ", async () => {
-            await token.mint(treasury.address, 100);
-            await treasury.setPermittedPaymentToken(token.address, true);
-            await expect(treasury.distribute(AddressZero, user1.address, 10)).to.be.revertedWith(
-                "ERROR: invalid address !"
+
+        it("should revert when receiver address is invalid", async () => {
+            await expect(treasury.distribute(token.address, AddressZero, 10)).to.be.revertedWith("Invalid address");
+        });
+
+        it("should revert when token amount equal to zero", async () => {
+            await expect(treasury.distribute(token.address, user1.address, 0)).to.be.revertedWith("Invalid amount");
+        });
+
+        it("should revert when not enough ERC-20 token to distribute", async () => {
+            await expect(treasury.distribute(token.address, user1.address, TOTAL_SUPPLY.add(1))).to.be.revertedWith(
+                "Not enough ERC-20 token to distribute"
             );
         });
-        it("should revert when destination address is invalid address: ", async () => {
-            await token.mint(treasury.address, 100);
-            await treasury.setPermittedPaymentToken(token.address, true);
-            await expect(treasury.distribute(token.address, AddressZero, 10)).to.be.revertedWith(
-                "ERROR: invalid address !"
+
+        it("should revert when not enough native token to distribute", async () => {
+            await expect(treasury.distribute(AddressZero, user1.address, 101)).to.be.revertedWith(
+                "Not enough native token to distribute"
             );
         });
-        it("should revert when token amount equal to zero: ", async () => {
-            await token.mint(treasury.address, 100);
-            await treasury.setPermittedPaymentToken(token.address, true);
-            await expect(treasury.distribute(token.address, user1.address, 0)).to.be.revertedWith(
-                "ERROR: amount must be greater than zero !"
+
+        it("should distribute token successful", async () => {
+            await expect(() => treasury.distribute(token.address, user1.address, TOTAL_SUPPLY)).to.changeTokenBalances(
+                token,
+                [user1],
+                [TOTAL_SUPPLY]
             );
-        });
-        it("should distribute token success: ", async () => {
-            await token.mint(treasury.address, 100);
-            await treasury.setPermittedPaymentToken(token.address, true);
-            await treasury.distribute(token.address, user1.address, 10);
-            expect(await token.balanceOf(user1.address)).to.equal(10);
+            expect(await token.balanceOf(treasury.address)).to.equal(0);
+
+            await expect(() => treasury.distribute(AddressZero, user1.address, 100)).to.changeEtherBalances(
+                [user1],
+                [100]
+            );
+            expect(await ethers.provider.getBalance(treasury.address)).to.equal(0);
         });
     });
 });
