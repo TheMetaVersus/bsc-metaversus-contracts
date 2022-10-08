@@ -46,7 +46,7 @@ contract MarketPlaceManager is
     /**
      *  @notice metaversus manager store the address of the MetaversusManager contract
      */
-    address public metaversusManager;
+    IMetaversusManager public metaversusManager;
 
     /**
      *  @notice treasury store the address of the TreasuryManager contract
@@ -110,7 +110,10 @@ contract MarketPlaceManager is
     );
     event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event SetOrder(IOrder indexed oldTreasury, IOrder indexed newTreasury);
-    event SetMetaversusManager(address indexed oldMetaversusManager, address indexed newMetaversusManager);
+    event SetMetaversusManager(
+        IMetaversusManager indexed oldMetaversusManager,
+        IMetaversusManager indexed newMetaversusManager
+    );
 
     modifier validId(uint256 _id) {
         require(_id <= _marketItemIds.current() && _id > 0, "ERROR: market ID is not exist !");
@@ -135,7 +138,7 @@ contract MarketPlaceManager is
 
     modifier onlyMetaversusOrOrder() {
         require(
-            _msgSender() == metaversusManager || _msgSender() == address(orderManager),
+            _msgSender() == address(metaversusManager) || _msgSender() == address(orderManager),
             "Caller is not a metaversus manager or order manager"
         );
         _;
@@ -159,8 +162,8 @@ contract MarketPlaceManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setMetaversusManager(address _address) external onlyAdmin notZeroAddress(_address) {
-        address oldMetaversusManager = _address;
+    function setMetaversusManager(IMetaversusManager _address) external onlyAdmin validMetaversusManager(_address) {
+        IMetaversusManager oldMetaversusManager = _address;
         metaversusManager = _address;
         emit SetMetaversusManager(oldMetaversusManager, _address);
     }
@@ -170,7 +173,7 @@ contract MarketPlaceManager is
      *
      *  @dev    Only owner or admin can call this function.
      */
-    function setOrder(IOrder _account) external onlyAdmin validOrder(_account) {
+    function setOrderManager(IOrder _account) external onlyAdmin validOrder(_account) {
         IOrder oldOrder = orderManager;
         orderManager = _account;
         emit SetOrder(oldOrder, orderManager);
@@ -197,7 +200,7 @@ contract MarketPlaceManager is
         uint256 _amount,
         address _from,
         address _to
-    ) public payable validOrder(IOrder(_msgSender())) {
+    ) public payable onlyOrder {
         if (address(_paymentToken) == address(0)) {
             if (_to == address(this)) {
                 require(msg.value == _amount, "Failed to send into contract");

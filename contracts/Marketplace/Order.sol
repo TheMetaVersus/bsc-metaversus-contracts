@@ -294,7 +294,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *
      *  Emit {MadeMaketItemOrder}
      */
-    function makeMaketItemOrder(
+    function makeMarketItemOrder(
         uint256 _marketItemId,
         IERC20Upgradeable _paymentToken,
         uint256 _bidPrice,
@@ -306,7 +306,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         // Check Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(_marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
-        require(marketItem.endTime < block.timestamp, "Not expired yet");
+        require(marketItem.startTime < block.timestamp && block.timestamp < marketItem.endTime, "Not the order time");
 
         OrderInfo memory current = marketItemOrderOfOwners[_marketItemId][_msgSender()];
 
@@ -382,6 +382,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         // Get Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemOrder.marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
+        require(marketItem.seller == _msgSender(), "Not the seller");
 
         // Update Order
         orderInfo.status = OrderStatus.ACCEPTED;
@@ -474,7 +475,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         uint256 startTime,
         uint256 endTime,
         IERC20Upgradeable paymentToken
-    ) external nonReentrant whenNotPaused notZero(price) notZero(amount) {
+    ) external nonReentrant whenNotPaused notZero(price) notZero(amount) validPaymentToken(paymentToken) {
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
         require(marketItem.seller == _msgSender(), "You are not the seller");
@@ -551,6 +552,9 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             require(_amount == 1, "Invalid amount");
         }
 
+        // transfer nft to contract for selling
+        marketplace.extTransferNFTCall(_nftAddress, _tokenId, _amount, _msgSender(), address(marketplace));
+
         // create market item to store data selling
         marketplace.extCreateMarketInfo(
             _nftAddress,
@@ -563,9 +567,6 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             _paymentToken,
             _rootHash
         );
-
-        // transfer nft to contract for selling
-        marketplace.extTransferNFTCall(_nftAddress, _tokenId, _amount, _msgSender(), address(marketplace));
     }
 
     /**
