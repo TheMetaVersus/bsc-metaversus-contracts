@@ -1,9 +1,8 @@
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
-const { constants } = require("@openzeppelin/test-helpers");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { multiply, add, subtract } = require("js-big-decimal");
+const { AddressZero } = ethers.constants;
+const { multiply } = require("js-big-decimal");
 const { getCurrentTime, skipTime } = require("../utils");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
@@ -14,9 +13,9 @@ const ONE_WEEK = 604800;
 const USD_TOKEN = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
 const REWARD_RATE = 15854895992; // 50 % APY
 const poolDuration = 9 * 30 * 24 * 60 * 60; // 9 months
-const OVER_AMOUNT = ethers.utils.parseEther("1000000");
+// const OVER_AMOUNT = ethers.utils.parseEther("1000000");
 const ONE_MILLION_ETHER = ethers.utils.parseEther("1000000");
-const ONE_YEAR = 31104000;
+// const ONE_YEAR = 31104000;
 const TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
 const MINT_FEE = 1000;
 const abi = [
@@ -34,7 +33,7 @@ const abi = [
   }
 ];
 
-describe.only("Marketplace interact with Staking Pool:", () => {
+describe("Marketplace interact with Staking Pool:", () => {
   before(async () => {
     const accounts = await ethers.getSigners();
     owner = accounts[0];
@@ -78,7 +77,7 @@ describe.only("Marketplace interact with Staking Pool:", () => {
 
     await admin.setPermittedPaymentToken(token.address, true);
     await admin.setPermittedPaymentToken(usd.address, true);
-    await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
+    await admin.setPermittedPaymentToken(AddressZero, true);
 
     MetaCitizen = await ethers.getContractFactory("MetaCitizen");
     metaCitizen = await upgrades.deployProxy(MetaCitizen, [
@@ -137,8 +136,8 @@ describe.only("Marketplace interact with Staking Pool:", () => {
       tokenERC721.address,
       tokenERC1155.address,
       admin.address,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS
+      AddressZero,
+      AddressZero
     ]);
 
     MTVSManager = await ethers.getContractFactory("MetaversusManager");
@@ -178,21 +177,17 @@ describe.only("Marketplace interact with Staking Pool:", () => {
     it("Set permitted tokens", async () => {
       expect(await admin.isPermittedPaymentToken(token.address)).to.equal(true);
       expect(await admin.isPermittedPaymentToken(usd.address)).to.equal(true);
-      expect(
-        await admin.isPermittedPaymentToken(constants.ZERO_ADDRESS)
-      ).to.equal(true);
+      expect(await admin.isPermittedPaymentToken(AddressZero)).to.equal(true);
 
       await admin.setPermittedPaymentToken(token.address, false);
       await admin.setPermittedPaymentToken(usd.address, false);
-      await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, false);
+      await admin.setPermittedPaymentToken(AddressZero, false);
 
       expect(await admin.isPermittedPaymentToken(token.address)).to.equal(
         false
       );
       expect(await admin.isPermittedPaymentToken(usd.address)).to.equal(false);
-      expect(
-        await admin.isPermittedPaymentToken(constants.ZERO_ADDRESS)
-      ).to.equal(false);
+      expect(await admin.isPermittedPaymentToken(AddressZero)).to.equal(false);
     });
 
     it("Set start time for staking pool", async () => {
@@ -203,7 +198,7 @@ describe.only("Marketplace interact with Staking Pool:", () => {
     it("Buy NFT in marketplace to stake MTVS token", async () => {
       await admin.setPermittedPaymentToken(token.address, true);
       await admin.setPermittedPaymentToken(usd.address, true);
-      await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
+      await admin.setPermittedPaymentToken(AddressZero, true);
 
       await staking.setStartTime(CURRENT);
       const current = await getCurrentTime();

@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { constants } = require("@openzeppelin/test-helpers");
+const { AddressZero } = ethers.constants;
 
 describe("TokenERC1155:", () => {
     beforeEach(async () => {
@@ -74,9 +74,7 @@ describe("TokenERC1155:", () => {
         });
 
         it("should revert when receiver address equal to zero address: ", async () => {
-            await expect(tokenERC1155.mint(constants.ZERO_ADDRESS, 100, "this_uri")).to.be.revertedWith(
-                "Invalid address"
-            );
+            await expect(tokenERC1155.mint(AddressZero, 100, "this_uri")).to.be.revertedWith("Invalid address");
         });
 
         it("should revert when amount equal to zero address: ", async () => {
@@ -116,7 +114,7 @@ describe("TokenERC1155:", () => {
 
         it("should revert when receiver address equal to zero address: ", async () => {
             await expect(
-                tokenERC1155.mintBatch(constants.ZERO_ADDRESS, [10, 11, 12], ["this_uri", "this_uri_1", "this_uri_2"])
+                tokenERC1155.mintBatch(AddressZero, [10, 11, 12], ["this_uri", "this_uri_1", "this_uri_2"])
             ).to.be.revertedWith("Invalid address");
         });
 

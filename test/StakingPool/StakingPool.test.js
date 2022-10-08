@@ -4,10 +4,9 @@ const { upgrades } = require("hardhat");
 const { skipTime, acceptable, getCurrentTime, generateMerkleTree, generateLeaf } = require("../utils");
 const { add, multiply, divide, subtract } = require("js-big-decimal");
 const aggregator_abi = require("../../artifacts/@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
+const { MaxUint256, AddressZero } = ethers.constants;
 const { MerkleTree } = require("merkletreejs");
 const { parseEther, formatEther } = require("ethers/lib/utils");
-const { constants } = require("ethers");
 
 const abi = [
     {
@@ -152,14 +151,14 @@ describe("Staking Pool:", () => {
         await staking.setStartTime(CURRENT);
 
         await admin.setPermittedPaymentToken(token.address, true);
-        await admin.setPermittedPaymentToken(constants.AddressZero, true);
+        await admin.setPermittedPaymentToken(AddressZero, true);
         await admin.setMetaCitizen(metaCitizen.address);
 
-        await token.connect(user1).approve(orderManager.address, constants.MaxUint256);
+        await token.connect(user1).approve(orderManager.address, MaxUint256);
         await token.mint(user1.address, parseEther("1000"));
 
-        await token.connect(user2).approve(orderManager.address, constants.MaxUint256);
-        await token.connect(user1).approve(metaCitizen.address, constants.MaxUint256);
+        await token.connect(user2).approve(orderManager.address, MaxUint256);
+        await token.connect(user1).approve(metaCitizen.address, MaxUint256);
         await token.mint(user2.address, parseEther("1000"));
 
         await mkpManager.setOrder(orderManager.address);
@@ -186,7 +185,7 @@ describe("Staking Pool:", () => {
                     PANCAKE_ROUTER.address,
                     USD_TOKEN,
                     USD_TOKEN,
-                    constants.AddressZero,
+                    AddressZero,
                 ])
             ).to.revertedWith("Invalid Admin contract");
             await expect(

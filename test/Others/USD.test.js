@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-
-const constants = require("@openzeppelin/test-helpers/src/constants");
+const { AddressZero } = ethers.constants;
 describe("USD Token:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
@@ -57,9 +56,7 @@ describe("USD Token:", () => {
             );
         });
         it("should revert when user address equal to zero address: ", async () => {
-            await expect(token.setController(constants.ZERO_ADDRESS, true)).to.be.revertedWith(
-                "ERROR: invalid address !"
-            );
+            await expect(token.setController(AddressZero, true)).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should set controller success: ", async () => {
             expect(await token.isController(user1.address)).to.equal(false);
@@ -77,7 +74,7 @@ describe("USD Token:", () => {
             );
         });
         it("should revert when receiver is zero address: ", async () => {
-            await expect(token.mint(constants.ZERO_ADDRESS, 100)).to.be.revertedWith("ERROR: invalid address !");
+            await expect(token.mint(AddressZero, 100)).to.be.revertedWith("ERROR: invalid address !");
         });
         it("should revert when amount equal to zero: ", async () => {
             await expect(token.mint(user1.address, 0)).to.be.revertedWith("ERROR: Amount equal to zero !");

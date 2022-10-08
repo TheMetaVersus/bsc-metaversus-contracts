@@ -9,7 +9,6 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "../lib/NFTHelper.sol";
 import "../Validatable.sol";
-import "../interfaces/INFTMTVSTicket.sol";
 import "../interfaces/IMetaversusManager.sol";
 
 /**
