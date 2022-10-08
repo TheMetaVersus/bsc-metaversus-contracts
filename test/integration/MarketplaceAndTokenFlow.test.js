@@ -1,9 +1,6 @@
-const { constants } = require("@openzeppelin/test-helpers");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { multiply, add, subtract } = require("js-big-decimal");
-const { getCurrentTime, skipTime } = require("../utils");
+const { AddressZero } = ethers.constants;
 
 describe("Marketplace interact with Tokens:", () => {
     before(async () => {
@@ -75,8 +72,8 @@ describe("Marketplace interact with Tokens:", () => {
             tokenERC721.address,
             tokenERC1155.address,
             admin.address,
-            ZERO_ADDRESS,
-            ZERO_ADDRESS,
+            AddressZero,
+            AddressZero,
         ]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
@@ -97,15 +94,15 @@ describe("Marketplace interact with Tokens:", () => {
         it("Set permitted tokens", async () => {
             expect(await admin.isPermittedPaymentToken(token.address)).to.equal(false);
             expect(await admin.isPermittedPaymentToken(usd.address)).to.equal(false);
-            expect(await admin.isPermittedPaymentToken(constants.ZERO_ADDRESS)).to.equal(false);
+            expect(await admin.isPermittedPaymentToken(AddressZero)).to.equal(false);
 
             await admin.setPermittedPaymentToken(token.address, true);
             await admin.setPermittedPaymentToken(usd.address, true);
-            await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
+            await admin.setPermittedPaymentToken(AddressZero, true);
 
             expect(await admin.isPermittedPaymentToken(token.address)).to.equal(true);
             expect(await admin.isPermittedPaymentToken(usd.address)).to.equal(true);
-            expect(await admin.isPermittedPaymentToken(constants.ZERO_ADDRESS)).to.equal(true);
+            expect(await admin.isPermittedPaymentToken(AddressZero)).to.equal(true);
         });
 
         it("Unpause contracts", async () => {
@@ -123,7 +120,7 @@ describe("Marketplace interact with Tokens:", () => {
         });
 
         it("Connect order contract", async () => {
-            expect(await mkpManager.orderManager()).to.equal(constants.ZERO_ADDRESS);
+            expect(await mkpManager.orderManager()).to.equal(AddressZero);
 
             await mkpManager.setOrderManager(orderManager.address);
 

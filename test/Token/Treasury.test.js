@@ -1,6 +1,6 @@
 const { expect } = require("chai");
-const { upgrades } = require("hardhat");
-const { constants } = require("@openzeppelin/test-helpers");
+const { upgrades, ethers } = require("hardhat");
+const { AddressZero } = ethers.constants;
 
 describe("Treasury:", () => {
     beforeEach(async () => {
@@ -57,7 +57,7 @@ describe("Treasury:", () => {
             );
         });
         it("should revert when payment token is invalid address: ", async () => {
-            await expect(treasury.setPermittedPaymentToken(constants.ZERO_ADDRESS, true)).to.be.revertedWith(
+            await expect(treasury.setPermittedPaymentToken(AddressZero, true)).to.be.revertedWith(
                 "ERROR: invalid address !"
             );
         });
@@ -84,14 +84,14 @@ describe("Treasury:", () => {
         it("should revert when payment token is invalid address: ", async () => {
             await token.mint(treasury.address, 100);
             await treasury.setPermittedPaymentToken(token.address, true);
-            await expect(treasury.distribute(constants.ZERO_ADDRESS, user1.address, 10)).to.be.revertedWith(
+            await expect(treasury.distribute(AddressZero, user1.address, 10)).to.be.revertedWith(
                 "ERROR: invalid address !"
             );
         });
         it("should revert when destination address is invalid address: ", async () => {
             await token.mint(treasury.address, 100);
             await treasury.setPermittedPaymentToken(token.address, true);
-            await expect(treasury.distribute(token.address, constants.ZERO_ADDRESS, 10)).to.be.revertedWith(
+            await expect(treasury.distribute(token.address, AddressZero, 10)).to.be.revertedWith(
                 "ERROR: invalid address !"
             );
         });

@@ -1,11 +1,11 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { constants } = require("@openzeppelin/test-helpers");
+const { AddressZero } = ethers.constants;
 
-describe("TokenMintERC1155:", () => {
+const BATCH_URIS = ["this_uri", "this_uri_1", "this_uri_2"];
+
+describe("TokenMintERC1155", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-        ONE_ETHER = ethers.utils.parseEther("1");
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -18,39 +18,18 @@ describe("TokenMintERC1155:", () => {
         Treasury = await ethers.getContractFactory("Treasury");
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
-        Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            user1.address,
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
-        ]);
-
-        TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
-        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            "NFT Metaversus",
-            "nMTVS",
-            treasury.address,
-            250,
-            admin.address,
-        ]);
-
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
-
-        await tokenMintERC1155.deployed();
     });
 
-    describe("Deployment:", async () => {
+    describe("Deployment", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(
-                upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, constants.ZERO_ADDRESS])
-            ).to.revertedWith("Invalid Admin contract");
+            await expect(upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, AddressZero])).to.revertedWith(
+                "Invalid Admin contract"
+            );
             await expect(
                 upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, user1.address])
             ).to.revertedWith("Invalid Admin contract");
@@ -59,7 +38,7 @@ describe("TokenMintERC1155:", () => {
             ).to.revertedWith("Invalid Admin contract");
         });
 
-        it("Check uri: ", async () => {
+        it("Check uri", async () => {
             const URI = "this_is_uri_1.json";
             await tokenMintERC1155.mint(mkpManager.address, 100, URI);
 
@@ -68,7 +47,7 @@ describe("TokenMintERC1155:", () => {
             expect(newURI).to.equal(URI);
         });
 
-        it("Check royalties: ", async () => {
+        it("Check royalties", async () => {
             let royaltiesInfo = await tokenMintERC1155.royaltyInfo(0, 10000);
 
             expect(royaltiesInfo[0]).to.equal(treasury.address.toString());
@@ -76,8 +55,8 @@ describe("TokenMintERC1155:", () => {
         });
     });
 
-    describe("setURI function:", async () => {
-        it("should setURI: ", async () => {
+    describe("setURI function", async () => {
+        it("should setURI", async () => {
             const URI = "this_is_uri_1.json";
             await tokenMintERC1155.mint(mkpManager.address, 100, URI);
 
@@ -89,101 +68,82 @@ describe("TokenMintERC1155:", () => {
         });
     });
 
-    describe("setTreasury function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
+    describe("setTreasury function", async () => {
+        it("should revert when caller is not owner", async () => {
             await expect(tokenMintERC1155.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
+                "Caller is not an owner or admin"
             );
         });
-        it("should revert when address equal to zero address: ", async () => {
-            await expect(tokenMintERC1155.setTreasury(constants.ZERO_ADDRESS)).to.be.revertedWith(
-                "ERROR: invalid address !"
-            );
+
+        it("should revert when Treasury contract is invalid", async () => {
+            await expect(tokenMintERC1155.setTreasury(AddressZero)).to.be.revertedWith("Invalid Treasury contract");
         });
-        it("should set treasury success: ", async () => {
-            await tokenMintERC1155.setTreasury(treasury.address);
-            expect(await tokenMintERC1155.treasury()).to.equal(treasury.address);
 
-            await tokenMintERC1155.setTreasury(user1.address);
-            expect(await tokenMintERC1155.treasury()).to.equal(user1.address);
-
+        it("should set treasury successful", async () => {
             await tokenMintERC1155.setTreasury(treasury.address);
             expect(await tokenMintERC1155.treasury()).to.equal(treasury.address);
         });
     });
 
-    describe("mint function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
+    describe("mint function", async () => {
+        it("should revert when caller is not owner", async () => {
             await expect(tokenMintERC1155.connect(user1).mint(mkpManager.address, 100, "this_uri")).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
+                "Caller is not an owner or admin"
             );
         });
-        it("should revert when receiver address equal to zero address: ", async () => {
-            await expect(tokenMintERC1155.mint(constants.ZERO_ADDRESS, 100, "this_uri")).to.be.revertedWith(
-                "ERROR: invalid address !"
-            );
+        it("should revert when receiver address equal to zero address", async () => {
+            await expect(tokenMintERC1155.mint(AddressZero, 100, "this_uri")).to.be.revertedWith("Invalid address");
         });
-        it("should revert when amount equal to zero address: ", async () => {
+        it("should revert when amount equal to zero address", async () => {
             await expect(tokenMintERC1155.mint(mkpManager.address, 0, "this_uri")).to.be.revertedWith("Invalid amount");
         });
-        it("should mint success: ", async () => {
-            await token.mint(owner.address, ONE_ETHER);
-
-            await token.connect(owner).approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
-
+        it("should mint success", async () => {
             await tokenMintERC1155.mint(mkpManager.address, 100, "this_uri");
             expect(await tokenMintERC1155.balanceOf(mkpManager.address, 1)).to.equal(100);
+
+            const royaltiesInfo = await tokenMintERC1155.royaltyInfo(1, 10000);
+            expect(royaltiesInfo[0]).to.equal(treasury.address.toString());
+            expect(royaltiesInfo[1].toString()).to.equal("250");
         });
     });
 
-    describe("batch mint function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
+    describe("batch mint function", async () => {
+        it("should revert when caller is not an owner or admin", async () => {
             await expect(
-                tokenMintERC1155
-                    .connect(user1)
-                    .mintBatch(mkpManager.address, [101, 102, 103], ["this_uri", "this_uri_1", "this_uri_2"])
-            ).to.be.revertedWith("Adminable: caller is not an owner or admin");
+                tokenMintERC1155.connect(user1).mintBatch(mkpManager.address, [101, 102, 103], BATCH_URIS)
+            ).to.be.revertedWith("Caller is not an owner or admin");
         });
 
-        it("should revert when amount length not equal to uris length: ", async () => {
+        it("should revert when amount length not equal to uris length", async () => {
             await expect(
-                tokenMintERC1155.mintBatch(
-                    mkpManager.address,
-                    [10, 11, 12, 13],
-                    ["this_uri", "this_uri_1", "this_uri_2"]
-                )
+                tokenMintERC1155.mintBatch(mkpManager.address, [10, 11, 12, 13], BATCH_URIS)
             ).to.be.revertedWith("Invalid length");
         });
 
-        it("should revert when receiver address equal to zero address: ", async () => {
-            await expect(
-                tokenMintERC1155.mintBatch(
-                    constants.ZERO_ADDRESS,
-                    [10, 11, 12],
-                    ["this_uri", "this_uri_1", "this_uri_2"]
-                )
-            ).to.be.revertedWith("ERROR: invalid address !");
-        });
-
-        it("should revert when amount equal to zero address: ", async () => {
-            await expect(
-                tokenMintERC1155.mintBatch(mkpManager.address, [0, 100, 100], ["this_uri", "this_uri_1", "this_uri_2"])
-            ).to.be.revertedWith("Invalid amount");
-        });
-
-        it("should mint success: ", async () => {
-            await token.mint(owner.address, ONE_ETHER);
-
-            await token.connect(owner).approve(tokenMintERC1155.address, ethers.constants.MaxUint256);
-
-            await tokenMintERC1155.mintBatch(
-                mkpManager.address,
-                [10, 11, 12],
-                ["this_uri", "this_uri_1", "this_uri_2"]
+        it("should revert when receiver address equal to zero address", async () => {
+            await expect(tokenMintERC1155.mintBatch(AddressZero, [10, 11, 12], BATCH_URIS)).to.be.revertedWith(
+                "Invalid address"
             );
+        });
+
+        it("should revert when amount equal to zero address", async () => {
+            await expect(tokenMintERC1155.mintBatch(mkpManager.address, [0, 100, 100], BATCH_URIS)).to.be.revertedWith(
+                "Invalid amount"
+            );
+        });
+
+        it("should mint success", async () => {
+            await tokenMintERC1155.mintBatch(mkpManager.address, [10, 11, 12], BATCH_URIS);
             expect(await tokenMintERC1155.balanceOf(mkpManager.address, 1)).to.equal(10);
             expect(await tokenMintERC1155.balanceOf(mkpManager.address, 2)).to.equal(11);
             expect(await tokenMintERC1155.balanceOf(mkpManager.address, 3)).to.equal(12);
+
+            for (let i = 0; i < BATCH_URIS.length; i++) {
+                const tokenId = i + 1;
+                const royaltiesInfo = await tokenMintERC1155.royaltyInfo(tokenId, 10000);
+                expect(royaltiesInfo[0]).to.equal(treasury.address.toString());
+                expect(royaltiesInfo[1].toString()).to.equal("250");
+            }
         });
     });
 });

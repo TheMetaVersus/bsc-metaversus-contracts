@@ -19,12 +19,6 @@ import "../Validatable.sol";
  *          The contract here by is implemented to initial.
  */
 contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
-    /**
-     *  @notice controllers mapping from token ID to isComtroller status
-     */
-    mapping(address => bool) public controllers;
-
-    event SetController(address indexed user, bool allow);
     event Minted(address indexed receiver, uint256 amount);
 
     /**
@@ -41,18 +35,7 @@ contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
         __Validatable_init(_admin);
         __ERC20_init(_name, _symbol);
 
-        controllers[_curator] = true;
         _mint(address(_treasury), _totalSupply);
-    }
-
-    /**
-     *  @notice Set or remove role controllers
-     *
-     *  @dev    Only owner can call this function.
-     */
-    function setController(address user, bool allow) external onlyOwner notZeroAddress(user) {
-        controllers[user] = allow;
-        emit SetController(user, allow);
     }
 
     /**
@@ -91,14 +74,5 @@ contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
         returns (bool)
     {
         return interfaceId == type(IMTVS).interfaceId || super.supportsInterface(interfaceId);
-    }
-
-    /**
-     *  @notice Check account whether it is the controller role.
-     *
-     *  @dev    All caller can call this function.
-     */
-    function isController(address account) external view returns (bool) {
-        return controllers[account];
     }
 }

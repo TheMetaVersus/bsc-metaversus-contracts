@@ -199,12 +199,19 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         OrderInfo storage current = walletOrderOfOwners[_nftAddress][_tokenId][_to][_msgSender()];
         // check for update
         if (current.bidPrice != 0) {
+            // Transfer before update
+            if (_bidPrice > current.bidPrice) {
+                _transferToken(_paymentToken, _bidPrice - current.bidPrice, _msgSender(), address(this));
+            } else if (_bidPrice < current.bidPrice) {
+                _transferToken(_paymentToken, current.bidPrice - _bidPrice, address(this), _msgSender());
+            }
             // Update status
             current.paymentToken = _paymentToken;
             current.bidPrice = _bidPrice;
             current.amount = _amount;
             current.expiredTime = _time;
             current.status = OrderStatus.PENDING;
+
             // Emit Event
             emit UpdateOrder(
                 _msgSender(),
@@ -316,12 +323,20 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         OrderInfo storage current = marketItemOrderOfOwners[_marketItemId][_msgSender()];
 
         if (current.bidPrice != 0) {
+            // Transfer before update
+            if (_bidPrice > current.bidPrice) {
+                _transferToken(_paymentToken, _bidPrice - current.bidPrice, _msgSender(), address(this));
+            } else if (_bidPrice < current.bidPrice) {
+                _transferToken(_paymentToken, current.bidPrice - _bidPrice, address(this), _msgSender());
+            }
+
             // Update status
             current.paymentToken = _paymentToken;
             current.bidPrice = _bidPrice;
             current.amount = marketItem.amount;
             current.expiredTime = _time;
             current.status = OrderStatus.PENDING;
+
             // Emit Event
             emit UpdateOrder(
                 _msgSender(),

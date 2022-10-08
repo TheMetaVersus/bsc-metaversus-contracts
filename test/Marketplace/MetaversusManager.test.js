@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { constants } = require("@openzeppelin/test-helpers");
+const { MaxUint256, AddressZero } = ethers.constants;
 const { add } = require("js-big-decimal");
 const { generateMerkleTree, generateLeaf, getCurrentTime } = require("../utils");
 
@@ -65,7 +65,7 @@ describe("Metaversus Manager:", () => {
             tokenERC721.address,
             tokenERC1155.address,
             admin.address,
-            constants.ZERO_ADDRESS,
+            AddressZero,
             user1.address,
         ]);
 
@@ -88,7 +88,7 @@ describe("Metaversus Manager:", () => {
         it("Should be revert when NFT721 Address equal to Zero Address", async () => {
             await expect(
                 upgrades.deployProxy(MTVSManager, [
-                    constants.ZERO_ADDRESS,
+                    AddressZero,
                     tokenMintERC1155.address,
                     token.address,
                     treasury.address,
@@ -103,7 +103,7 @@ describe("Metaversus Manager:", () => {
             await expect(
                 upgrades.deployProxy(MTVSManager, [
                     tokenMintERC721.address,
-                    constants.ZERO_ADDRESS,
+                    AddressZero,
                     token.address,
                     treasury.address,
                     mkpManager.address,
@@ -118,7 +118,7 @@ describe("Metaversus Manager:", () => {
                 upgrades.deployProxy(MTVSManager, [
                     tokenMintERC721.address,
                     tokenMintERC1155.address,
-                    constants.ZERO_ADDRESS,
+                    AddressZero,
                     treasury.address,
                     mkpManager.address,
                     collectionFactory.address,
@@ -133,7 +133,7 @@ describe("Metaversus Manager:", () => {
                     tokenMintERC721.address,
                     tokenMintERC1155.address,
                     token.address,
-                    constants.ZERO_ADDRESS,
+                    AddressZero,
                     mkpManager.address,
                     collectionFactory.address,
                     admin.address,
@@ -148,7 +148,7 @@ describe("Metaversus Manager:", () => {
                     tokenMintERC1155.address,
                     token.address,
                     treasury.address,
-                    constants.ZERO_ADDRESS,
+                    AddressZero,
                     collectionFactory.address,
                     admin.address,
                 ])
@@ -164,7 +164,7 @@ describe("Metaversus Manager:", () => {
                     treasury.address,
                     mkpManager.address,
                     collectionFactory.address,
-                    constants.ZERO_ADDRESS,
+                    AddressZero,
                 ])
             ).to.revertedWith("Invalid Admin contract");
             await expect(
@@ -209,7 +209,9 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should revert when address equal to zero address: ", async () => {
-            await expect(mtvsManager.setMarketplace(constants.ZERO_ADDRESS)).to.be.revertedWith("Invalid MarketplaceManager contract");
+            await expect(mtvsManager.setMarketplace(AddressZero)).to.be.revertedWith(
+                "Invalid MarketplaceManager contract"
+            );
         });
 
         it("should set marketplace address success: ", async () => {
@@ -227,7 +229,7 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should revert when invalid wallet", async () => {
-            await expect(mtvsManager.setTreasury(constants.ZERO_ADDRESS)).to.revertedWith("Invalid Treasury contract");
+            await expect(mtvsManager.setTreasury(AddressZero)).to.revertedWith("Invalid Treasury contract");
         });
 
         it("should set treasury success: ", async () => {
@@ -252,17 +254,41 @@ describe("Metaversus Manager:", () => {
 
         it("should revert when amount equal to zero amount: ", async () => {
             await expect(
-                mtvsManager.connect(user1).createNFT(true, NFTType.ERC1155, 0, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot()),
+                mtvsManager
+                    .connect(user1)
+                    .createNFT(
+                        true,
+                        NFTType.ERC1155,
+                        0,
+                        "this_uri",
+                        ONE_ETHER,
+                        startTime,
+                        endTime,
+                        token.address,
+                        merkleTree.getHexRoot()
+                    ),
                 token.address
             ).to.be.revertedWith("Invalid amount");
         });
 
         it("should create NFT success: ", async () => {
             await token.mint(user2.address, AMOUNT);
-            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(mtvsManager.address, MaxUint256);
 
             await admin.setAdmin(mtvsManager.address, true);
-            await mtvsManager.connect(user2).createNFT(true, NFTType.ERC721, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot());
+            await mtvsManager
+                .connect(user2)
+                .createNFT(
+                    true,
+                    NFTType.ERC721,
+                    1,
+                    "this_uri",
+                    ONE_ETHER,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             // check owner nft
             let curentId = await tokenMintERC721.getTokenCounter();
@@ -277,17 +303,29 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.price).to.equal(ONE_ETHER), "Invalid price";
             expect(marketItem.nftType).to.equal(NFTType.ERC721, "Invalid nftType");
             expect(marketItem.seller).to.equal(user2.address, "Invalid seller");
-            expect(marketItem.buyer).to.equal(constants.ZERO_ADDRESS, "Invalid buyer");
+            expect(marketItem.buyer).to.equal(AddressZero, "Invalid buyer");
             expect(marketItem.status).to.equal(0, "Invalid status");
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
-            expect(marketItem.paymentToken).to.equal(constants.ZERO_ADDRESS, "Invalid paymentToken");
+            expect(marketItem.paymentToken).to.equal(AddressZero, "Invalid paymentToken");
             expect(marketItem.isPrivate).to.be.true;
 
             const amount = 100;
 
             await admin.setPermittedPaymentToken(token.address, true);
-            await mtvsManager.connect(user2).createNFT(true, NFTType.ERC1155, amount, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot());
+            await mtvsManager
+                .connect(user2)
+                .createNFT(
+                    true,
+                    NFTType.ERC1155,
+                    amount,
+                    "this_uri",
+                    ONE_ETHER,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             curentId = await tokenMintERC1155.getTokenCounter();
             const balanceOf = await tokenMintERC1155.balanceOf(mkpManager.address, curentId);
@@ -303,7 +341,7 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.price).to.equal(ONE_ETHER), "Invalid price";
             expect(marketItem.nftType).to.equal(NFTType.ERC1155, "Invalid nftType");
             expect(marketItem.seller).to.equal(user2.address, "Invalid seller");
-            expect(marketItem.buyer).to.equal(constants.ZERO_ADDRESS, "Invalid buyer");
+            expect(marketItem.buyer).to.equal(AddressZero, "Invalid buyer");
             expect(marketItem.status).to.equal(0, "Invalid status");
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
@@ -313,11 +351,24 @@ describe("Metaversus Manager:", () => {
 
         it("should create NFT to Wallet success: ", async () => {
             await token.mint(user2.address, AMOUNT);
-            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(mtvsManager.address, MaxUint256);
 
             await admin.setAdmin(mtvsManager.address, true);
-            await expect(() => mtvsManager.connect(user2).createNFT(false, NFTType.ERC721, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot()))
-                .to.changeTokenBalance(tokenMintERC721, user2, 1);
+            await expect(() =>
+                mtvsManager
+                    .connect(user2)
+                    .createNFT(
+                        false,
+                        NFTType.ERC721,
+                        1,
+                        "this_uri",
+                        ONE_ETHER,
+                        startTime,
+                        endTime,
+                        token.address,
+                        merkleTree.getHexRoot()
+                    )
+            ).to.changeTokenBalance(tokenMintERC721, user2, 1);
 
             // check owner nft
             let curentId = await tokenMintERC721.getTokenCounter();
@@ -326,7 +377,19 @@ describe("Metaversus Manager:", () => {
             const amount = 100;
 
             await admin.setPermittedPaymentToken(token.address, true);
-            await mtvsManager.connect(user2).createNFT(false, NFTType.ERC1155, amount, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot());
+            await mtvsManager
+                .connect(user2)
+                .createNFT(
+                    false,
+                    NFTType.ERC1155,
+                    amount,
+                    "this_uri",
+                    ONE_ETHER,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             curentId = await tokenMintERC1155.getTokenCounter();
             const balanceOf = await tokenMintERC1155.balanceOf(user2.address, curentId);
@@ -337,13 +400,23 @@ describe("Metaversus Manager:", () => {
         it("should create and sale NFT success: ", async () => {
             await token.mint(user2.address, AMOUNT);
 
-            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
+            await token.connect(user2).approve(mtvsManager.address, MaxUint256);
 
             await admin.setAdmin(mtvsManager.address, true);
 
             await mtvsManager
                 .connect(user2)
-                .createNFT(true, NFTType.ERC721, 1, "this_uri", 1000, startTime, endTime, token.address, merkleTree.getHexRoot());
+                .createNFT(
+                    true,
+                    NFTType.ERC721,
+                    1,
+                    "this_uri",
+                    1000,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             // check owner nft
             let curentId = await tokenMintERC721.getTokenCounter();
@@ -358,11 +431,11 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.price).to.equal(1000), "Invalid price";
             expect(marketItem.nftType).to.equal(NFTType.ERC721, "Invalid nftType");
             expect(marketItem.seller).to.equal(user2.address, "Invalid seller");
-            expect(marketItem.buyer).to.equal(constants.ZERO_ADDRESS, "Invalid buyer");
+            expect(marketItem.buyer).to.equal(AddressZero, "Invalid buyer");
             expect(marketItem.status).to.equal(0, "Invalid status");
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
-            expect(marketItem.paymentToken).to.equal(constants.ZERO_ADDRESS, "Invalid paymentToken");
+            expect(marketItem.paymentToken).to.equal(AddressZero, "Invalid paymentToken");
             expect(marketItem.isPrivate).to.be.true;
         });
     });
@@ -392,20 +465,52 @@ describe("Metaversus Manager:", () => {
             await expect(
                 mtvsManager
                     .connect(user1)
-                    .createNFTLimit(true, nft_721.address, 0, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot())).to.be.revertedWith("Invalid amount");
+                    .createNFTLimit(
+                        true,
+                        nft_721.address,
+                        0,
+                        "this_uri",
+                        ONE_ETHER,
+                        startTime,
+                        endTime,
+                        token.address,
+                        merkleTree.getHexRoot()
+                    )
+            ).to.be.revertedWith("Invalid amount");
         });
 
         it("should revert User is not create collection: ", async () => {
             await expect(
                 mtvsManager
                     .connect(user1)
-                    .createNFTLimit(true, nft_721.address, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot())).to.be.revertedWith("User is not create collection");
+                    .createNFTLimit(
+                        true,
+                        nft_721.address,
+                        1,
+                        "this_uri",
+                        ONE_ETHER,
+                        startTime,
+                        endTime,
+                        token.address,
+                        merkleTree.getHexRoot()
+                    )
+            ).to.be.revertedWith("User is not create collection");
         });
 
         it("should create NFT success: ", async () => {
             await mtvsManager
                 .connect(user2)
-                .createNFTLimit(true, nft_721.address, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot());
+                .createNFTLimit(
+                    true,
+                    nft_721.address,
+                    1,
+                    "this_uri",
+                    ONE_ETHER,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             let curentId = await nft_721.getTokenCounter();
 
@@ -421,7 +526,7 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.price).to.equal(ONE_ETHER), "Invalid price";
             expect(marketItem.nftType).to.equal(NFTType.ERC721, "Invalid nftType");
             expect(marketItem.seller).to.equal(user2.address, "Invalid seller");
-            expect(marketItem.buyer).to.equal(constants.ZERO_ADDRESS, "Invalid buyer");
+            expect(marketItem.buyer).to.equal(AddressZero, "Invalid buyer");
             expect(marketItem.status).to.equal(0, "Invalid status");
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
@@ -432,7 +537,17 @@ describe("Metaversus Manager:", () => {
 
             await mtvsManager
                 .connect(user2)
-                .createNFTLimit(true, nft_1155.address, amount, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTreeNull.getHexRoot());
+                .createNFTLimit(
+                    true,
+                    nft_1155.address,
+                    amount,
+                    "this_uri",
+                    ONE_ETHER,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTreeNull.getHexRoot()
+                );
 
             curentId = await nft_1155.getTokenCounter();
             const balanceOf = await nft_1155.balanceOf(mkpManager.address, curentId);
@@ -448,7 +563,7 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.price).to.equal(ONE_ETHER), "Invalid price";
             expect(marketItem.nftType).to.equal(NFTType.ERC1155, "Invalid nftType");
             expect(marketItem.seller).to.equal(user2.address, "Invalid seller");
-            expect(marketItem.buyer).to.equal(constants.ZERO_ADDRESS, "Invalid buyer");
+            expect(marketItem.buyer).to.equal(AddressZero, "Invalid buyer");
             expect(marketItem.status).to.equal(0, "Invalid status");
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
@@ -457,9 +572,21 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should create NFT to Wallet success: ", async () => {
-            await expect(() => mtvsManager
-                .connect(user2)
-                .createNFTLimit(false, nft_721.address, 1, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTree.getHexRoot())).to.changeTokenBalance(nft_721, user2, 1);
+            await expect(() =>
+                mtvsManager
+                    .connect(user2)
+                    .createNFTLimit(
+                        false,
+                        nft_721.address,
+                        1,
+                        "this_uri",
+                        ONE_ETHER,
+                        startTime,
+                        endTime,
+                        token.address,
+                        merkleTree.getHexRoot()
+                    )
+            ).to.changeTokenBalance(nft_721, user2, 1);
 
             let curentId = await nft_721.getTokenCounter();
 
@@ -470,7 +597,17 @@ describe("Metaversus Manager:", () => {
 
             await mtvsManager
                 .connect(user2)
-                .createNFTLimit(false, nft_1155.address, amount, "this_uri", ONE_ETHER, startTime, endTime, token.address, merkleTreeNull.getHexRoot());
+                .createNFTLimit(
+                    false,
+                    nft_1155.address,
+                    amount,
+                    "this_uri",
+                    ONE_ETHER,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTreeNull.getHexRoot()
+                );
 
             curentId = await nft_1155.getTokenCounter();
             const balanceOf = await nft_1155.balanceOf(user2.address, curentId);
@@ -481,16 +618,14 @@ describe("Metaversus Manager:", () => {
 
     describe("buyTicketEvent function:", async () => {
         it("should revert when amount equal to zero amount: ", async () => {
-            await expect(mtvsManager.connect(user1).buyTicketEvent(1, 0)).to.be.revertedWith(
-                "Invalid amount"
-            );
+            await expect(mtvsManager.connect(user1).buyTicketEvent(1, 0)).to.be.revertedWith("Invalid amount");
         });
         it("should buy ticket success: ", async () => {
             await mtvsManager.setPause(false);
 
             await token.mint(user2.address, AMOUNT);
-            await token.approve(user2.address, ethers.constants.MaxUint256);
-            await token.connect(user2).approve(mtvsManager.address, ethers.constants.MaxUint256);
+            await token.approve(user2.address, MaxUint256);
+            await token.connect(user2).approve(mtvsManager.address, MaxUint256);
             const price = 10000;
             await expect(() => mtvsManager.connect(user2).buyTicketEvent(1, price)).to.changeTokenBalance(
                 token,

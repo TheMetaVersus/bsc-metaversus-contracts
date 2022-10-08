@@ -1,7 +1,6 @@
-const { constants } = require("@openzeppelin/test-helpers");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
+const { MaxUint256, AddressZero } = ethers.constants;
 const { multiply, add, subtract } = require("js-big-decimal");
 const { getCurrentTime, skipTime, generateMerkleTree, generateLeaf } = require("../utils");
 const { MerkleTree } = require("merkletreejs");
@@ -92,8 +91,8 @@ describe("Marketplace Manager:", () => {
             tokenERC721.address,
             tokenERC1155.address,
             admin.address,
-            ZERO_ADDRESS,
-            ZERO_ADDRESS,
+            AddressZero,
+            AddressZero,
         ]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
@@ -125,7 +124,7 @@ describe("Marketplace Manager:", () => {
 
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(upgrades.deployProxy(MkpManager, [treasury.address, constants.ZERO_ADDRESS])).to.revertedWith(
+            await expect(upgrades.deployProxy(MkpManager, [treasury.address, AddressZero])).to.revertedWith(
                 "Invalid Admin contract"
             );
             await expect(upgrades.deployProxy(MkpManager, [treasury.address, user1.address])).to.revertedWith(

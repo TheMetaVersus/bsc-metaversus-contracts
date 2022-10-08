@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
@@ -27,7 +25,6 @@ contract TokenMintERC721 is
     ERC2981Upgradeable,
     ITokenMintERC721
 {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     /**
@@ -105,7 +102,7 @@ contract TokenMintERC721 is
     function mintBatch(address receiver, string[] memory newUris) external onlyAdmin notZeroAddress(receiver) {
         require(newUris.length <= 100, "Exceeded amount of tokens");
 
-        uint256[] memory tokenIds;
+        uint256[] memory tokenIds = new uint256[](newUris.length);
         for (uint256 i = 0; i < newUris.length; ++i) {
             _tokenCounter.increment();
             uint256 tokenId = _tokenCounter.current();

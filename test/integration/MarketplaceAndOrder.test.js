@@ -1,8 +1,7 @@
-const { constants, balance } = require("@openzeppelin/test-helpers");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { multiply, add, subtract } = require("js-big-decimal");
+const { MaxUint256, AddressZero } = ethers.constants;
+const { add } = require("js-big-decimal");
 const { getCurrentTime, skipTime } = require("../utils");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
@@ -109,23 +108,26 @@ describe("Marketplace interact with Order", () => {
         orderManager = await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
 
         await admin.setPermittedPaymentToken(token.address, true);
-        await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
+        await admin.setPermittedPaymentToken(AddressZero, true);
 
         await admin.setPermittedNFT(tokenMintERC721.address, true);
         await admin.setPermittedNFT(tokenMintERC1155.address, true);
         await admin.setPermittedNFT(nftTest.address, true);
 
-        await token.connect(user1).approve(orderManager.address, ethers.constants.MaxUint256);
+        await token.connect(user1).approve(orderManager.address, MaxUint256);
         await token.mint(user1.address, parseEther("1000"));
 
-        await token.connect(user2).approve(orderManager.address, ethers.constants.MaxUint256);
+        await token.connect(user2).approve(orderManager.address, MaxUint256);
         await token.mint(user2.address, parseEther("1000"));
 
-        await token.connect(user3).approve(orderManager.address, ethers.constants.MaxUint256);
+        await token.connect(user3).approve(orderManager.address, MaxUint256);
         await token.mint(user3.address, parseEther("1000"));
 
         await mkpManager.setOrderManager(orderManager.address);
         await orderManager.setPause(false);
+
+        await admin.setMetaCitizen(metaCitizen.address);
+        await metaCitizen.mint(user2.address);
     });
     describe("Buy/Mint a NFT ", async () => {
         it("Buy token ERC721", async () => {
@@ -142,11 +144,11 @@ describe("Marketplace interact with Order", () => {
     describe("Offer in wallet ", async () => {
         it("Offer in wallet", async () => {
             const current = await getCurrentTime();
-            await token.connect(user2).approve(orderManager.address, ONE_ETHER);
+            await token.connect(user2).approve(orderManager.address, ONE_ETHER.mul(10));
             await expect(() =>
                 orderManager
                     .connect(user2)
-                    .makeOfferWalletAsset(
+                    .makeWalletOrder(
                         token.address,
                         ONE_ETHER,
                         user1.address,
@@ -158,12 +160,14 @@ describe("Marketplace interact with Order", () => {
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
         });
         it("ReOffer in wallet", async () => {
+            let order = await orderManager.getOrderByWalletOrderId(1);
+
             const current = await getCurrentTime();
-            await token.connect(user2).approve(orderManager.address, ONE_ETHER);
+            await token.connect(user2).approve(orderManager.address, ONE_ETHER.mul(10));
             await expect(() =>
                 orderManager
                     .connect(user2)
-                    .makeOfferWalletAsset(
+                    .makeWalletOrder(
                         token.address,
                         ONE_ETHER.mul(2),
                         user1.address,
@@ -180,8 +184,8 @@ describe("Marketplace interact with Order", () => {
             await expect(() =>
                 orderManager
                     .connect(user3)
-                    .makeOfferWalletAsset(
-                        ZERO_ADDRESS,
+                    .makeWalletOrder(
+                        AddressZero,
                         ONE_ETHER.mul(2),
                         user1.address,
                         nftTest.address,
@@ -191,6 +195,24 @@ describe("Marketplace interact with Order", () => {
                         { value: ONE_ETHER.mul(2) }
                     )
             ).to.changeEtherBalance(user3, ONE_ETHER.mul(-2));
+        });
+        it("ReOffer in wallet with native", async () => {
+            const current = await getCurrentTime();
+
+            await expect(() =>
+                orderManager
+                    .connect(user3)
+                    .makeWalletOrder(
+                        AddressZero,
+                        ONE_ETHER.mul(3),
+                        user1.address,
+                        nftTest.address,
+                        1,
+                        1,
+                        add(current, ONE_WEEK),
+                        { value: ONE_ETHER.mul(1) }
+                    )
+            ).to.changeEtherBalance(user3, ONE_ETHER.mul(-1));
         });
     });
 
@@ -203,29 +225,35 @@ describe("Marketplace interact with Order", () => {
             merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
 
             rootHash = merkleTree.getHexRoot();
-            await nftTest.connect(user1).approve(orderManager.address, 1);
+
+            await nftTest.connect(user1).approve(mkpManager.address, 1);
             await orderManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, startTime, endTime, token.address, rootHash);
+                .sell(nftTest.address, 1, 1, ONE_ETHER, startTime + 10, endTime, token.address, rootHash);
         });
     });
 
     describe("Offer in market item", async () => {
         it("Offer in market item", async () => {
+            const leaf = keccak256(user2.address);
+            const proof = merkleTree.getHexProof(leaf);
             const endTime = add(await getCurrentTime(), ONE_WEEK);
-            await orderManager.connect(user3).makeOffer(1, token.address, ONE_ETHER, endTime, { value: 0 });
+            await orderManager
+                .connect(user2)
+                .makeMaketItemOrder(1, token.address, ONE_ETHER, endTime, proof, { value: 0 });
             // await expect(() =>
-            //     orderManager.connect(user3).makeOffer(1, token.address, ONE_ETHER, endTime, { value: 0 })
+            //     orderManager.connect(user3).makeMaketItemOrder(1, token.address, ONE_ETHER, endTime, { value: 0 })
             // )
             //     .to.changeEtherBalance(user3, ONE_ETHER)
             //     .and.to.changeTokenBalance(token, user3, ONE_ETHER.mul(-1));
         });
         it("ReOffer in market item", async () => {
             const endTime = add(await getCurrentTime(), ONE_WEEK);
-
+            const leaf = keccak256(user2.address);
+            const proof = merkleTree.getHexProof(leaf);
             await expect(() =>
-                orderManager.connect(user3).makeOffer(1, token.address, ONE_ETHER.mul(2), endTime)
-            ).to.changeTokenBalance(token, user3, ONE_ETHER.mul(-1));
+                orderManager.connect(user2).makeMaketItemOrder(1, token.address, ONE_ETHER.mul(2), endTime, proof)
+            ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
         });
     });
 
@@ -244,16 +272,17 @@ describe("Marketplace interact with Order", () => {
             merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
 
             rootHash = merkleTree.getHexRoot();
-            await nftTest.connect(user1).approve(orderManager.address, 1);
+            await nftTest.connect(user1).approve(mkpManager.address, 1);
             await orderManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, startTime, endTime, token.address, rootHash);
+                .sell(nftTest.address, 1, 1, ONE_ETHER, startTime + 10, endTime, token.address, rootHash);
         });
 
         it("Buy NFT in marketplace", async () => {
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
-            await orderManager.connect(user2).buy(1, proof, { value: 0 });
+            await skipTime(100);
+            await orderManager.connect(user2).buy(2, proof, { value: 0 });
             expect(await nftTest.balanceOf(user2.address)).to.equal(1);
         });
     });

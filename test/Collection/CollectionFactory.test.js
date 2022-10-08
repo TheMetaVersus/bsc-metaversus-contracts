@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { upgrades } = require("hardhat");
-const { constants } = require("@openzeppelin/test-helpers");
+const { AddressZero } = ethers.constants;
 
 describe("CollectionFactory", () => {
     beforeEach(async () => {
@@ -36,7 +36,7 @@ describe("CollectionFactory", () => {
                 upgrades.deployProxy(CollectionFactory, [
                     tokenERC721.address,
                     tokenERC1155.address,
-                    constants.ZERO_ADDRESS,
+                    AddressZero,
                     user1.address,
                     user2.address,
                 ])
@@ -97,9 +97,7 @@ describe("CollectionFactory", () => {
         });
 
         it("Should revert Invalid address", async () => {
-            await expect(collectionFactory.setMaxCollectionOfUser(constants.ZERO_ADDRESS, 0)).to.revertedWith(
-                "Invalid address"
-            );
+            await expect(collectionFactory.setMaxCollectionOfUser(AddressZero, 0)).to.revertedWith("Invalid address");
         });
 
         it("Should revert Invalid maxCollectionOfUser", async () => {

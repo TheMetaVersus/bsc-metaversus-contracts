@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { constants } = require("@openzeppelin/test-helpers");
+const { AddressZero } = ethers.constants;
 
 describe("TokenERC721:", () => {
     beforeEach(async () => {
@@ -97,7 +97,7 @@ describe("TokenERC721:", () => {
         });
 
         it("should revert when receiver address equal to zero address: ", async () => {
-            await expect(tokenERC721.mint(constants.ZERO_ADDRESS, "this_uri")).to.be.revertedWith("Invalid address");
+            await expect(tokenERC721.mint(AddressZero, "this_uri")).to.be.revertedWith("Invalid address");
         });
 
         it("should mint success: ", async () => {
@@ -114,7 +114,7 @@ describe("TokenERC721:", () => {
         });
 
         it("should revert when receiver address equal to zero address: ", async () => {
-            await expect(tokenERC721.mintBatch(constants.ZERO_ADDRESS, 3)).to.be.revertedWith("Invalid address");
+            await expect(tokenERC721.mintBatch(AddressZero, 3)).to.be.revertedWith("Invalid address");
         });
 
         it("should revert when mint fewer in each batch: ", async () => {
@@ -150,7 +150,7 @@ describe("TokenERC721:", () => {
 
         it("should revert when receiver address equal to zero address: ", async () => {
             await expect(
-                tokenERC721.mintBatchWithUri(constants.ZERO_ADDRESS, ["this_uri", "this_uri_1", "this_uri_2"])
+                tokenERC721.mintBatchWithUri(AddressZero, ["this_uri", "this_uri_1", "this_uri_2"])
             ).to.be.revertedWith("Invalid address");
         });
 
