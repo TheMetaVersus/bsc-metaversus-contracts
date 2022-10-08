@@ -29,6 +29,7 @@ describe("MetaCitizen", () => {
             admin.address,
         ]);
         await admin.setPermittedPaymentToken(token.address, true);
+        await admin.setPermittedPaymentToken(AddressZero, true);
 
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
             treasury.address,
@@ -49,7 +50,9 @@ describe("MetaCitizen", () => {
         });
 
         it("Should revert when payment token contract is invalid", async () => {
-            await upgrades.deployProxy(MetaCitizen, [treasury.address, AddressZero, MINT_FEE, admin.address]);
+            await expect(
+                upgrades.deployProxy(MetaCitizen, [treasury.address, AddressZero, MINT_FEE, admin.address])
+            ).to.be.revertedWith("Invalid payment token");
 
             await expect(
                 upgrades.deployProxy(MetaCitizen, [treasury.address, treasury.address, MINT_FEE, admin.address])

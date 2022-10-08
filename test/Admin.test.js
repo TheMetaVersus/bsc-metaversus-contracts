@@ -29,6 +29,17 @@ describe("Admin", () => {
             treasury.address,
             admin.address,
         ]);
+        fakeToken = await upgrades.deployProxy(Token, [
+            user1.address,
+            "Fake Metaversus Token",
+            "FMTVS",
+            TOTAL_SUPPLY,
+            treasury.address,
+            admin.address,
+        ]);
+
+        await admin.setPermittedPaymentToken(token.address, true);
+        await admin.setPermittedPaymentToken(AddressZero, true);
 
         TokenERC721 = await ethers.getContractFactory("TokenERC721");
         tokenERC721 = await upgrades.deployProxy(TokenERC721, [

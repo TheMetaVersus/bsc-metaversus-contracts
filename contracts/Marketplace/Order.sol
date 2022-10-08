@@ -13,7 +13,6 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../lib/NFTHelper.sol";
 import "../TransferableToken.sol";
-import "hardhat/console.sol";
 
 /**
  *  @title  Dev Order Contract
@@ -332,7 +331,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *
      *  Emit {MadeMaketItemOrder}
      */
-    function makeMaketItemOrder(
+    function makeMarketItemOrder(
         uint256 _marketItemId,
         IERC20Upgradeable _paymentToken,
         uint256 _bidPrice,
@@ -352,6 +351,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         // Check Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(_marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
+        require(marketItem.startTime < block.timestamp && block.timestamp < marketItem.endTime, "Not the order time");
         if (marketItem.isPrivate) {
             require(
                 admin.isOwnedMetaCitizen(_msgSender()) && marketplace.verify(_marketItemId, _proof, _msgSender()),
@@ -444,6 +444,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         // Get Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemOrder.marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
+        require(marketItem.seller == _msgSender(), "Not the seller");
 
         require(marketItem.seller == _msgSender(), "Invalid seller of asset !");
         require(orderInfo.status == OrderStatus.PENDING, "Order is not available");

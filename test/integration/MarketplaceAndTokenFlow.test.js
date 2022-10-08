@@ -122,7 +122,7 @@ describe("Marketplace interact with Tokens:", () => {
         it("Connect order contract", async () => {
             expect(await mkpManager.orderManager()).to.equal(AddressZero);
 
-            await mkpManager.setOrder(orderManager.address);
+            await mkpManager.setOrderManager(orderManager.address);
 
             expect(await mkpManager.orderManager()).to.equal(orderManager.address);
         });

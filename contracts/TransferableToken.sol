@@ -76,7 +76,7 @@ contract TransferableToken is Validatable {
                 (bool success, ) = _to.call{ value: _amount, gas: tokenTransferGasLimit }(new bytes(0));
                 require(success, "SafeTransferNative: transfer failed");
             } else {
-                IERC20Upgradeable(_paymentToken).transfer(_to, _amount);
+                IERC20Upgradeable(_paymentToken).safeTransfer(_to, _amount);
             }
         }
     }

@@ -13,41 +13,43 @@ describe("NftTest:", () => {
         user2 = accounts[2];
         user3 = accounts[3];
 
+        Admin = await ethers.getContractFactory("Admin");
+        admin = await upgrades.deployProxy(Admin, [owner.address]);
+
         Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            owner.address,
-            "Vetaversus Token",
+            user1.address,
+            "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
             treasury.address,
+            admin.address,
         ]);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, [
-            owner.address,
-            "NFT Test",
-            "TEST",
+            "NFT test",
+            "NFT",
             token.address,
             treasury.address,
             250,
             PRICE,
+            admin.address,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, treasury.address]);
-
-        await nftTest.deployed();
+        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
     });
 
     describe("Deployment:", async () => {
         it("Check name, symbol and default state: ", async () => {
             const name = await nftTest.name();
             const symbol = await nftTest.symbol();
-            expect(name).to.equal("NFT Test");
-            expect(symbol).to.equal("TEST");
+            expect(name).to.equal("NFT test");
+            expect(symbol).to.equal("NFT");
 
             let royaltiesInfo = await nftTest.royaltyInfo(0, 10000);
 
@@ -63,28 +65,6 @@ describe("NftTest:", () => {
             const newURI = await nftTest.tokenURI(1);
 
             expect(newURI).to.equal(URI);
-        });
-        it("Check Owner: ", async () => {
-            const ownerAddress = await nftTest.owner();
-            expect(ownerAddress).to.equal(owner.address);
-        });
-    });
-
-    describe("setAdmin function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
-            await expect(nftTest.connect(user1).setAdmin(user2.address, true)).to.be.revertedWith(
-                "Ownable: caller is not the owner"
-            );
-        });
-        it("should set admin success: ", async () => {
-            await nftTest.setAdmin(user2.address, true);
-            expect(await nftTest.isAdmin(user2.address)).to.equal(true);
-
-            await nftTest.setAdmin(user1.address, false);
-            expect(await nftTest.isAdmin(user1.address)).to.equal(false);
-
-            await nftTest.setAdmin(user2.address, false);
-            expect(await nftTest.isAdmin(user2.address)).to.equal(false);
         });
     });
 
@@ -113,16 +93,13 @@ describe("NftTest:", () => {
     describe("setTreasury function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(nftTest.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
-                "Adminable: caller is not an owner or admin"
+                "Caller is not an owner or admin"
             );
         });
 
         it("should set treasury success: ", async () => {
             await nftTest.setTreasury(treasury.address);
             expect(await nftTest.treasury()).to.equal(treasury.address);
-
-            await nftTest.setTreasury(user1.address);
-            expect(await nftTest.treasury()).to.equal(user1.address);
 
             await nftTest.setTreasury(treasury.address);
             expect(await nftTest.treasury()).to.equal(treasury.address);

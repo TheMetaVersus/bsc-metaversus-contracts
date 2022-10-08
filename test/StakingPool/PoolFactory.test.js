@@ -130,7 +130,7 @@ describe("Pool Factory:", () => {
         await mtvsManager.setPause(false);
         await poolFactory.setPause(false);
         await orderManager.setPause(false);
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
     });
 
     describe("Deployment:", async () => {

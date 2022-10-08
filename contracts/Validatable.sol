@@ -14,6 +14,7 @@ import "./interfaces/Collection/ICollectionFactory.sol";
 import "./interfaces/IStakingPool.sol";
 import "./interfaces/IOrder.sol";
 import "./interfaces/IMetaCitizen.sol";
+import "./interfaces/IMetaversusManager.sol";
 import "./interfaces/Collection/ITokenERC721.sol";
 import "./interfaces/Collection/ITokenERC1155.sol";
 
@@ -129,6 +130,14 @@ contract Validatable is PausableUpgradeable {
         require(
             ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IMetaCitizen).interfaceId),
             "Invalid MetaCitizen contract"
+        );
+        _;
+    }
+
+    modifier validMetaversusManager(IMetaversusManager _account) {
+        require(
+            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IMetaversusManager).interfaceId),
+            "Invalid MetaversusManager contract"
         );
         _;
     }

@@ -57,6 +57,17 @@ describe("Staking Pool:", () => {
             treasury.address,
             admin.address,
         ]);
+        fakeToken = await upgrades.deployProxy(Token, [
+            user1.address,
+            "Fake Metaversus Token",
+            "FMTVS",
+            TOTAL_SUPPLY,
+            treasury.address,
+            admin.address,
+        ]);
+
+        await admin.setPermittedPaymentToken(token.address, true);
+        await admin.setPermittedPaymentToken(AddressZero, true);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
@@ -161,13 +172,13 @@ describe("Staking Pool:", () => {
         await token.connect(user1).approve(metaCitizen.address, MaxUint256);
         await token.mint(user2.address, parseEther("1000"));
 
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
 
         await admin.setAdmin(mtvsManager.address, true);
         await mtvsManager.setPause(false);
         await staking.setPause(false);
         await orderManager.setPause(false);
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
         await mkpManager.setMetaversusManager(mtvsManager.address);
 
         merkleTree = generateMerkleTree([user1.address, user2.address]);
