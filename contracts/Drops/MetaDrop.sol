@@ -9,8 +9,6 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 import "./MetaDropStructs.sol";
 import "../Validatable.sol";
-import "../interfaces/Collection/ITokenERC721.sol";
-import "hardhat/console.sol";
 
 /**
  *  @title  MetaVersus NFT Drop
@@ -41,11 +39,6 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
      *  @dev user address => (drop id => minted counter)
      */
     mapping(address => mapping(uint256 => uint256)) public mintedHistories;
-
-    /**
-     *  @notice address of Meta Citizen NFT
-     */
-    IERC721Upgradeable public metaCitizen;
 
     /**
      *  @notice address of Metaversus Admin
@@ -81,17 +74,15 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        IERC721Upgradeable _metaCitizen,
         IAdmin _mvtsAdmin,
-        address _treasury,
+        ITreasury _treasury,
         uint256 _serviceFeeNumerator
-    ) public initializer notZeroAddress(_treasury) {
+    ) public initializer validTreasury(_treasury) validAdmin(_mvtsAdmin) {
         __Validatable_init(_mvtsAdmin);
         __ReentrancyGuard_init();
 
-        metaCitizen = _metaCitizen;
         mvtsAdmin = _mvtsAdmin;
-        treasury = _treasury;
+        treasury = address(_treasury);
 
         require(_serviceFeeNumerator <= SERVICE_FEE_DENOMINATOR, "Service fee will exceed minting fee");
         serviceFeeNumerator = _serviceFeeNumerator;
@@ -119,17 +110,17 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
      *
      *  @param  _drop     All drop information that need to create
      */
-    function create(DropParams memory _drop) external validTokenCollectionERC721(ITokenERC721(_drop.nft)) {
+    function create(DropParams memory _drop)
+        external
+        validTokenCollectionERC721(ITokenERC721(_drop.nft))
+        validPaymentToken(IERC20Upgradeable(_drop.paymentToken))
+    {
         require(_drop.root != 0, "Invalid root");
         require(_drop.fundingReceiver != address(0), "Invalid funding receiver");
         require(_drop.maxSupply > 0, "Invalid minting supply");
 
         require(_drop.startTime > block.timestamp, "Invalid start time");
         require(_drop.endTime > _drop.startTime, "Invalid end time");
-
-        if (_drop.paymentToken != address(0)) {
-            require(mvtsAdmin.isPermittedPaymentToken(IERC20Upgradeable(_drop.paymentToken)), "Invalid payment token");
-        }
 
         _dropCounter.increment();
         uint256 dropId = _dropCounter.current();
@@ -164,6 +155,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         external
         validDrop(_dropId)
         validTokenCollectionERC721(ITokenERC721(_newDrop.nft))
+        validPaymentToken(IERC20Upgradeable(_newDrop.paymentToken))
     {
         DropRecord storage drop = drops[_dropId];
 
@@ -174,13 +166,6 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
 
         require(_newDrop.startTime > 0, "Invalid start time");
         require(_newDrop.endTime > _newDrop.startTime, "Invalid end time");
-
-        if (_newDrop.paymentToken != address(0)) {
-            require(
-                mvtsAdmin.isPermittedPaymentToken(IERC20Upgradeable(_newDrop.paymentToken)),
-                "Invalid payment token"
-            );
-        }
 
         DropRecord memory oldDrop = drop;
 
@@ -310,7 +295,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         address _account,
         bytes32[] memory _proof
     ) public view returns (bool) {
-        if (metaCitizen.balanceOf(_account) == 0) return false;
+        if (!admin.isOwnedMetaCitizen(_account)) return false;
         if (!isDropActive(_dropId)) return false;
         return Validatable.isValidProof(_proof, drops[_dropId].root, _account);
     }

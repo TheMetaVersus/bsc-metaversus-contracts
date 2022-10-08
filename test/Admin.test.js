@@ -1,9 +1,12 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { constants } = require("@openzeppelin/test-helpers");
-const { add } = require("js-big-decimal");
+const { formatBytes32String, parseEther } = ethers.utils;
+const { MaxUint256, AddressZero } = ethers.constants;
 
-describe("Admin:", () => {
+const TOTAL_SUPPLY = parseEther("1000000000000");
+const TOKEN_0_1 = parseEther("0.1");
+
+describe("Admin", () => {
     beforeEach(async () => {
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -15,79 +18,147 @@ describe("Admin:", () => {
         admin = await upgrades.deployProxy(Admin, [owner.address]);
 
         Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
-        MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [owner.address, treasury.address]);
+        Token = await ethers.getContractFactory("MTVS");
+        token = await upgrades.deployProxy(Token, [
+            user1.address,
+            "Metaversus Token",
+            "MTVS",
+            TOTAL_SUPPLY,
+            treasury.address,
+            admin.address,
+        ]);
 
-        OrderManager = await ethers.getContractFactory("OrderManager");
-        orderManager = await upgrades.deployProxy(OrderManager, [mkpManager.address, owner.address]);
+        TokenERC721 = await ethers.getContractFactory("TokenERC721");
+        tokenERC721 = await upgrades.deployProxy(TokenERC721, [
+            owner.address,
+            "NFT Metaversus",
+            "nMTVS",
+            100,
+            owner.address,
+            10000,
+        ]);
 
-        await admin.deployed();
+        MetaCitizen = await ethers.getContractFactory("MetaCitizen");
+        metaCitizen = await upgrades.deployProxy(MetaCitizen, [
+            treasury.address,
+            token.address,
+            TOKEN_0_1,
+            admin.address,
+        ]);
+
+        await admin.setMetaCitizen(metaCitizen.address);
     });
 
-    describe("setAdmin function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
+    describe("Deployment", async () => {
+        it("should revert when owner is zero address", async () => {
+            await expect(upgrades.deployProxy(Admin, [AddressZero])).to.be.revertedWith("Invalid wallet");
+        });
+
+        it("should revert when owner is a contract", async () => {
+            await expect(upgrades.deployProxy(Admin, [metaCitizen.address])).to.be.revertedWith("Invalid wallet");
+        });
+
+        it("should initialize successful", async () => {
+            admin = await upgrades.deployProxy(Admin, [user1.address]);
+            expect(await admin.owner()).to.equal(user1.address);
+        });
+    });
+
+    describe("setAdmin", async () => {
+        it("should revert when caller is not owner", async () => {
             await expect(admin.connect(user1).setAdmin(user2.address, true)).to.be.revertedWith(
                 "Ownable: caller is not the owner"
             );
         });
 
         it("should revert when invalid wallet", async () => {
-            await expect(admin.setAdmin(constants.ZERO_ADDRESS, true)).to.revertedWith("Invalid wallet");
-            await expect(admin.setAdmin(admin.address, true)).to.revertedWith("Invalid wallet");
+            await expect(admin.setAdmin(AddressZero, true)).to.revertedWith("Invalid admin address");
         });
 
-        it("should set admin success: ", async () => {
+        it("should set admin successful", async () => {
             await admin.setAdmin(user2.address, true);
-            expect(await admin.isAdmin(user2.address)).to.equal(true);
+            expect(await admin.isAdmin(user2.address)).to.be.true;
 
             await admin.setAdmin(user1.address, false);
-            expect(await admin.isAdmin(user1.address)).to.equal(false);
+            expect(await admin.isAdmin(user1.address)).to.be.false;
 
             await admin.setAdmin(user2.address, false);
-            expect(await admin.isAdmin(user2.address)).to.equal(false);
+            expect(await admin.isAdmin(user2.address)).to.be.false;
         });
     });
 
-    describe("setOrder function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
-            await expect(admin.connect(user1).setOrder(orderManager.address)).to.be.revertedWith(
+    describe("setMetaCitizen", async () => {
+        it("should revert when caller is not owner", async () => {
+            await expect(admin.connect(user1).setMetaCitizen(metaCitizen.address)).to.be.revertedWith(
                 "Ownable: caller is not the owner"
             );
         });
 
-        it("should revert when invalid order contract", async () => {
-            await expect(admin.setOrder(constants.ZERO_ADDRESS)).to.revertedWith("Invalid address");
+        it("should revert when invalid Meta Citizen address", async () => {
+            await expect(admin.setMetaCitizen(AddressZero)).to.revertedWith("Invalid Meta Citizen address");
         });
 
-        it("should set admin success: ", async () => {
-            await admin.setOrder(orderManager.address);
-            expect(await admin.isOrder(orderManager.address)).to.equal(true);
+        it("should set Meta Citizen successful", async () => {
+            await admin.setMetaCitizen(metaCitizen.address);
+            expect(await admin.metaCitizen()).to.equal(metaCitizen.address);
         });
     });
 
-    describe("owner", async () => {
-        it("should be ok: ", async () => {
-            expect(await admin.owner()).to.equal(owner.address);
+    describe("setPermittedPaymentToken", async () => {
+        it("should revert when caller is not an owner or admin", async () => {
+            await expect(admin.connect(user1).setPermittedPaymentToken(token.address, true)).to.be.revertedWith(
+                "Caller is not an owner or admin"
+            );
+        });
+
+        it("should set or remove payment token successful", async () => {
+            await admin.connect(owner).setPermittedPaymentToken(token.address, true);
+            expect(await admin.isPermittedPaymentToken(token.address)).to.be.true;
+
+            await admin.connect(owner).setPermittedPaymentToken(token.address, false);
+            expect(await admin.isPermittedPaymentToken(token.address)).to.be.false;
+
+            await admin.connect(owner).setPermittedPaymentToken(tokenERC721.address, false);
+            expect(await admin.isPermittedPaymentToken(tokenERC721.address)).to.be.false;
+        });
+    });
+
+    describe("setPermittedNFT", async () => {
+        it("should revert when caller is not an owner or admin", async () => {
+            await expect(admin.connect(user1).setPermittedNFT(tokenERC721.address, true)).to.be.revertedWith(
+                "Caller is not an owner or admin"
+            );
+        });
+
+        it("should set or remove an NFT successful", async () => {
+            await admin.connect(owner).setPermittedNFT(tokenERC721.address, true);
+            expect(await admin.isPermittedNFT(tokenERC721.address)).to.be.true;
+
+            await admin.connect(owner).setPermittedNFT(tokenERC721.address, false);
+            expect(await admin.isPermittedNFT(tokenERC721.address)).to.be.false;
+
+            await admin.connect(owner).setPermittedNFT(token.address, false);
+            expect(await admin.isPermittedNFT(token.address)).to.be.false;
         });
     });
 
     describe("isAdmin", async () => {
-        it("should be ok: ", async () => {
-            await admin.setAdmin(user2.address, true);
-            expect(await admin.isAdmin(user2.address)).to.equal(true);
-            expect(await admin.isAdmin(owner.address)).to.equal(true);
-            expect(await admin.isAdmin(user3.address)).to.equal(false);
+        it("should return admin status correctly", async () => {
+            await admin.setAdmin(user1.address, true);
+            expect(await admin.isAdmin(user1.address)).to.be.true;
+            expect(await admin.isAdmin(owner.address)).to.be.true;
+            expect(await admin.isAdmin(user2.address)).to.be.false;
         });
     });
 
-    describe("isOrder", async () => {
-        it("should be ok: ", async () => {
-            await admin.setAdmin(user2.address, true);
-            expect(await admin.isOrder(user2.address)).to.equal(false);
-            expect(await admin.isOrder(owner.address)).to.equal(false);
-            expect(await admin.isOrder(user3.address)).to.equal(false);
+    describe("isOwnedMetaCitizen", async () => {
+        it("should return status that account is owned meta citizen NFT correctly", async () => {
+            await metaCitizen.mint(user1.address);
+
+            expect(await admin.isOwnedMetaCitizen(user1.address)).to.be.true;
+            expect(await admin.isOwnedMetaCitizen(user2.address)).to.be.false;
         });
     });
 });

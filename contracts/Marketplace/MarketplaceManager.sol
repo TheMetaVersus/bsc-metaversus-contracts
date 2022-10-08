@@ -64,20 +64,25 @@ contract MarketPlaceManager is
     IOrder public orderManager;
 
     /**
+     *  @notice collectionFactory is interface of collection Factory
+     */
+    ICollectionFactory public collectionFactory;
+
+    /**
      *  @notice isBuyer is mapping owner address to account was buyer in marketplace
      */
     mapping(address => bool) public isBuyer;
+
+    /**
+     *  @notice nftAddressToRootHash is mapping nft address to root hash
+     */
+    mapping(address => bytes32) public nftAddressToRootHash;
 
     /**
      *  @notice Mapping from OwnerAddress to MarketItemId[]
      *  @dev OwnerAddress -> MarketItemId[]
      */
     mapping(address => EnumerableSetUpgradeable.UintSet) private _marketItemOfOwner;
-
-    /**
-     *  @notice _rootHashesToMarketItems is mapping owner's asset address to order ID
-     */
-    mapping(bytes32 => EnumerableSetUpgradeable.UintSet) private _rootHashesToMarketItemIds;
 
     /**
      *  @notice Mapping from MarketItemID to Market Item
@@ -114,6 +119,8 @@ contract MarketPlaceManager is
         IMetaversusManager indexed oldMetaversusManager,
         IMetaversusManager indexed newMetaversusManager
     );
+    event SetNewRootHash(address nftAddress, bytes newRoot);
+    event SetCollectionFactory(ICollectionFactory indexed oldValue, ICollectionFactory indexed newValue);
 
     modifier validId(uint256 _id) {
         require(_id <= _marketItemIds.current() && _id > 0, "ERROR: market ID is not exist !");
@@ -193,6 +200,21 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice Set Marketplace to change MarketplaceManager address.
+     *
+     *  @dev    Only owner or admin can call this function.
+     */
+    function setCollectionFactory(ICollectionFactory _newCollectionFactory)
+        external
+        onlyAdmin
+        validCollectionFactory(_newCollectionFactory)
+    {
+        ICollectionFactory oldCollectionFactory = collectionFactory;
+        collectionFactory = _newCollectionFactory;
+        emit SetCollectionFactory(oldCollectionFactory, collectionFactory);
+    }
+
+    /**
      *  @notice Transfer call
      */
     function extTransferCall(
@@ -256,8 +278,7 @@ contract MarketPlaceManager is
         );
 
         _marketItemOfOwner[_seller].add(_marketItemIds.current());
-        _rootHashesToMarketItemIds[bytes32(_rootHash)].add(_marketItemIds.current());
-
+        nftAddressToRootHash[_nftAddress] = bytes32(_rootHash);
         // approve
         if (nftType == NFTHelper.Type.ERC1155) {
             IERC1155Upgradeable(_nftAddress).setApprovalForAll(address(orderManager), true);
@@ -281,11 +302,12 @@ contract MarketPlaceManager is
         );
     }
 
-    function setNewRootHash(bytes calldata oldRoot, bytes calldata newRoot) external onlyAdmin {
-        for (uint256 i = 0; i < _rootHashesToMarketItemIds[bytes32(oldRoot)].length(); i++) {
-            _rootHashesToMarketItemIds[bytes32(newRoot)].add(_rootHashesToMarketItemIds[bytes32(oldRoot)].at(i));
-        }
-        delete _rootHashesToMarketItemIds[bytes32(oldRoot)];
+    function setNewRootHash(address nftAddress, bytes calldata newRoot) external nonReentrant {
+        require(collectionFactory.checkCollectionOfUser(_msgSender(), nftAddress), "User is not create collection");
+
+        nftAddressToRootHash[nftAddress] = bytes32(newRoot);
+
+        emit SetNewRootHash(nftAddress, newRoot);
     }
 
     /**
@@ -456,7 +478,7 @@ contract MarketPlaceManager is
     ) external view returns (bool) {
         require(_marketItemId > 0, "Invalid market item ID");
         bytes32 leaf = keccak256(abi.encodePacked(_account));
-        bytes32 root = MerkleProofUpgradeable.processProof(_proof, leaf);
-        return _rootHashesToMarketItemIds[root].contains(_marketItemId);
+        bytes32 root = nftAddressToRootHash[marketItemIdToMarketItem[_marketItemId].nftContractAddress];
+        return MerkleProofUpgradeable.verify(_proof, bytes32(root), leaf);
     }
 }
