@@ -225,8 +225,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         if (!isSellOnMarket) {
             ITokenERC721(nftAddress).mint(_msgSender(), uri);
             currentId = ITokenERC721(nftAddress).getTokenCounter();
-
-            emit Created(typeNft, nftAddress, currentId, _msgSender(), _msgSender(), amount);
         } else {
             ITokenERC721(nftAddress).mint(address(marketplace), uri);
             currentId = ITokenERC721(nftAddress).getTokenCounter();
@@ -241,9 +239,9 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
                 payment,
                 rootHash
             );
-
-            emit Created(typeNft, nftAddress, currentId, _msgSender(), address(marketplace), amount);
         }
+
+        emit Created(typeNft, nftAddress, currentId, _msgSender(), isSellOnMarket ? address(marketplace) : _msgSender(), amount);
     }
 
     /**
@@ -265,8 +263,6 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         if (!isSellOnMarket) {
             ITokenERC1155(nftAddress).mint(_msgSender(), amount, uri);
             currentId = ITokenERC1155(nftAddress).getTokenCounter();
-
-            emit Created(typeNft, nftAddress, currentId, _msgSender(), _msgSender(), amount);
         } else {
             ITokenERC1155(nftAddress).mint(address(marketplace), amount, uri);
             currentId = ITokenERC1155(nftAddress).getTokenCounter();
@@ -281,9 +277,9 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
                 payment,
                 rootHash
             );
-
-            emit Created(typeNft, nftAddress, currentId, _msgSender(), address(marketplace), amount);
         }
+
+        emit Created(typeNft, nftAddress, currentId, _msgSender(), isSellOnMarket ? address(marketplace) : _msgSender(), amount);
     }
 
     /**

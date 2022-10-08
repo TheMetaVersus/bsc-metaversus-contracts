@@ -75,6 +75,10 @@ contract MetaCitizen is
 
         paymentToken = _paymentToken;
         mintFee = _mintFee;
+
+        if (admin.metaCitizen() == address(0)) {
+            admin.registerMetaCitizen();
+        }
     }
 
     /**

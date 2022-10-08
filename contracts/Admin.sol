@@ -37,7 +37,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     /**
      *  @notice metaCitizen is address of metaCitizen pass
      */
-    IMetaCitizen public metaCitizen;
+    address public metaCitizen;
 
     /**
      *  @notice treasury is address of Treasury
@@ -45,11 +45,12 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     address public treasury;
 
     event SetAdmin(address indexed user, bool allow);
-    event SetMetaCitizen(IMetaCitizen oldMetaCitizen, IMetaCitizen newMetaCitizen);
+    event SetMetaCitizen(address indexed oldMetaCitizen, address indexed newMetaCitizen);
     event SetPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool allow);
     event SetPermittedNFT(address _nftAddress, bool allow);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RegisterTreasury(address indexed account);
+    event RegisterMetaCitizen (address indexed account);
 
     /**
      *  @notice Initialize new logic contract.
@@ -75,6 +76,17 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     }
 
     /**
+     *  @notice Register MetaCitizen to allow it order methods of this contract
+     *
+     *  @dev    Register can only be called once
+     */
+    function registerMetaCitizen() external {
+        require(metaCitizen == address(0), "MetaCitizen has been registered");
+        metaCitizen = _msgSender();
+        emit RegisterMetaCitizen(metaCitizen);
+    }
+
+    /**
      *  @notice Replace the admin role by another address.
      *
      *  @dev    Only owner can call this function.
@@ -96,10 +108,10 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      *
      *  @param  _citizen    Address of Meta Citizen contract
      */
-    function setMetaCitizen(IMetaCitizen _citizen) external onlyOwner {
-        require(address(_citizen) != address(0), "Invalid Meta Citizen address");
+    function setMetaCitizen(address _citizen) external onlyOwner {
+        require(_citizen != address(0), "Invalid Meta Citizen address");
 
-        IMetaCitizen oldMetaCitizen = metaCitizen;
+        address oldMetaCitizen = metaCitizen;
         metaCitizen = _citizen;
         emit SetMetaCitizen(oldMetaCitizen, metaCitizen);
     }

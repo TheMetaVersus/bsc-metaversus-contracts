@@ -5,7 +5,6 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeabl
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "../interfaces/ITreasury.sol";
 import "../Validatable.sol";
@@ -20,14 +19,8 @@ import "../Validatable.sol";
  */
 contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, ITreasury {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
-    /**
-     *  @notice _permitedTokens mapping from token address to isPermited status
-     */
-    EnumerableSetUpgradeable.AddressSet private _permitedTokens;
 
     event Distributed(IERC20Upgradeable indexed paymentToken, address indexed destination, uint256 indexed amount);
-    event SetPaymentToken(IERC20Upgradeable indexed paymentToken, bool indexed allow);
 
     /**
      *  @notice Initialize new logic contract.
@@ -36,7 +29,9 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
         __Validatable_init(_admin);
         __ERC165_init();
 
-        _admin.registerTreasury();
+        if (admin.treasury() == address(0)) {
+            admin.registerTreasury();
+        }
     }
 
     receive() external payable {}

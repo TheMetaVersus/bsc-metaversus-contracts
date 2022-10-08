@@ -18,4 +18,8 @@ interface IAdmin is IERC165Upgradeable {
     function registerTreasury() external;
 
     function treasury() external view returns (address);
+
+    function registerMetaCitizen() external;
+
+    function metaCitizen() external view returns (address);
 }
