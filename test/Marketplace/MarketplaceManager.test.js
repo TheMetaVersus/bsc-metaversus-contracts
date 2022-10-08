@@ -436,15 +436,6 @@ describe("Marketplace Manager:", () => {
         });
     });
 
-    describe("isPermittedPaymentToken function:", async () => {
-        it("should check permitted token", async () => {
-            admin.setPermittedPaymentToken(token.address, false);
-            expect(await mkpManager.isPermittedPaymentToken(token.address), false);
-            admin.setPermittedPaymentToken(token.address, true);
-            expect(await mkpManager.isPermittedPaymentToken(token.address), true);
-        });
-    });
-
     describe("getListingFee function:", async () => {
         it("should return listingFee: ", async () => {
             expect(await mkpManager.getListingFee(1e5)).to.equal(2500);
@@ -1071,7 +1062,7 @@ describe("Marketplace Manager:", () => {
         it("should revert when caller is not owner asset", async () => {
             await expect(orderManager.connect(user2).acceptMarketItemOrder(1)).to.be.revertedWith("Not the seller");
         });
-        it.only("should accept offer in marketplace success ", async () => {
+        it("should accept offer in marketplace success ", async () => {
             await expect(() => orderManager.connect(user1).acceptMarketItemOrder(1)).to.changeTokenBalance(
                 token,
                 user1,
