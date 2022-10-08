@@ -13,7 +13,6 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../lib/NFTHelper.sol";
 import "../TransferableToken.sol";
-import "hardhat/console.sol";
 
 /**
  *  @title  Dev Order Contract
@@ -414,7 +413,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         marketplace.setMarketItemIdToMarketItem(marketItemOrder.marketItemId, marketItem);
 
         // pay listing fee
-        uint256 netSaleValue = marketItem.price - marketplace.getListingFee(marketItem.price);
+        uint256 netSaleValue = orderInfo.bidPrice - marketplace.getListingFee(orderInfo.bidPrice);
 
         // Pay 2.5% royalties from the amount actually received
         netSaleValue = _deduceRoyalties(

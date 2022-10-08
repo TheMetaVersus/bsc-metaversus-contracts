@@ -1,11 +1,9 @@
 const { expect } = require("chai");
+const { BigNumber } = require("ethers");
 const { upgrades, ethers } = require("hardhat");
-const { MaxUint256, AddressZero } = ethers.constants;
 const { multiply, add, subtract } = require("js-big-decimal");
 const { getCurrentTime, skipTime, generateMerkleTree, generateLeaf } = require("../utils");
-const { MerkleTree } = require("merkletreejs");
-const keccak256 = require("keccak256");
-const { parseEther } = ethers.utils;
+const { parseEther, formatBytes32String } = ethers.utils;
 const { MaxUint256: MAX_UINT_256, AddressZero: ADDRESS_ZERO } = ethers.constants;
 
 const TOTAL_SUPPLY = parseEther("1000000000000");
@@ -44,6 +42,9 @@ describe("Marketplace Manager:", () => {
             admin.address,
         ]);
 
+        await admin.setPermittedPaymentToken(token.address, true);
+        await admin.setPermittedPaymentToken(ADDRESS_ZERO, true);
+
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
             treasury.address,
@@ -51,6 +52,7 @@ describe("Marketplace Manager:", () => {
             MINT_FEE,
             admin.address,
         ]);
+        await admin.setMetaCitizen(metaCitizen.address);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
@@ -91,8 +93,8 @@ describe("Marketplace Manager:", () => {
             tokenERC721.address,
             tokenERC1155.address,
             admin.address,
-            AddressZero,
-            AddressZero,
+            ADDRESS_ZERO,
+            ADDRESS_ZERO,
         ]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
@@ -105,11 +107,7 @@ describe("Marketplace Manager:", () => {
             collectionFactory.address,
             admin.address,
         ]);
-
         await admin.connect(owner).setAdmin(mtvsManager.address, true);
-        await admin.setPermittedPaymentToken(token.address, true);
-        await admin.setPermittedPaymentToken(constants.ZERO_ADDRESS, true);
-        await admin.setMetaCitizen(metaCitizen.address);
 
         await orderManager.setPause(false);
         await mtvsManager.setPause(false);
@@ -124,7 +122,7 @@ describe("Marketplace Manager:", () => {
 
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(upgrades.deployProxy(MkpManager, [treasury.address, AddressZero])).to.revertedWith(
+            await expect(upgrades.deployProxy(MkpManager, [treasury.address, ADDRESS_ZERO])).to.revertedWith(
                 "Invalid Admin contract"
             );
             await expect(upgrades.deployProxy(MkpManager, [treasury.address, user1.address])).to.revertedWith(
@@ -136,7 +134,7 @@ describe("Marketplace Manager:", () => {
         });
 
         it("Should revert when invalid treasury contract address", async () => {
-            await expect(upgrades.deployProxy(MkpManager, [constants.ZERO_ADDRESS, admin.address])).to.revertedWith(
+            await expect(upgrades.deployProxy(MkpManager, [ADDRESS_ZERO, admin.address])).to.revertedWith(
                 "Invalid Treasury contract"
             );
             await expect(upgrades.deployProxy(MkpManager, [user1.address, admin.address])).to.revertedWith(
@@ -151,10 +149,10 @@ describe("Marketplace Manager:", () => {
             const mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
 
             expect(await mkpManager.admin()).to.equal(admin.address);
-            expect(await mkpManager.metaversusManager()).to.equal(constants.ZERO_ADDRESS);
+            expect(await mkpManager.metaversusManager()).to.equal(ADDRESS_ZERO);
             expect(await mkpManager.treasury()).to.equal(treasury.address);
             expect(await mkpManager.listingFee()).to.equal(25e2);
-            expect(await mkpManager.orderManager()).to.equal(constants.ZERO_ADDRESS);
+            expect(await mkpManager.orderManager()).to.equal(ADDRESS_ZERO);
             expect(await mkpManager.DENOMINATOR()).to.equal(1e5);
         });
     });
@@ -162,6 +160,7 @@ describe("Marketplace Manager:", () => {
     describe("setTreasury function:", async () => {
         beforeEach(async () => {
             mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+            newTreasury = await upgrades.deployProxy(Treasury, [admin.address]);
         });
 
         it("Only admin can call this function", async () => {
@@ -171,16 +170,16 @@ describe("Marketplace Manager:", () => {
         });
 
         it("should revert when Invalid Treasury contract", async () => {
-            await expect(mkpManager.setTreasury(constants.ZERO_ADDRESS)).to.revertedWith("Invalid Treasury contract");
+            await expect(mkpManager.setTreasury(ADDRESS_ZERO)).to.revertedWith("Invalid Treasury contract");
             await expect(mkpManager.setTreasury(user1.address)).to.revertedWith("Invalid Treasury contract");
             await expect(mkpManager.setTreasury(mkpManager.address)).to.revertedWith("Invalid Treasury contract");
         });
 
         it("should set treasury success: ", async () => {
-            expect(await mkpManager.treasury()).to.equal(constants.ZERO_ADDRESS);
-
-            await mkpManager.setTreasury(treasury.address);
             expect(await mkpManager.treasury()).to.equal(treasury.address);
+
+            await mkpManager.setTreasury(newTreasury.address);
+            expect(await mkpManager.treasury()).to.equal(newTreasury.address);
         });
     });
 
@@ -196,7 +195,7 @@ describe("Marketplace Manager:", () => {
         });
 
         it("should revert when Invalid MetaversusManager contract", async () => {
-            await expect(mkpManager.setMetaversusManager(constants.ZERO_ADDRESS)).to.revertedWith(
+            await expect(mkpManager.setMetaversusManager(ADDRESS_ZERO)).to.revertedWith(
                 "Invalid MetaversusManager contract"
             );
             await expect(mkpManager.setMetaversusManager(user1.address)).to.revertedWith(
@@ -208,7 +207,7 @@ describe("Marketplace Manager:", () => {
         });
 
         it("should set MetaversusManager success: ", async () => {
-            expect(await mkpManager.metaversusManager()).to.equal(constants.ZERO_ADDRESS);
+            expect(await mkpManager.metaversusManager()).to.equal(ADDRESS_ZERO);
 
             await mkpManager.setMetaversusManager(mtvsManager.address);
             expect(await mkpManager.metaversusManager()).to.equal(mtvsManager.address);
@@ -227,13 +226,13 @@ describe("Marketplace Manager:", () => {
         });
 
         it("should revert when Invalid Order contract", async () => {
-            await expect(mkpManager.setOrderManager(constants.ZERO_ADDRESS)).to.revertedWith("Invalid Order contract");
+            await expect(mkpManager.setOrderManager(ADDRESS_ZERO)).to.revertedWith("Invalid Order contract");
             await expect(mkpManager.setOrderManager(user1.address)).to.revertedWith("Invalid Order contract");
             await expect(mkpManager.setOrderManager(mkpManager.address)).to.revertedWith("Invalid Order contract");
         });
 
         it("should set MetaversusManager success: ", async () => {
-            expect(await mkpManager.orderManager()).to.equal(constants.ZERO_ADDRESS);
+            expect(await mkpManager.orderManager()).to.equal(ADDRESS_ZERO);
 
             await mkpManager.setOrderManager(orderManager.address);
             expect(await mkpManager.orderManager()).to.equal(orderManager.address);
@@ -248,11 +247,6 @@ describe("Marketplace Manager:", () => {
                     .extTransferNFTCall(tokenERC721.address, 1, 1, mkpManager.address, user1.address)
             ).to.revertedWith("Caller is not an order manager");
         });
-
-        // TODO
-        it("should be ok: ", async () => {
-            throw "Not implement yet";
-        });
     });
 
     describe("extTransferCall function:", async () => {
@@ -262,11 +256,6 @@ describe("Marketplace Manager:", () => {
                     .connect(user1)
                     .extTransferCall(token.address, parseEther("1"), mkpManager.address, user1.address)
             ).to.revertedWith("Caller is not an order manager");
-        });
-
-        // TODO
-        it("should be ok: ", async () => {
-            throw "Not implement yet";
         });
     });
 
@@ -292,28 +281,34 @@ describe("Marketplace Manager:", () => {
                     )
             ).to.revertedWith("Caller is not a metaversus manager or order manager");
         });
-
-        // TODO
-        it("should be ok: ", async () => {
-            throw "Not implement yet";
-        });
     });
 
     describe("setNewRootHash function:", async () => {
         beforeEach(async () => {
             newMerkleTree = generateMerkleTree([user1.address, user3.address]);
             newRootHash = newMerkleTree.getHexRoot();
+
+            mkpManager.setCollectionFactory(collectionFactory.address);
+
+            await collectionFactory.setPause(false);
+            await collectionFactory.connect(user1).create(0, "NFT", "NFT", user1.address, 250);
+            collection1 = await collectionFactory.getCollectionInfo(1);
+            await collectionFactory.connect(user2).create(0, "NFT", "NFT", user2.address, 250);
+            collection2 = await collectionFactory.getCollectionInfo(2);
         });
 
-        it("Only admin can call this function", async () => {
-            await expect(mkpManager.connect(user1).setNewRootHash(rootHash, newRootHash)).to.revertedWith(
-                "Caller is not an owner or admin"
-            );
+        it("Only owner can set root hash", async () => {
+            await expect(
+                mkpManager.connect(user2).setNewRootHash(collection1.collectionAddress, newRootHash)
+            ).to.revertedWith("User is not create collection");
         });
 
-        // TODO
         it("should be ok: ", async () => {
-            throw "Not implement yet";
+            expect(await mkpManager.nftAddressToRootHash(collection1.collectionAddress)).to.equal(
+                formatBytes32String("")
+            );
+            await mkpManager.connect(user1).setNewRootHash(collection1.collectionAddress, newRootHash);
+            expect(await mkpManager.nftAddressToRootHash(collection1.collectionAddress)).to.equal(newRootHash);
         });
     });
 
@@ -466,8 +461,18 @@ describe("Marketplace Manager:", () => {
     });
 
     describe("isRoyalty function:", async () => {
+        beforeEach(async () => {
+            mkpManager.setCollectionFactory(collectionFactory.address);
+
+            await collectionFactory.setPause(false);
+            await collectionFactory.connect(user1).create(0, "NFT", "NFT", user1.address, 250);
+            collection1 = await collectionFactory.getCollectionInfo(1);
+            await collectionFactory.connect(user2).create(0, "NFT", "NFT", user2.address, 250);
+            collection2 = await collectionFactory.getCollectionInfo(2);
+        });
+
         it("should check royalty: ", async () => {
-            expect(tokenERC721.address).to.equal(false);
+            expect(await mkpManager.isRoyalty(collection1.collectionAddress)).to.equal(true);
         });
     });
 
@@ -662,7 +667,7 @@ describe("Marketplace Manager:", () => {
             await expect(
                 orderManager
                     .connect(user1)
-                    .sell(ZERO_ADDRESS, tokenId, 0, price, startTime, endTime, paymentToken, rootHash)
+                    .sell(ADDRESS_ZERO, tokenId, 0, price, startTime, endTime, paymentToken, rootHash)
             ).to.be.revertedWith("Invalid amount");
         });
         it("should revert when gross sale value equal to zero: ", async () => {
@@ -772,6 +777,7 @@ describe("Marketplace Manager:", () => {
             await token.mint(user2.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user1).approve(orderManager.address, MAX_UINT_256);
+            await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
 
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
@@ -785,14 +791,6 @@ describe("Marketplace Manager:", () => {
             tokenId = 1;
             amount = 1;
             endTime = (await getCurrentTime()) + ONE_WEEK;
-        });
-
-        it("should revert when not owned metacitizen token", async () => {
-            await expect(
-                orderManager
-                    .connect(user2)
-                    .makeWalletOrder(paymentToken, bidPrice, user1.address, nftAddress, 1, 1, endTime)
-            ).to.be.revertedWith("Require own MetaCitizen NFT");
         });
 
         it("should revert when invalid time", async () => {
@@ -818,26 +816,25 @@ describe("Marketplace Manager:", () => {
         });
 
         it("should replace make offer before with token", async () => {
-            throw "not implement yet";
-            // await expect(() =>
-            //     orderManager.connect(user1).makeWalletOrder(paymentToken, bidPrice, to, nftAddress, 1, 1, endTime)
-            // ).to.changeTokenBalance(token, user1, bidPrice.mul(-1));
+            await expect(() =>
+                orderManager.connect(user1).makeWalletOrder(paymentToken, bidPrice, to, nftAddress, 1, 1, endTime)
+            ).to.changeTokenBalance(token, user1, bidPrice.mul(-1));
 
-            // await expect(() =>
-            //     orderManager
-            //         .connect(user1)
-            //         .makeWalletOrder(paymentToken, multiply(bidPrice, 2), to, nftAddress, 1, 1, endTime)
-            // ).to.changeTokenBalance(token, user1, bidPrice.mul(-1));
+            await expect(() =>
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(paymentToken, multiply(bidPrice, 2), to, nftAddress, 1, 1, endTime)
+            ).to.changeTokenBalance(token, user1, bidPrice.mul(-1));
 
-            // await expect(() =>
-            //     orderManager.connect(user1).makeWalletOrder(paymentToken, bidPrice, to, nftAddress, 1, 1, endTime)
-            // ).to.changeTokenBalance(token, user1, bidPrice);
+            await expect(() =>
+                orderManager.connect(user1).makeWalletOrder(paymentToken, bidPrice, to, nftAddress, 1, 1, endTime)
+            ).to.changeTokenBalance(token, user1, bidPrice);
 
-            // const [walletOrder, orderInfo] = await orderManager.getOrderByWalletOrderId(1);
-            // expect(walletOrder.owner).to.equal(user1.address);
-            // expect(walletOrder.to).to.equal(to);
-            // expect(orderInfo.expiredTime).to.equal(endTime);
-            // expect(orderInfo.amount).to.equal(bidPrice);
+            const [walletOrder, orderInfo] = await orderManager.getOrderByWalletOrderId(1);
+            expect(walletOrder.owner).to.equal(user1.address);
+            expect(walletOrder.to).to.equal(to);
+            expect(orderInfo.expiredTime).to.equal(endTime);
+            expect(orderInfo.bidPrice).to.equal(bidPrice);
         });
     });
 
@@ -870,19 +867,16 @@ describe("Marketplace Manager:", () => {
 
             const marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(
-                orderManager.makeMarketItemOrder(marketItemId, fakeToken.address, bidPrice, endTime)
+                orderManager
+                    .connect(user1)
+                    .makeMarketItemOrder(
+                        marketItemId,
+                        fakeToken.address,
+                        bidPrice,
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user1.address))
+                    )
             ).to.be.revertedWith("Payment token is not supported");
-        });
-
-        it("should revert when not has metacitizen", async () => {
-            await orderManager
-                .connect(user1)
-                .sell(nftAddress, tokenId, amount, price, startTime, endTime, paymentToken, rootHash);
-
-            const marketItemId = await mkpManager.getCurrentMarketItem();
-            await expect(
-                orderManager.connect(user2).makeMarketItemOrder(marketItemId, paymentToken, bidPrice, endTime)
-            ).to.revertedWith("Require own MetaCitizen NFT");
         });
 
         it("should revert when not the order time", async () => {
@@ -892,7 +886,15 @@ describe("Marketplace Manager:", () => {
 
             const marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(
-                orderManager.connect(user2).makeMarketItemOrder(marketItemId, paymentToken, bidPrice, endTime)
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(
+                        marketItemId,
+                        paymentToken,
+                        bidPrice,
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user2.address))
+                    )
             ).to.revertedWith("Not the order time");
         });
 
@@ -906,7 +908,15 @@ describe("Marketplace Manager:", () => {
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
             await metaCitizen.mint(user2.address);
             await expect(() =>
-                orderManager.connect(user2).makeMarketItemOrder(marketItemId, paymentToken, bidPrice, endTime)
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(
+                        marketItemId,
+                        paymentToken,
+                        bidPrice,
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user2.address))
+                    )
             ).to.changeTokenBalance(token, user2, bidPrice.mul(-1));
 
             const offerInfo = await orderManager.marketItemOrderOfOwners(marketItemId, user2.address);
@@ -916,7 +926,7 @@ describe("Marketplace Manager:", () => {
         it("should make offer with native success", async () => {
             await orderManager
                 .connect(user1)
-                .sell(nftAddress, tokenId, amount, price, startTime, endTime, ZERO_ADDRESS, rootHash);
+                .sell(nftAddress, tokenId, amount, price, startTime, endTime, ADDRESS_ZERO, rootHash);
 
             await skipTime(10);
             const marketItemId = await mkpManager.getCurrentMarketItem();
@@ -924,7 +934,14 @@ describe("Marketplace Manager:", () => {
             await expect(() =>
                 orderManager
                     .connect(user2)
-                    .makeMarketItemOrder(marketItemId, ZERO_ADDRESS, bidPrice, endTime, { value: bidPrice })
+                    .makeMarketItemOrder(
+                        marketItemId,
+                        ADDRESS_ZERO,
+                        bidPrice,
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user2.address)),
+                        { value: bidPrice }
+                    )
             ).to.changeEtherBalance(user2, bidPrice.mul(-1));
 
             const offerInfo = await orderManager.marketItemOrderOfOwners(marketItemId, user2.address);
@@ -934,7 +951,7 @@ describe("Marketplace Manager:", () => {
         it("should replace make offer before with native success", async () => {
             await orderManager
                 .connect(user1)
-                .sell(nftAddress, tokenId, amount, price, startTime, endTime, ZERO_ADDRESS, rootHash);
+                .sell(nftAddress, tokenId, amount, price, startTime, endTime, ADDRESS_ZERO, rootHash);
 
             await skipTime(10);
             const marketItemId = await mkpManager.getCurrentMarketItem();
@@ -942,19 +959,30 @@ describe("Marketplace Manager:", () => {
             await expect(() =>
                 orderManager
                     .connect(user2)
-                    .makeMarketItemOrder(marketItemId, ZERO_ADDRESS, multiply(bidPrice, 2), endTime, {
-                        value: multiply(bidPrice, 2),
-                    })
+                    .makeMarketItemOrder(
+                        marketItemId,
+                        ADDRESS_ZERO,
+                        multiply(bidPrice, 2),
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user2.address)),
+                        {
+                            value: multiply(bidPrice, 2),
+                        }
+                    )
             ).to.changeEtherBalance(user2, multiply(bidPrice, -2));
 
             await expect(() =>
                 orderManager
                     .connect(user2)
-                    .makeMarketItemOrder(marketItemId, ZERO_ADDRESS, bidPrice, endTime, { value: bidPrice })
+                    .makeMarketItemOrder(
+                        marketItemId,
+                        ADDRESS_ZERO,
+                        bidPrice,
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user2.address)),
+                        { value: 0 }
+                    )
             ).to.changeEtherBalance(user2, bidPrice);
-
-            const offerInfo = await orderManager.marketItemOrderOfOwners(marketItemId, user2.address);
-            expect(offerInfo.bidPrice).to.equal(bidPrice);
         });
     });
 
@@ -1028,26 +1056,35 @@ describe("Marketplace Manager:", () => {
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
             await metaCitizen.mint(user2.address);
             await expect(() =>
-                orderManager.connect(user2).makeMarketItemOrder(marketItemId, paymentToken, bidPrice, endTime)
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(
+                        marketItemId,
+                        paymentToken,
+                        bidPrice,
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user2.address))
+                    )
             ).to.changeTokenBalance(token, user2, bidPrice.mul(-1));
-
-            const offerInfo = await orderManager.marketItemOrderOfOwners(marketItemId, user2.address);
         });
 
         it("should revert when caller is not owner asset", async () => {
             await expect(orderManager.connect(user2).acceptMarketItemOrder(1)).to.be.revertedWith("Not the seller");
         });
-        it("should accept offer in marketplace success ", async () => {
-            throw "not implement yet";
-            // await expect(() => orderManager.connect(user1).acceptMarketItemOrder(1)).to.changeTokenBalance(
-            //     token,
-            //     user1,
-            //     bidPrice
-            // );
+        it.only("should accept offer in marketplace success ", async () => {
+            await expect(() => orderManager.connect(user1).acceptMarketItemOrder(1)).to.changeTokenBalance(
+                token,
+                user1,
+                bidPrice
+                    .mul(975)
+                    .div(1000)
+                    .mul(975)
+                    .div(1000)
+            );
 
-            // marketItemId = await mkpManager.getCurrentMarketItem();
-            // marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
-            // expect(marketItem.status).to.equal(1);
+            marketItemId = await mkpManager.getCurrentMarketItem();
+            marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
+            expect(marketItem.status).to.equal(1);
         });
     });
 
@@ -1083,7 +1120,7 @@ describe("Marketplace Manager:", () => {
         });
 
         it("should revert when invalid buyer", async () => {
-            await expect(orderManager.connect(user1).cancelWalletOrder(1)).to.be.revertedWith("Not the buyer");
+            await expect(orderManager.connect(user1).cancelWalletOrder(1)).to.be.revertedWith("Not the owner of offer");
         });
         it("should refund bid amount success", async () => {
             await expect(() => orderManager.connect(user2).cancelWalletOrder(1)).to.changeTokenBalance(
