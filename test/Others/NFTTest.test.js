@@ -2,7 +2,6 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 
 const TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-const ONE_ETHER = ethers.utils.parseEther("1");
 const ETHER_100 = ethers.utils.parseEther("100");
 const PRICE = ethers.utils.parseEther("2");
 
@@ -22,11 +21,10 @@ describe("NftTest:", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            owner.address,
-            "Vetaversus Token",
+            "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            admin.address,
+            owner.address,
         ]);
 
         NftTest = await ethers.getContractFactory("NftTest");
@@ -60,8 +58,7 @@ describe("NftTest:", () => {
 
         it("Check tokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
-            await token.mint(owner.address, ETHER_100);
-            await token.connect(owner).approve(nftTest.address, ethers.constants.MaxUint256);
+            await token.approve(nftTest.address, ethers.constants.MaxUint256);
             await nftTest.buy(URI);
 
             const newURI = await nftTest.tokenURI(1);
@@ -79,7 +76,6 @@ describe("NftTest:", () => {
     describe("setTokenURI function:", async () => {
         it("should setTokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
-            await token.mint(owner.address, ETHER_100);
             await token.connect(owner).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.buy(URI);
@@ -94,9 +90,7 @@ describe("NftTest:", () => {
 
     describe("buy function:", async () => {
         it("should buy success: ", async () => {
-            await token.mint(owner.address, ETHER_100);
-
-            await token.connect(owner).approve(nftTest.address, ethers.constants.MaxUint256);
+            await token.approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.buy("this_uri");
             expect(await nftTest.balanceOf(owner.address)).to.equal(1);

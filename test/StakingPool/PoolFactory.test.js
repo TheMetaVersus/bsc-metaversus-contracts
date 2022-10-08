@@ -51,7 +51,6 @@ describe("Pool Factory:", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
@@ -125,7 +124,7 @@ describe("Pool Factory:", () => {
         await mtvsManager.setPause(false);
         await poolFactory.setPause(false);
         await orderManager.setPause(false);
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
     });
 
     describe("Deployment:", async () => {

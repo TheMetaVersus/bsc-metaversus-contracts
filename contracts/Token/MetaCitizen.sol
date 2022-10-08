@@ -69,7 +69,7 @@ contract MetaCitizen is
         __ERC721_init("MetaversusWorld Citizen", "MWC");
 
         require(
-            address(_paymentToken) == address(0) || admin.isPermittedPaymentToken(_paymentToken),
+            address(_paymentToken) != address(0) && admin.isPermittedPaymentToken(_paymentToken),
             "Invalid payment token"
         );
 

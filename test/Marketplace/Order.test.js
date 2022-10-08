@@ -1,13 +1,12 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { MaxUint256, AddressZero } = ethers.constants;
-const { add } = require("js-big-decimal");
-const { getCurrentTime, skipTime } = require("../utils");
-const { MerkleTree } = require("merkletreejs");
+const { add, subtract } = require("js-big-decimal");
+const { getCurrentTime, skipTime, generateMerkleTree, generateLeaf } = require("../utils");
 const keccak256 = require("keccak256");
 const { parseEther } = require("ethers/lib/utils");
 
-const TOTAL_SUPPLY = parseEther("1000");
+const TOTAL_SUPPLY = parseEther("1000000000000");
 const PRICE = parseEther("1");
 const ONE_ETHER = parseEther("1");
 const ONE_WEEK = 604800;
@@ -27,15 +26,15 @@ describe("OrderManager:", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            admin.address,
+            owner.address,
         ]);
 
         await admin.setPermittedPaymentToken(token.address, true);
-        
+        await admin.setPermittedPaymentToken(AddressZero, true);
+
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
             token.address,
@@ -96,25 +95,22 @@ describe("OrderManager:", () => {
 
         OrderManager = await ethers.getContractFactory("OrderManager");
         orderManager = await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
+
         await admin.setAdmin(mtvsManager.address, true);
-        await admin.setPermittedPaymentToken(token.address, true);
-        await admin.setPermittedPaymentToken(AddressZero, true);
+
         await mkpManager.setMetaversusManager(mtvsManager.address);
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
         await token.connect(user1).approve(orderManager.address, MaxUint256);
-        await token.mint(user1.address, parseEther("1000"));
+        await token.transfer(user1.address, parseEther("1000"));
 
         await token.connect(user2).approve(orderManager.address, MaxUint256);
-        await token.mint(user2.address, parseEther("1000"));
+        await token.transfer(user2.address, parseEther("1000"));
 
-        await mkpManager.setOrder(orderManager.address);
+        await mkpManager.setOrderManager(orderManager.address);
 
-        const leaves = [user1.address, user2.address].map(value => keccak256(value));
-        merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+        merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
         rootHash = merkleTree.getHexRoot();
-
-        await admin.setMetaCitizen(metaCitizen.address);
     });
 
     describe("Deployment:", async () => {
@@ -219,9 +215,35 @@ describe("OrderManager:", () => {
             order = await orderManager.getOrderByWalletOrderId(1);
             expect(order[1].bidPrice).to.equal(add(BID_PRICE, parseEther("100")));
         });
+
+        it("Should be ok when update offer less than", async () => {
+            await orderManager
+                .connect(user1)
+                .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
+
+            let order = await orderManager.getOrderByWalletOrderId(1);
+
+            expect(order[1].bidPrice).to.equal(BID_PRICE);
+            await expect(() =>
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(
+                        token.address,
+                        BID_PRICE.sub(parseEther("10")),
+                        user1.address,
+                        nftTest.address,
+                        1,
+                        1,
+                        endTime
+                    )
+            ).to.changeTokenBalance(token, user1, parseEther("10"));
+
+            order = await orderManager.getOrderByWalletOrderId(1);
+            expect(order[1].bidPrice).to.equal(BID_PRICE.sub(parseEther("10")));
+        });
     });
 
-    describe("makeMaketItemOrder function:", async () => {
+    describe("makeMarketItemOrder function:", async () => {
         beforeEach(async () => {
             await orderManager.setPause(false);
             endTime = add(await getCurrentTime(), ONE_WEEK);
@@ -239,41 +261,44 @@ describe("OrderManager:", () => {
             expect(await orderManager.paused()).to.equal(true);
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(
-                orderManager.connect(user2).makeMaketItemOrder(marketItemId, token.address, BUY_BID_PRICE, endTime, [])
+                orderManager.connect(user2).makeMarketItemOrder(marketItemId, token.address, BUY_BID_PRICE, endTime, [])
             ).to.revertedWith("Pausable: paused");
         });
 
         it("should be fail when invalid payment token", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(
-                orderManager.makeMaketItemOrder(marketItemId, treasury.address, BUY_BID_PRICE, endTime, [])
+                orderManager.makeMarketItemOrder(marketItemId, treasury.address, BUY_BID_PRICE, endTime, [])
             ).to.revertedWith("Payment token is not supported");
         });
 
-        it("should be fail when is mot owned MetaCItizen", async () => {
+        it("should be fail when is not owned MetaCItizen", async () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
-
-            rootHash = merkleTree.getHexRoot();
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             await orderManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash);
+                .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, merkleTree.getHexRoot());
 
-            const leaf = keccak256(user2.address);
-            const proof = merkleTree.getHexProof(leaf);
-
+            await skipTime(100);
             await expect(
-                orderManager.connect(user2).makeMaketItemOrder(2, token.address, BUY_BID_PRICE, endTime, proof)
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(
+                        2,
+                        token.address,
+                        BUY_BID_PRICE,
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user2.address))
+                    )
             ).to.revertedWith("Require own MetaCitizen NFT");
         });
 
@@ -282,14 +307,13 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
@@ -300,7 +324,8 @@ describe("OrderManager:", () => {
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
 
-            await orderManager.connect(user2).makeMaketItemOrder(2, token.address, BUY_BID_PRICE, endTime, proof);
+            await skipTime(100);
+            await orderManager.connect(user2).makeMarketItemOrder(2, token.address, BUY_BID_PRICE, endTime, proof);
 
             const order = await orderManager.getOrderByMarketItemOrderId(1);
 
@@ -314,14 +339,14 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
             await metaCitizen.mint(user2.address);
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
             const leaf = keccak256(user2.address);
@@ -331,35 +356,110 @@ describe("OrderManager:", () => {
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash);
 
-            await orderManager.connect(user2).makeMaketItemOrder(2, token.address, BUY_BID_PRICE, endTime, proof);
+            await skipTime(100);
+            await orderManager.connect(user2).makeMarketItemOrder(2, token.address, BUY_BID_PRICE, endTime, proof);
 
             let order = await orderManager.getOrderByMarketItemOrderId(1);
             expect(order[1].bidPrice).to.equal(BUY_BID_PRICE);
 
             await orderManager
                 .connect(user2)
-                .makeMaketItemOrder(2, token.address, add(BUY_BID_PRICE, parseEther("100")), endTime, proof);
+                .makeMarketItemOrder(2, token.address, add(BUY_BID_PRICE, parseEther("100")), endTime, proof);
 
             order = await orderManager.getOrderByMarketItemOrderId(1);
             expect(order[1].bidPrice).to.equal(add(BUY_BID_PRICE, parseEther("100")));
         });
+
+        it("Should be ok when update buy offer", async () => {
+            const startTime = await getCurrentTime();
+            const endTime = add(await getCurrentTime(), ONE_WEEK);
+
+            await token.transfer(user1.address, ONE_ETHER);
+            await token.connect(user1).approve(nftTest.address, MaxUint256);
+
+            await nftTest.connect(user1).buy("this_uri");
+            await nftTest.connect(user1).approve(mkpManager.address, 1);
+            await metaCitizen.mint(user2.address);
+
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
+
+            rootHash = merkleTree.getHexRoot();
+            const leaf = keccak256(user2.address);
+            const proof = merkleTree.getHexProof(leaf);
+
+            await orderManager
+                .connect(user1)
+                .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash);
+
+            await skipTime(100);
+            await orderManager.connect(user2).makeMarketItemOrder(2, token.address, BUY_BID_PRICE, endTime, proof);
+
+            let order = await orderManager.getOrderByMarketItemOrderId(1);
+            expect(order[1].bidPrice).to.equal(BUY_BID_PRICE);
+
+            await orderManager
+                .connect(user2)
+                .makeMarketItemOrder(2, token.address, subtract(BUY_BID_PRICE, parseEther("10")), endTime, proof);
+
+            order = await orderManager.getOrderByMarketItemOrderId(1);
+            expect(order[1].bidPrice).to.equal(subtract(BUY_BID_PRICE, parseEther("10")));
+        });
     });
 
-    describe("acceptOffer function:", async () => {
+    describe("acceptWalletOrder function:", async () => {
         beforeEach(async () => {
             await orderManager.setPause(false);
             await metaCitizen.mint(user2.address);
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
+            await token.connect(user1).approve(nftTest.address, MaxUint256);
+
+            await nftTest.connect(user1).buy("this_uri");
+
+            await orderManager
+                .connect(user2)
+                .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
+        });
+
+        it("should revert when contract is paused", async () => {
+            await orderManager.setPause(true);
+            expect(await orderManager.paused()).to.equal(true);
+
+            await expect(orderManager.connect(user1).acceptWalletOrder(1)).to.revertedWith("Pausable: paused");
+        });
+
+        it("should be fail when Invalid seller of asset", async () => {
+            await expect(orderManager.connect(user3).acceptWalletOrder(1)).to.revertedWith("Not the seller");
+        });
+
+        it("should be fail when Overtime", async () => {
+            await skipTime(ONE_WEEK);
+            await expect(orderManager.connect(user1).acceptWalletOrder(1)).to.revertedWith("Order is expired");
+        });
+
+        it("Should be ok", async () => {
+            await nftTest.connect(user1).approve(orderManager.address, 1);
+            await orderManager.connect(user1).acceptWalletOrder(1);
+            expect(await nftTest.ownerOf(1)).to.equal(user2.address);
+        });
+    });
+
+    describe("acceptMarketItemOrder function:", async () => {
+        beforeEach(async () => {
+            await orderManager.setPause(false);
+            await metaCitizen.mint(user2.address);
+            const startTime = await getCurrentTime();
+            const endTime = add(await getCurrentTime(), ONE_WEEK);
+
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
@@ -370,10 +470,11 @@ describe("OrderManager:", () => {
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash);
 
+            await skipTime(10);
             const marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager
                 .connect(user2)
-                .makeMaketItemOrder(marketItemId, token.address, BUY_BID_PRICE, endTime, proof);
+                .makeMarketItemOrder(marketItemId, token.address, BUY_BID_PRICE, endTime, proof);
         });
 
         it("should revert when contract is paused", async () => {
@@ -383,10 +484,8 @@ describe("OrderManager:", () => {
             await expect(orderManager.connect(user1).acceptMarketItemOrder(1)).to.revertedWith("Pausable: paused");
         });
 
-        it("should be fail when Invalid seller of asset", async () => {
-            await expect(orderManager.connect(user3).acceptMarketItemOrder(1)).to.revertedWith(
-                "Invalid seller of asset !"
-            );
+        it("should be fail when not the seller", async () => {
+            await expect(orderManager.connect(user3).acceptMarketItemOrder(1)).to.revertedWith("Not the seller");
         });
 
         it("should be fail when Overtime", async () => {
@@ -407,8 +506,7 @@ describe("OrderManager:", () => {
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
         });
@@ -439,7 +537,7 @@ describe("OrderManager:", () => {
             ).to.be.revertedWith("Invalid amount");
         });
         it("should revert ERROR: NFT address is compatible !", async () => {
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
 
             await token.connect(user1).approve(tokenMintERC721.address, MaxUint256);
 
@@ -452,7 +550,7 @@ describe("OrderManager:", () => {
             ).to.be.revertedWith("Token is not existed");
         });
         it("should sell success and check private collection: ", async () => {
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -475,7 +573,7 @@ describe("OrderManager:", () => {
         beforeEach(async () => {
             await orderManager.setPause(false);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
 
             await mtvsManager.setPause(false);
             const current = await getCurrentTime();
@@ -484,8 +582,7 @@ describe("OrderManager:", () => {
                 .connect(user2)
                 .createNFT(false, 1, 100, "this_uri", ONE_ETHER, current + 100, current + 10000, token.address, []);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             await orderManager
                 .connect(user2)
@@ -527,14 +624,13 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
@@ -545,9 +641,10 @@ describe("OrderManager:", () => {
             const marketItemId = await mkpManager.getCurrentMarketItem();
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
+            await skipTime(10);
             await orderManager
                 .connect(user2)
-                .makeMaketItemOrder(marketItemId, token.address, BUY_BID_PRICE, endTime, proof);
+                .makeMarketItemOrder(marketItemId, token.address, BUY_BID_PRICE, endTime, proof);
         });
 
         it("should revert when contract is paused", async () => {
@@ -581,12 +678,11 @@ describe("OrderManager:", () => {
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -662,6 +758,54 @@ describe("OrderManager:", () => {
             expect((marketItem.endTime = newEndTime));
             expect((marketItem.paymentToken = token.address));
         });
+        it("should update amount when soldAvailable ERC1155", async () => {
+            // await orderManager.setPause(false);
+
+            await mtvsManager.setPause(false);
+            let current = await getCurrentTime();
+
+            await mtvsManager
+                .connect(user2)
+                .createNFT(false, 1, 1000, "this_uri", ONE_ETHER, current + 100, current + 10000, token.address, []);
+            await tokenMintERC1155.connect(user2).setApprovalForAll(mkpManager.address, true);
+            await orderManager
+                .connect(user2)
+                .sell(tokenMintERC1155.address, 1, 100, ONE_ETHER, current + 10, current + 10000, token.address, []);
+
+            const marketItemId = await mkpManager.getCurrentMarketItem();
+            let amount_sell = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
+            expect(amount_sell.amount).to.equal(100);
+            // Start sell available
+            await skipTime(100000);
+            current = await getCurrentTime();
+            await orderManager
+                .connect(user2)
+                .sellAvailableInMarketplace(
+                    marketItemId,
+                    add(PRICE, parseEther("100")),
+                    200,
+                    current + 10,
+                    current + 10000,
+                    token.address
+                );
+            amount_sell = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
+            expect(amount_sell.amount).to.equal(200);
+
+            await skipTime(100000);
+            current = await getCurrentTime();
+            await orderManager
+                .connect(user2)
+                .sellAvailableInMarketplace(
+                    marketItemId,
+                    add(PRICE, parseEther("100")),
+                    150,
+                    current + 10,
+                    current + 10000,
+                    token.address
+                );
+            amount_sell = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
+            expect(amount_sell.amount).to.equal(150);
+        });
     });
 
     describe("cancelSell function:", async () => {
@@ -670,12 +814,11 @@ describe("OrderManager:", () => {
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -697,7 +840,7 @@ describe("OrderManager:", () => {
 
         it("should be fail when not the seller !", async () => {
             await expect(orderManager.connect(user1).cancelSell(marketItemId + 1)).to.revertedWith(
-                "You are not the seller"
+                "ERROR: market ID is not exist !"
             );
         });
 
@@ -720,12 +863,11 @@ describe("OrderManager:", () => {
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");

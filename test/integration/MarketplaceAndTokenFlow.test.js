@@ -22,7 +22,6 @@ describe("Marketplace interact with Tokens:", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
@@ -118,7 +117,7 @@ describe("Marketplace interact with Tokens:", () => {
         it("Connect order contract", async () => {
             expect(await mkpManager.orderManager()).to.equal(AddressZero);
 
-            await mkpManager.setOrder(orderManager.address);
+            await mkpManager.setOrderManager(orderManager.address);
 
             expect(await mkpManager.orderManager()).to.equal(orderManager.address);
         });

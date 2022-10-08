@@ -30,11 +30,10 @@ describe("Metaversus Manager:", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            admin.address,
+            owner.address,
         ]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
@@ -287,9 +286,6 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should create NFT success: ", async () => {
-            await token.mint(user2.address, AMOUNT);
-            await token.connect(user2).approve(mtvsManager.address, MaxUint256);
-
             await admin.setAdmin(mtvsManager.address, true);
             await mtvsManager
                 .connect(user2)
@@ -365,9 +361,6 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should create NFT to Wallet success: ", async () => {
-            await token.mint(user2.address, AMOUNT);
-            await token.connect(user2).approve(mtvsManager.address, MaxUint256);
-
             await admin.setAdmin(mtvsManager.address, true);
             await expect(() =>
                 mtvsManager
@@ -413,10 +406,6 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should create and sale NFT success: ", async () => {
-            await token.mint(user2.address, AMOUNT);
-
-            await token.connect(user2).approve(mtvsManager.address, MaxUint256);
-
             await admin.setAdmin(mtvsManager.address, true);
 
             await mtvsManager
@@ -681,16 +670,21 @@ describe("Metaversus Manager:", () => {
         it("should buy ticket success: ", async () => {
             await mtvsManager.setPause(false);
 
-            await token.mint(user2.address, AMOUNT);
+            await token.transfer(user2.address, AMOUNT);
             await token.approve(user2.address, MaxUint256);
             await token.connect(user2).approve(mtvsManager.address, MaxUint256);
+
+            const balanceOf_before = await token.balanceOf(treasury.address);
+
             const price = 10000;
             await expect(() => mtvsManager.connect(user2).buyTicketEvent(1, price)).to.changeTokenBalance(
                 token,
                 user2,
                 -price
             );
-            expect(await token.balanceOf(treasury.address)).to.equal(add(TOTAL_SUPPLY, price));
+
+            const balanceOf_after = await token.balanceOf(treasury.address);
+            expect(balanceOf_after.sub(balanceOf_before)).to.equal(price);
         });
     });
 });

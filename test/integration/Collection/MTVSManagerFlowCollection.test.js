@@ -8,7 +8,7 @@ const ONE_ETHER = ethers.utils.parseEther("1");
 const ONE_DAY = 86400;
 const ONE_HOUR = 3600;
 
-describe("CollectionFactory", () => {
+describe("MTVSManagerFlowCollection", () => {
     before(async () => {
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -27,7 +27,6 @@ describe("CollectionFactory", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,

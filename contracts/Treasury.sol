@@ -6,8 +6,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import "../interfaces/ITreasury.sol";
-import "../Validatable.sol";
+import "./interfaces/ITreasury.sol";
+import "./Validatable.sol";
 
 /**
  *  @title  Dev Treasury Contract

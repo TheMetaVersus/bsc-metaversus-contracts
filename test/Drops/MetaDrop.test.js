@@ -27,12 +27,12 @@ describe("MetaDrop", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            admin.address,
+            owner.address,
         ]);
+
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
 
@@ -52,7 +52,6 @@ describe("MetaDrop", () => {
             TOKEN_0_1,
             admin.address,
         ]);
-        await admin.setMetaCitizen(metaCitizen.address);
 
         MetaDrop = await ethers.getContractFactory("MetaDrop");
         metaDrop = await upgrades.deployProxy(MetaDrop, [
@@ -61,9 +60,9 @@ describe("MetaDrop", () => {
         ]);
         await metaDrop.deployed();
 
-        await token.mint(user1.address, TOTAL_SUPPLY);
-        await token.mint(user2.address, TOTAL_SUPPLY);
-        await token.mint(user3.address, TOTAL_SUPPLY);
+        await token.transfer(user1.address, TOTAL_SUPPLY.div(4));
+        await token.transfer(user2.address, TOTAL_SUPPLY.div(4));
+        await token.transfer(user3.address, TOTAL_SUPPLY.div(4));
 
         await token.connect(user1).approve(metaDrop.address, MaxUint256);
         await token.connect(user2).approve(metaDrop.address, MaxUint256);

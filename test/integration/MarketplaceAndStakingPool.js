@@ -58,11 +58,10 @@ describe("Marketplace interact with Staking Pool:", () => {
 
     Token = await ethers.getContractFactory("MTVS");
     token = await upgrades.deployProxy(Token, [
-      user1.address,
       "Metaversus Token",
       "MTVS",
       TOTAL_SUPPLY,
-      admin.address
+      owner.address
     ]);
 
     USD = await ethers.getContractFactory("USD");
@@ -84,7 +83,6 @@ describe("Marketplace interact with Staking Pool:", () => {
       MINT_FEE,
       admin.address
     ]);
-    await admin.setMetaCitizen(metaCitizen.address);
 
     TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
     tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
@@ -163,7 +161,7 @@ describe("Marketplace interact with Staking Pool:", () => {
     await mtvsManager.setPause(false);
     await staking.setPause(false);
     await orderManager.setPause(false);
-    await mkpManager.setOrder(orderManager.address);
+    await mkpManager.setOrderManager(orderManager.address);
     await mkpManager.setMetaversusManager(mtvsManager.address);
   });
 
@@ -225,7 +223,7 @@ describe("Marketplace interact with Staking Pool:", () => {
 
       const leaf = keccak256(user1.address);
       const proof = merkleTree.getHexProof(leaf);
-      await token.mint(user1.address, ONE_ETHER.mul(1000));
+      await token.transfer(user1.address, ONE_ETHER.mul(1000));
       await token.connect(user1).approve(orderManager.address, ONE_ETHER);
       await orderManager.connect(user1).buy(1, proof);
 

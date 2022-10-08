@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { AddressZero } = ethers.constants;
+
 describe("USD Token:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
@@ -36,11 +37,6 @@ describe("USD Token:", () => {
             expect(symbol).to.equal("USD");
             expect(totalSupply).to.equal(TOTAL_SUPPLY);
             expect(total).to.equal(totalSupply);
-        });
-
-        it("Check Owner: ", async () => {
-            const ownerAddress = await token.owner();
-            expect(ownerAddress).to.equal(owner.address);
         });
     });
 

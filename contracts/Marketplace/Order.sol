@@ -13,7 +13,6 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../lib/NFTHelper.sol";
 import "../TransferableToken.sol";
-import "hardhat/console.sol";
 
 /**
  *  @title  Dev Order Contract
@@ -155,6 +154,21 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
     );
     event CanceledOrder(uint256 indexed orderId);
 
+    modifier validMarketItemId(uint256 _id) {
+        require(_id <= marketplace.getCurrentMarketItem() && _id > 0, "ERROR: market ID is not exist !");
+        _;
+    }
+
+    modifier validWalletOrderId(uint256 _id) {
+        require(_id <= walletOrderIds.current() && _id > 0, "ERROR: wallet order ID is not exist !");
+        _;
+    }
+
+    modifier validMarketItemOrderId(uint256 _id) {
+        require(_id <= marketItemOrderIds.current() && _id > 0, "ERROR: market item order ID is not exist !");
+        _;
+    }
+
     /**
      *  @notice Initialize new logic contract.
      */
@@ -194,23 +208,23 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         notZero(_amount)
     {
         require(_time > block.timestamp, "Invalid order time");
-
+        require(admin.isPermittedPaymentToken(_paymentToken), "Payment token is not valid");
         // Check exist make Offer
-        OrderInfo storage current = walletOrderOfOwners[_nftAddress][_tokenId][_to][_msgSender()];
+        OrderInfo storage existOrder = walletOrderOfOwners[_nftAddress][_tokenId][_to][_msgSender()];
         // check for update
-        if (current.bidPrice != 0) {
+        if (existOrder.bidPrice != 0) {
             // Transfer before update
-            if (_bidPrice > current.bidPrice) {
-                _transferToken(_paymentToken, _bidPrice - current.bidPrice, _msgSender(), address(this));
-            } else if (_bidPrice < current.bidPrice) {
-                _transferToken(_paymentToken, current.bidPrice - _bidPrice, address(this), _msgSender());
+            if (_bidPrice > existOrder.bidPrice) {
+                _transferToken(_paymentToken, _bidPrice - existOrder.bidPrice, _msgSender(), address(this));
+            } else if (_bidPrice < existOrder.bidPrice) {
+                _transferToken(_paymentToken, existOrder.bidPrice - _bidPrice, address(this), _msgSender());
             }
             // Update status
-            current.paymentToken = _paymentToken;
-            current.bidPrice = _bidPrice;
-            current.amount = _amount;
-            current.expiredTime = _time;
-            current.status = OrderStatus.PENDING;
+            existOrder.paymentToken = _paymentToken;
+            existOrder.bidPrice = _bidPrice;
+            existOrder.amount = _amount;
+            existOrder.expiredTime = _time;
+            existOrder.status = OrderStatus.PENDING;
 
             // Emit Event
             emit UpdateOrder(
@@ -218,11 +232,11 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
                 _to,
                 _nftAddress,
                 _tokenId,
-                current.amount,
-                address(current.paymentToken),
-                current.bidPrice,
-                current.expiredTime,
-                current.status
+                existOrder.amount,
+                address(existOrder.paymentToken),
+                existOrder.bidPrice,
+                existOrder.expiredTime,
+                existOrder.status
             );
         } else {
             walletOrderIds.increment();
@@ -266,7 +280,13 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *
      * * Emit {AcceptedWalletOrder}
      */
-    function acceptWalletOrder(uint256 _orderId) external payable nonReentrant whenNotPaused {
+    function acceptWalletOrder(uint256 _orderId)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        validWalletOrderId(_orderId)
+    {
         WalletOrder storage walletOrder = walletOrders[_orderId];
         OrderInfo storage orderInfo = walletOrderOfOwners[walletOrder.nftAddress][walletOrder.tokenId][walletOrder.to][
             walletOrder.owner
@@ -279,8 +299,19 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         // Update order information
         orderInfo.status = OrderStatus.ACCEPTED;
 
+        // pay listing fee
+        uint256 netSaleValue = orderInfo.bidPrice - marketplace.getListingFee(orderInfo.bidPrice);
+
+        // Pay royalties from the amount actually received
+        netSaleValue = _deduceRoyalties(
+            walletOrder.nftAddress,
+            walletOrder.tokenId,
+            netSaleValue,
+            orderInfo.paymentToken
+        );
+
         // Transfer Token from Buyer to Seller
-        _transferToken(orderInfo.paymentToken, orderInfo.bidPrice, address(this), walletOrder.to);
+        _transferToken(orderInfo.paymentToken, netSaleValue, address(this), walletOrder.to);
 
         // Transfer NFT from Seller to Buyer
         NFTHelper.transferNFTCall(
@@ -300,18 +331,27 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *
      *  Emit {MadeMaketItemOrder}
      */
-    function makeMaketItemOrder(
+    function makeMarketItemOrder(
         uint256 _marketItemId,
         IERC20Upgradeable _paymentToken,
         uint256 _bidPrice,
         uint256 _time,
         bytes32[] memory _proof
-    ) external payable nonReentrant whenNotPaused validPaymentToken(_paymentToken) notZero(_bidPrice) {
+    )
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        validMarketItemId(_marketItemId)
+        validPaymentToken(_paymentToken)
+        notZero(_bidPrice)
+    {
         require(_time > block.timestamp, "Invalid order time");
-
+        require(admin.isPermittedPaymentToken(_paymentToken), "Payment token is not valid");
         // Check Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(_marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
+        require(marketItem.startTime < block.timestamp && block.timestamp < marketItem.endTime, "Not the order time");
         if (marketItem.isPrivate) {
             require(
                 admin.isOwnedMetaCitizen(_msgSender()) && marketplace.verify(_marketItemId, _proof, _msgSender()),
@@ -319,22 +359,22 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             );
         }
 
-        OrderInfo storage current = marketItemOrderOfOwners[_marketItemId][_msgSender()];
+        OrderInfo storage existOrder = marketItemOrderOfOwners[_marketItemId][_msgSender()];
 
-        if (current.bidPrice != 0) {
+        if (existOrder.bidPrice != 0) {
             // Transfer before update
-            if (_bidPrice > current.bidPrice) {
-                _transferToken(_paymentToken, _bidPrice - current.bidPrice, _msgSender(), address(this));
-            } else if (_bidPrice < current.bidPrice) {
-                _transferToken(_paymentToken, current.bidPrice - _bidPrice, address(this), _msgSender());
+            if (_bidPrice > existOrder.bidPrice) {
+                _transferToken(_paymentToken, _bidPrice - existOrder.bidPrice, _msgSender(), address(this));
+            } else if (_bidPrice < existOrder.bidPrice) {
+                _transferToken(_paymentToken, existOrder.bidPrice - _bidPrice, address(this), _msgSender());
             }
 
             // Update status
-            current.paymentToken = _paymentToken;
-            current.bidPrice = _bidPrice;
-            current.amount = marketItem.amount;
-            current.expiredTime = _time;
-            current.status = OrderStatus.PENDING;
+            existOrder.paymentToken = _paymentToken;
+            existOrder.bidPrice = _bidPrice;
+            existOrder.amount = marketItem.amount;
+            existOrder.expiredTime = _time;
+            existOrder.status = OrderStatus.PENDING;
 
             // Emit Event
             emit UpdateOrder(
@@ -342,11 +382,11 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
                 marketItem.seller,
                 marketItem.nftContractAddress,
                 marketItem.tokenId,
-                current.amount,
-                address(current.paymentToken),
-                current.bidPrice,
-                current.expiredTime,
-                current.status
+                existOrder.amount,
+                address(existOrder.paymentToken),
+                existOrder.bidPrice,
+                existOrder.expiredTime,
+                existOrder.status
             );
         } else {
             // Create Order
@@ -390,7 +430,13 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *
      *  Emit {AcceptedMarketItemOffer}
      */
-    function acceptMarketItemOrder(uint256 _orderId) external payable nonReentrant whenNotPaused {
+    function acceptMarketItemOrder(uint256 _orderId)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        validMarketItemOrderId(_orderId)
+    {
         // Get Order
         MarketItemOrder storage marketItemOrder = marketItemOrders[_orderId];
         OrderInfo storage orderInfo = marketItemOrderOfOwners[marketItemOrder.marketItemId][marketItemOrder.owner];
@@ -398,6 +444,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         // Get Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemOrder.marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
+        require(marketItem.seller == _msgSender(), "Not the seller");
 
         require(marketItem.seller == _msgSender(), "Invalid seller of asset !");
         require(orderInfo.status == OrderStatus.PENDING, "Order is not available");
@@ -412,9 +459,9 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         marketplace.setMarketItemIdToMarketItem(marketItemOrder.marketItemId, marketItem);
 
         // pay listing fee
-        uint256 netSaleValue = marketItem.price - marketplace.getListingFee(marketItem.price);
+        uint256 netSaleValue = orderInfo.bidPrice - marketplace.getListingFee(orderInfo.bidPrice);
 
-        // Pay 2.5% royalties from the amount actually received
+        // Pay royalties from the amount actually received
         netSaleValue = _deduceRoyalties(
             marketItem.nftContractAddress,
             marketItem.tokenId,
@@ -443,7 +490,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *
      *  Emit {CanceledWalletOrder}
      */
-    function cancelWalletOrder(uint256 _orderId) external whenNotPaused {
+    function cancelWalletOrder(uint256 _orderId) external whenNotPaused validWalletOrderId(_orderId) {
         WalletOrder storage walletOrder = walletOrders[_orderId];
         OrderInfo storage orderInfo = walletOrderOfOwners[walletOrder.nftAddress][walletOrder.tokenId][walletOrder.to][
             walletOrder.owner
@@ -465,7 +512,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *
      *  Emit {CanceledMarketItemOrder}
      */
-    function cancelMarketItemOrder(uint256 _orderId) external whenNotPaused {
+    function cancelMarketItemOrder(uint256 _orderId) external whenNotPaused validMarketItemOrderId(_orderId) {
         // Get Order
         MarketItemOrder storage marketItemOrder = marketItemOrders[_orderId];
         OrderInfo storage orderInfo = marketItemOrderOfOwners[marketItemOrder.marketItemId][marketItemOrder.owner];
@@ -493,11 +540,12 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         uint256 startTime,
         uint256 endTime,
         IERC20Upgradeable paymentToken
-    ) external nonReentrant whenNotPaused notZero(price) notZero(amount) {
+    ) external nonReentrant whenNotPaused validMarketItemId(marketItemId) notZero(price) notZero(amount) {
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
         require(marketItem.seller == _msgSender(), "You are not the seller");
         require(marketItem.endTime < block.timestamp, "Not expired yet");
+        require(admin.isPermittedPaymentToken(paymentToken), "Payment token is not valid");
 
         // NOTE Can this function allowed to change amount of token after resell
         if (marketItem.nftType == NFTHelper.Type.ERC1155) {
@@ -594,7 +642,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *
      *  Emit {CanceledSell}
      */
-    function cancelSell(uint256 marketItemId) external nonReentrant whenNotPaused {
+    function cancelSell(uint256 marketItemId) external nonReentrant whenNotPaused validMarketItemId(marketItemId) {
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
         require(marketItem.seller == _msgSender(), "You are not the seller");
@@ -636,7 +684,13 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *
      *  Emit {Bought}
      */
-    function buy(uint256 marketItemId, bytes32[] calldata proof) external payable nonReentrant whenNotPaused {
+    function buy(uint256 marketItemId, bytes32[] calldata proof)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        validMarketItemId(marketItemId)
+    {
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemId);
         require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
         require(_msgSender() != marketItem.seller, "Can not buy your own NFT");
@@ -713,7 +767,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         uint256 tokenId,
         uint256 grossSaleValue,
         IERC20Upgradeable paymentToken
-    ) internal returns (uint256 netSaleAmount) {
+    ) private returns (uint256 netSaleAmount) {
         // Get amount of royalties to pays and recipient
         if (marketplace.isRoyalty(nftContractAddress)) {
             (address royaltiesReceiver, uint256 royaltiesAmount) = marketplace.getRoyaltyInfo(
@@ -727,9 +781,10 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             // Transfer royalties to rightholder if not zero
             if (royaltiesAmount > 0) {
                 _transferToken(paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
+                // Broadcast royalties payment
+                emit RoyaltiesPaid(tokenId, royaltiesAmount);
             }
-            // Broadcast royalties payment
-            emit RoyaltiesPaid(tokenId, royaltiesAmount);
+
             return netSaleValue;
         }
         return grossSaleValue;
