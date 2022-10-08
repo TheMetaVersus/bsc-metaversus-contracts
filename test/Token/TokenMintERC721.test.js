@@ -22,30 +22,28 @@ describe("TokenMintERC721", () => {
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
             "nMTVS",
-            treasury.address,
             250,
             admin.address,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
     });
 
     describe("Deployment", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(
-                upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", treasury.address, 250, AddressZero])
+                upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, AddressZero])
             ).to.revertedWith("Invalid Admin contract");
 
             await expect(
-                upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", treasury.address, 250, user1.address])
+                upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, user1.address])
             ).to.revertedWith("Invalid Admin contract");
 
             await expect(
                 upgrades.deployProxy(TokenMintERC721, [
                     "NFT Metaversus",
                     "nMTVS",
-                    treasury.address,
                     250,
                     treasury.address,
                 ])
@@ -91,23 +89,6 @@ describe("TokenMintERC721", () => {
             expect(newURI).to.equal(URI);
             await tokenMintERC721.setTokenURI("new_uri.json", 1);
             expect(await tokenMintERC721.tokenURI(1)).to.equal("new_uri.json");
-        });
-    });
-
-    describe("setTreasury function", async () => {
-        it("should revert when caller is not owner", async () => {
-            await expect(tokenMintERC721.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
-                "Caller is not an owner or admin"
-            );
-        });
-
-        it("should revert when Treasury contract is invalid", async () => {
-            await expect(tokenMintERC721.setTreasury(AddressZero)).to.be.revertedWith("Invalid Treasury contract");
-        });
-
-        it("should set treasury successful", async () => {
-            await tokenMintERC721.setTreasury(treasury.address);
-            expect(await tokenMintERC721.treasury()).to.equal(treasury.address);
         });
     });
 

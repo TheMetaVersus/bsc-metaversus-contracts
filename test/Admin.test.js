@@ -22,25 +22,12 @@ describe("Admin", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
             admin.address,
         ]);
-        fakeToken = await upgrades.deployProxy(Token, [
-            user1.address,
-            "Fake Metaversus Token",
-            "FMTVS",
-            TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
-        ]);
-
-        await admin.setPermittedPaymentToken(token.address, true);
-        await admin.setPermittedPaymentToken(AddressZero, true);
-
+       
         TokenERC721 = await ethers.getContractFactory("TokenERC721");
         tokenERC721 = await upgrades.deployProxy(TokenERC721, [
             owner.address,
@@ -51,15 +38,15 @@ describe("Admin", () => {
             10000,
         ]);
 
+        await admin.setPermittedPaymentToken(token.address, true);
+        await admin.setPermittedPaymentToken(AddressZero, true);
+
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            treasury.address,
             token.address,
             TOKEN_0_1,
             admin.address,
         ]);
-
-        await admin.setMetaCitizen(metaCitizen.address);
     });
 
     describe("Deployment", async () => {
@@ -152,6 +139,22 @@ describe("Admin", () => {
 
             await admin.connect(owner).setPermittedNFT(token.address, false);
             expect(await admin.isPermittedNFT(token.address)).to.be.false;
+        });
+    });
+
+    describe("setTreasury", async () => {
+        it("should revert when caller is not an owner or admin", async () => {
+            await expect(admin.connect(user1).setTreasury(user1.address)).to.be.revertedWith(
+                "Ownable: caller is not the owner"
+            );
+        });
+
+        it("setTreasury successfully", async () => {
+            await admin.connect(owner).setTreasury(user1.address);
+            expect(await admin.treasury()).to.equal(user1.address);
+
+            await admin.connect(owner).setTreasury(treasury.address);
+            expect(await admin.treasury()).to.equal(treasury.address);
         });
     });
 

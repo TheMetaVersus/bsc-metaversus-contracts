@@ -40,23 +40,17 @@ describe("USD Token:", () => {
         });
     });
 
-    describe("isController function:", async () => {
-        it("should return role of account checking: ", async () => {
-            expect(await token.controllers(user1.address)).to.equal(false);
-            await token.setController(user1.address, true);
-            expect(await token.controllers(user1.address)).to.equal(true);
-        });
-    });
-
     describe("setController function:", async () => {
         it("should revert when caller not be owner: ", async () => {
             await expect(token.connect(user1).setController(user1.address, true)).to.be.revertedWith(
-                "Only controller can call"
+                "Ownable: caller is not the owner"
             );
         });
+
         it("should revert when user address equal to zero address: ", async () => {
             await expect(token.setController(AddressZero, true)).to.be.revertedWith("Invalid address");
         });
+
         it("should set controller success: ", async () => {
             expect(await token.controllers(user1.address)).to.equal(false);
             await token.setController(user1.address, true);
@@ -68,23 +62,33 @@ describe("USD Token:", () => {
 
     describe("mint function:", async () => {
         it("should revert when caller not be controller: ", async () => {
-            await expect(token.connect(user1).mint(user1.address, 100)).to.be.revertedWith("Only controller can call");
+            await expect(token.connect(user1).mint(user1.address, 100)).to.be.revertedWith(
+                "Only controller can call"
+            );
         });
+
         it("should revert when receiver is zero address: ", async () => {
-            await expect(token.mint(AddressZero, 100)).to.be.revertedWith("ERC20: mint to the zero address");
+            await expect(token.mint(AddressZero, 100)).to.be.revertedWith("Invalid address");
+        });
+
+        it("should revert when amount equal to zero: ", async () => {
+            await expect(token.mint(user1.address, 0)).to.be.revertedWith("Invalid amount");
         });
 
         it("should mint success: ", async () => {
-            await token.mint(user1.address, 100);
-            expect(await token.balanceOf(user1.address)).to.equal(100);
+            await expect(() => token.mint(user1.address, 100)).to.changeTokenBalance(token, user1, 100);
         });
     });
 
     describe("burn function:", async () => {
+        it("should revert when amount equal to zero: ", async () => {
+            await expect(token.burn(0)).to.be.revertedWith("Invalid amount");
+        });
+
         it("should burn success: ", async () => {
             await token.mint(user1.address, 100);
 
-            await token.connect(user1).burn(50);
+            await expect(() => token.connect(user1).burn(50)).to.changeTokenBalance(token, user1, -50);
 
             expect(await token.balanceOf(user1.address)).to.equal(50);
         });

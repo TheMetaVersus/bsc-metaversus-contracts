@@ -20,16 +20,14 @@ describe("Treasury", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
             treasury.address,
-            admin.address,
         ]);
     });
 
-    describe("Deployment", async () => {
+    describe("Deployment:", async () => {
         it("Should initialize correctly", async () => {
             expect(await treasury.admin()).to.equal(admin.address);
         });

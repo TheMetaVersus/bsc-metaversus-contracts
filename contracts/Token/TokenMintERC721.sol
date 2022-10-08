@@ -34,16 +34,10 @@ contract TokenMintERC721 is
     CountersUpgradeable.Counter private _tokenCounter;
 
     /**
-     *  @notice treasury store the address of the TreasuryManager contract
-     */
-    ITreasury public treasury;
-
-    /**
      *  @notice uris mapping from token ID to token uri
      */
     mapping(uint256 => string) public uris;
 
-    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event Minted(uint256 indexed tokenId, address indexed to);
     event MintedBatch(uint256[] tokenIds, address indexed to);
 
@@ -53,7 +47,6 @@ contract TokenMintERC721 is
     function initialize(
         string memory _name,
         string memory _symbol,
-        ITreasury _treasury,
         uint96 _feeNumerator,
         IAdmin _admin
     ) public initializer {
@@ -61,20 +54,8 @@ contract TokenMintERC721 is
         __ReentrancyGuard_init();
         __ERC721_init(_name, _symbol);
 
-        treasury = _treasury;
-        _setDefaultRoyalty(address(_treasury), _feeNumerator);
+        _setDefaultRoyalty(address(admin.treasury()), _feeNumerator);
         admin = _admin;
-    }
-
-    /**
-     *  @notice Set treasury to change TreasuryManager address.
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
-        ITreasury oldTreasury = treasury;
-        treasury = _account;
-        emit SetTreasury(oldTreasury, treasury);
     }
 
     /**

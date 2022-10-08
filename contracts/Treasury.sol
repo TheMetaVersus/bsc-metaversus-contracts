@@ -5,10 +5,9 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeabl
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import "../interfaces/ITreasury.sol";
-import "../Validatable.sol";
+import "./interfaces/ITreasury.sol";
+import "./Validatable.sol";
 
 /**
  *  @title  Dev Treasury Contract
@@ -29,6 +28,10 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
     function initialize(IAdmin _admin) public initializer {
         __Validatable_init(_admin);
         __ERC165_init();
+
+        if (admin.treasury() == address(0)) {
+            admin.registerTreasury();
+        }
     }
 
     receive() external payable {}

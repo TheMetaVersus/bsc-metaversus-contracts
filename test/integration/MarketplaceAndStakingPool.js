@@ -58,12 +58,10 @@ describe("Marketplace interact with Staking Pool:", () => {
 
     Token = await ethers.getContractFactory("MTVS");
     token = await upgrades.deployProxy(Token, [
-      user1.address,
       "Metaversus Token",
       "MTVS",
       TOTAL_SUPPLY,
-      treasury.address,
-      admin.address
+      owner.address
     ]);
 
     USD = await ethers.getContractFactory("USD");
@@ -81,24 +79,21 @@ describe("Marketplace interact with Staking Pool:", () => {
 
     MetaCitizen = await ethers.getContractFactory("MetaCitizen");
     metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-      treasury.address,
       token.address,
       MINT_FEE,
       admin.address
     ]);
-    await admin.setMetaCitizen(metaCitizen.address);
+
     TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
     tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
       "NFT Metaversus",
       "nMTVS",
-      treasury.address,
       250,
       admin.address
     ]);
 
     TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
     tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [
-      treasury.address,
       250,
       admin.address
     ]);
@@ -108,7 +103,6 @@ describe("Marketplace interact with Staking Pool:", () => {
       "NFT test",
       "NFT",
       token.address,
-      treasury.address,
       250,
       PRICE,
       admin.address
@@ -116,7 +110,6 @@ describe("Marketplace interact with Staking Pool:", () => {
 
     MkpManager = await ethers.getContractFactory("MarketPlaceManager");
     mkpManager = await upgrades.deployProxy(MkpManager, [
-      treasury.address,
       admin.address
     ]);
 
@@ -145,7 +138,6 @@ describe("Marketplace interact with Staking Pool:", () => {
       tokenMintERC721.address,
       tokenMintERC1155.address,
       token.address,
-      treasury.address,
       mkpManager.address,
       collectionFactory.address,
       admin.address
@@ -231,7 +223,7 @@ describe("Marketplace interact with Staking Pool:", () => {
 
       const leaf = keccak256(user1.address);
       const proof = merkleTree.getHexProof(leaf);
-      await token.mint(user1.address, ONE_ETHER.mul(1000));
+      await token.transfer(user1.address, ONE_ETHER.mul(1000));
       await token.connect(user1).approve(orderManager.address, ONE_ETHER);
       await orderManager.connect(user1).buy(1, proof);
 

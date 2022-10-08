@@ -1,12 +1,12 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { multiply } = require("js-big-decimal");
+
+const TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
+const ETHER_100 = ethers.utils.parseEther("100");
+const PRICE = ethers.utils.parseEther("2");
 
 describe("NftTest:", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-        ONE_ETHER = ethers.utils.parseEther("1");
-        PRICE = ethers.utils.parseEther("2");
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -21,45 +21,44 @@ describe("NftTest:", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
+            owner.address,
         ]);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, [
-            "NFT test",
-            "NFT",
+            "NFT Test",
+            "TEST",
             token.address,
-            treasury.address,
             250,
             PRICE,
-            admin.address,
+            admin.address
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
+
+        await nftTest.deployed();
     });
 
     describe("Deployment:", async () => {
         it("Check name, symbol and default state: ", async () => {
             const name = await nftTest.name();
             const symbol = await nftTest.symbol();
-            expect(name).to.equal("NFT test");
-            expect(symbol).to.equal("NFT");
+            expect(name).to.equal("NFT Test");
+            expect(symbol).to.equal("TEST");
 
             let royaltiesInfo = await nftTest.royaltyInfo(0, 10000);
 
-            expect(royaltiesInfo[0]).to.equal(treasury.address.toString());
-            expect(royaltiesInfo[1].toString()).to.equal("250");
+            expect(royaltiesInfo[0]).to.equal(treasury.address);
+            expect(royaltiesInfo[1]).to.equal(250);
         });
+
         it("Check tokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
-            await token.mint(owner.address, multiply(100, ONE_ETHER));
-            await token.connect(owner).approve(nftTest.address, ethers.constants.MaxUint256);
+            await token.approve(nftTest.address, ethers.constants.MaxUint256);
             await nftTest.buy(URI);
 
             const newURI = await nftTest.tokenURI(1);
@@ -77,7 +76,6 @@ describe("NftTest:", () => {
     describe("setTokenURI function:", async () => {
         it("should setTokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
-            await token.mint(owner.address, multiply(100, ONE_ETHER));
             await token.connect(owner).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.buy(URI);
@@ -90,27 +88,9 @@ describe("NftTest:", () => {
         });
     });
 
-    describe("setTreasury function:", async () => {
-        it("should revert when caller is not owner: ", async () => {
-            await expect(nftTest.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
-                "Caller is not an owner or admin"
-            );
-        });
-
-        it("should set treasury success: ", async () => {
-            await nftTest.setTreasury(treasury.address);
-            expect(await nftTest.treasury()).to.equal(treasury.address);
-
-            await nftTest.setTreasury(treasury.address);
-            expect(await nftTest.treasury()).to.equal(treasury.address);
-        });
-    });
-
     describe("buy function:", async () => {
         it("should buy success: ", async () => {
-            await token.mint(owner.address, multiply(100, ONE_ETHER));
-
-            await token.connect(owner).approve(nftTest.address, ethers.constants.MaxUint256);
+            await token.approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.buy("this_uri");
             expect(await nftTest.balanceOf(owner.address)).to.equal(1);

@@ -46,7 +46,7 @@ contract Adminable is OwnableUpgradeable {
         _setAdmin(_user, _allow);
     }
 
-    function _setAdmin(address _user, bool _allow) internal virtual {
+    function _setAdmin(address _user, bool _allow) internal virtual notZeroAddress(_user) {
         admins[_user] = _allow;
         emit SetAdmin(_user, _allow);
     }

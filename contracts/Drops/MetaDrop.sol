@@ -46,11 +46,6 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
     IAdmin public mvtsAdmin;
 
     /**
-     *  @notice address of Metaversus treasury
-     */
-    address public treasury;
-
-    /**
      *  @notice Default service fee numberator, value is not exceeds 1e6 (100%)
      */
     uint256 public serviceFeeNumerator;
@@ -75,14 +70,12 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
      */
     function initialize(
         IAdmin _mvtsAdmin,
-        ITreasury _treasury,
         uint256 _serviceFeeNumerator
-    ) public initializer validTreasury(_treasury) validAdmin(_mvtsAdmin) {
+    ) public initializer validAdmin(_mvtsAdmin) {
         __Validatable_init(_mvtsAdmin);
         __ReentrancyGuard_init();
 
         mvtsAdmin = _mvtsAdmin;
-        treasury = address(_treasury);
 
         require(_serviceFeeNumerator <= SERVICE_FEE_DENOMINATOR, "Service fee will exceed minting fee");
         serviceFeeNumerator = _serviceFeeNumerator;
@@ -240,10 +233,10 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
             serviceFee = (_mintFee * _drop.serviceFeeNumerator) / SERVICE_FEE_DENOMINATOR;
 
             if (_drop.paymentToken != address(0)) {
-                IERC20Upgradeable(_drop.paymentToken).safeTransferFrom(_account, treasury, serviceFee);
+                IERC20Upgradeable(_drop.paymentToken).safeTransferFrom(_account, admin.treasury(), serviceFee);
             } else {
                 require(msg.value == _mintFee, "Not enough fee");
-                (bool sent, ) = treasury.call{ value: serviceFee }("");
+                (bool sent, ) = admin.treasury().call{ value: serviceFee }("");
                 require(sent, "Failed to send native");
             }
         }

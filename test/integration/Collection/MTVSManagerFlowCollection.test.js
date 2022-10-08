@@ -8,14 +8,13 @@ const ONE_ETHER = ethers.utils.parseEther("1");
 const ONE_DAY = 86400;
 const ONE_HOUR = 3600;
 
-describe("CollectionFactory", () => {
+describe("MTVSManagerFlowCollection", () => {
     before(async () => {
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
         user2 = accounts[2];
         user3 = accounts[3];
-        treasury = accounts[4];
 
         startTime = (await getCurrentTime()) + ONE_HOUR;
         endTime = startTime + ONE_DAY;
@@ -28,11 +27,9 @@ describe("CollectionFactory", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
             admin.address,
         ]);
 
@@ -40,16 +37,15 @@ describe("CollectionFactory", () => {
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
             "nMTVS",
-            treasury.address,
             250,
             admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         // Collection
         TokenERC721 = await ethers.getContractFactory("TokenERC721");
@@ -72,7 +68,6 @@ describe("CollectionFactory", () => {
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
-            treasury.address,
             mkpManager.address,
             collectionFactory.address,
             admin.address,

@@ -19,22 +19,22 @@ describe("TokenMintERC1155", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
     });
 
     describe("Deployment", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, AddressZero])).to.revertedWith(
+            await expect(upgrades.deployProxy(TokenMintERC1155, [250, AddressZero])).to.revertedWith(
                 "Invalid Admin contract"
             );
             await expect(
-                upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, user1.address])
+                upgrades.deployProxy(TokenMintERC1155, [250, user1.address])
             ).to.revertedWith("Invalid Admin contract");
             await expect(
-                upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, treasury.address])
+                upgrades.deployProxy(TokenMintERC1155, [250, treasury.address])
             ).to.revertedWith("Invalid Admin contract");
         });
 
@@ -65,23 +65,6 @@ describe("TokenMintERC1155", () => {
             expect(newURI).to.equal(URI);
             await tokenMintERC1155.setURI("new_uri.json", 1);
             expect(await tokenMintERC1155.uri(1)).to.equal("new_uri.json");
-        });
-    });
-
-    describe("setTreasury function", async () => {
-        it("should revert when caller is not owner", async () => {
-            await expect(tokenMintERC1155.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
-                "Caller is not an owner or admin"
-            );
-        });
-
-        it("should revert when Treasury contract is invalid", async () => {
-            await expect(tokenMintERC1155.setTreasury(AddressZero)).to.be.revertedWith("Invalid Treasury contract");
-        });
-
-        it("should set treasury successful", async () => {
-            await tokenMintERC1155.setTreasury(treasury.address);
-            expect(await tokenMintERC1155.treasury()).to.equal(treasury.address);
         });
     });
 

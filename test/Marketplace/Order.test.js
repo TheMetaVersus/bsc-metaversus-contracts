@@ -6,7 +6,7 @@ const { getCurrentTime, skipTime, generateMerkleTree, generateLeaf } = require("
 const keccak256 = require("keccak256");
 const { parseEther } = require("ethers/lib/utils");
 
-const TOTAL_SUPPLY = parseEther("1000");
+const TOTAL_SUPPLY = parseEther("1000000000000");
 const PRICE = parseEther("1");
 const ONE_ETHER = parseEther("1");
 const ONE_WEEK = 604800;
@@ -26,12 +26,10 @@ describe("OrderManager:", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
+            owner.address,
         ]);
 
         await admin.setPermittedPaymentToken(token.address, true);
@@ -39,7 +37,6 @@ describe("OrderManager:", () => {
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            treasury.address,
             token.address,
             MINT_FEE,
             admin.address,
@@ -49,20 +46,18 @@ describe("OrderManager:", () => {
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
             "nMTVS",
-            treasury.address,
             250,
             admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, [
             "NFT test",
             "NFT",
             token.address,
-            treasury.address,
             250,
             PRICE,
             admin.address,
@@ -86,14 +81,13 @@ describe("OrderManager:", () => {
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
-            treasury.address,
             mkpManager.address,
             collectionFactory.address,
             admin.address,
@@ -107,18 +101,16 @@ describe("OrderManager:", () => {
         await mkpManager.setMetaversusManager(mtvsManager.address);
         await mkpManager.setOrderManager(orderManager.address);
         await token.connect(user1).approve(orderManager.address, MaxUint256);
-        await token.mint(user1.address, parseEther("1000"));
+        await token.transfer(user1.address, parseEther("1000"));
 
         await token.connect(user2).approve(orderManager.address, MaxUint256);
-        await token.mint(user2.address, parseEther("1000"));
+        await token.transfer(user2.address, parseEther("1000"));
 
         await mkpManager.setOrderManager(orderManager.address);
 
         merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
         rootHash = merkleTree.getHexRoot();
-
-        await admin.setMetaCitizen(metaCitizen.address);
     });
 
     describe("Deployment:", async () => {
@@ -284,7 +276,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -315,7 +307,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -347,7 +339,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -382,7 +374,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -421,7 +413,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -461,7 +453,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -545,7 +537,7 @@ describe("OrderManager:", () => {
             ).to.be.revertedWith("Invalid amount");
         });
         it("should revert ERROR: NFT address is compatible !", async () => {
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
 
             await token.connect(user1).approve(tokenMintERC721.address, MaxUint256);
 
@@ -558,7 +550,7 @@ describe("OrderManager:", () => {
             ).to.be.revertedWith("Token is not existed");
         });
         it("should sell success and check private collection: ", async () => {
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -581,7 +573,7 @@ describe("OrderManager:", () => {
         beforeEach(async () => {
             await orderManager.setPause(false);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
 
             await mtvsManager.setPause(false);
             const current = await getCurrentTime();
@@ -632,7 +624,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -690,7 +682,7 @@ describe("OrderManager:", () => {
 
             rootHash = merkleTree.getHexRoot();
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -826,7 +818,7 @@ describe("OrderManager:", () => {
 
             rootHash = merkleTree.getHexRoot();
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -875,7 +867,7 @@ describe("OrderManager:", () => {
 
             rootHash = merkleTree.getHexRoot();
 
-            await token.mint(user1.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");

@@ -26,20 +26,10 @@ describe("Marketplace Manager:", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
-        ]);
-        fakeToken = await upgrades.deployProxy(Token, [
-            user1.address,
-            "Fake Metaversus Token",
-            "FMTVS",
-            TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
+            owner.address,
         ]);
 
         await admin.setPermittedPaymentToken(token.address, true);
@@ -47,38 +37,34 @@ describe("Marketplace Manager:", () => {
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            treasury.address,
             token.address,
             MINT_FEE,
             admin.address,
         ]);
-        await admin.setMetaCitizen(metaCitizen.address);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
             "nMTVS",
-            treasury.address,
             250,
             admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, [
             "NFT test",
             "NFT",
             token.address,
-            treasury.address,
             250,
             PRICE,
             admin.address,
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         OrderManager = await ethers.getContractFactory("OrderManager");
         orderManager = await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
@@ -93,8 +79,8 @@ describe("Marketplace Manager:", () => {
             tokenERC721.address,
             tokenERC1155.address,
             admin.address,
-            ADDRESS_ZERO,
-            ADDRESS_ZERO,
+            user3.address,
+            user3.address,
         ]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
@@ -102,7 +88,6 @@ describe("Marketplace Manager:", () => {
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
-            treasury.address,
             mkpManager.address,
             collectionFactory.address,
             admin.address,
@@ -113,7 +98,6 @@ describe("Marketplace Manager:", () => {
         await mtvsManager.setPause(false);
         await mkpManager.setPause(false);
 
-        await mkpManager.setTreasury(treasury.address);
         await mkpManager.setMetaversusManager(mtvsManager.address);
         await mkpManager.setOrderManager(orderManager.address);
         merkleTree = generateMerkleTree([user1.address, user2.address]);
@@ -122,70 +106,21 @@ describe("Marketplace Manager:", () => {
 
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(upgrades.deployProxy(MkpManager, [treasury.address, ADDRESS_ZERO])).to.revertedWith(
+            await expect(upgrades.deployProxy(MkpManager, [ADDRESS_ZERO])).to.revertedWith(
                 "Invalid Admin contract"
             );
-            await expect(upgrades.deployProxy(MkpManager, [treasury.address, user1.address])).to.revertedWith(
+            await expect(upgrades.deployProxy(MkpManager, [user1.address])).to.revertedWith(
                 "Invalid Admin contract"
             );
-            await expect(upgrades.deployProxy(MkpManager, [treasury.address, treasury.address])).to.revertedWith(
+            await expect(upgrades.deployProxy(MkpManager, [treasury.address])).to.revertedWith(
                 "Invalid Admin contract"
             );
-        });
-
-        it("Should revert when invalid treasury contract address", async () => {
-            await expect(upgrades.deployProxy(MkpManager, [ADDRESS_ZERO, admin.address])).to.revertedWith(
-                "Invalid Treasury contract"
-            );
-            await expect(upgrades.deployProxy(MkpManager, [user1.address, admin.address])).to.revertedWith(
-                "Invalid Treasury contract"
-            );
-            await expect(upgrades.deployProxy(MkpManager, [mkpManager.address, admin.address])).to.revertedWith(
-                "Invalid Treasury contract"
-            );
-        });
-
-        it("Check all address token were set: ", async () => {
-            const mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
-
-            expect(await mkpManager.admin()).to.equal(admin.address);
-            expect(await mkpManager.metaversusManager()).to.equal(ADDRESS_ZERO);
-            expect(await mkpManager.treasury()).to.equal(treasury.address);
-            expect(await mkpManager.listingFee()).to.equal(25e2);
-            expect(await mkpManager.orderManager()).to.equal(ADDRESS_ZERO);
-            expect(await mkpManager.DENOMINATOR()).to.equal(1e5);
-        });
-    });
-
-    describe("setTreasury function:", async () => {
-        beforeEach(async () => {
-            mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
-            newTreasury = await upgrades.deployProxy(Treasury, [admin.address]);
-        });
-
-        it("Only admin can call this function", async () => {
-            await expect(mkpManager.connect(user1).setTreasury(treasury.address)).to.revertedWith(
-                "Caller is not an owner or admin"
-            );
-        });
-
-        it("should revert when Invalid Treasury contract", async () => {
-            await expect(mkpManager.setTreasury(ADDRESS_ZERO)).to.revertedWith("Invalid Treasury contract");
-            await expect(mkpManager.setTreasury(user1.address)).to.revertedWith("Invalid Treasury contract");
-            await expect(mkpManager.setTreasury(mkpManager.address)).to.revertedWith("Invalid Treasury contract");
-        });
-
-        it("should set treasury success: ", async () => {
-            expect(await mkpManager.treasury()).to.equal(treasury.address);
-
-            await mkpManager.setTreasury(newTreasury.address);
-            expect(await mkpManager.treasury()).to.equal(newTreasury.address);
         });
     });
 
     describe("setMetaversusManager function:", async () => {
         beforeEach(async () => {
-            mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+            mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
         });
 
         it("Only admin can call this function", async () => {
@@ -216,7 +151,7 @@ describe("Marketplace Manager:", () => {
 
     describe("setOrder function:", async () => {
         beforeEach(async () => {
-            mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+            mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
         });
 
         it("Only admin can call this function", async () => {
@@ -288,7 +223,7 @@ describe("Marketplace Manager:", () => {
             newMerkleTree = generateMerkleTree([user1.address, user3.address]);
             newRootHash = newMerkleTree.getHexRoot();
 
-            mkpManager.setCollectionFactory(collectionFactory.address);
+            await mkpManager.setCollectionFactory(collectionFactory.address);
 
             await collectionFactory.setPause(false);
             await collectionFactory.connect(user1).create(0, "NFT", "NFT", user1.address, 250);
@@ -314,8 +249,7 @@ describe("Marketplace Manager:", () => {
 
     describe("getLatestMarketItem function:", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, ONE_ETHER);
-            await token.mint(owner.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(mtvsManager.address, MAX_UINT_256);
 
             startTime = add(await getCurrentTime(), 10);
@@ -339,8 +273,8 @@ describe("Marketplace Manager:", () => {
 
     describe("fetchMarketItemsByMarketID function:", async () => {
         it("should return market item corresponding market ID", async () => {
-            await token.mint(user1.address, multiply(1000, ONE_ETHER));
-            await token.mint(user2.address, multiply(1000, ONE_ETHER));
+            await token.transfer(user1.address, multiply(1000, ONE_ETHER));
+            await token.transfer(user2.address, multiply(1000, ONE_ETHER));
 
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
 
@@ -369,8 +303,8 @@ describe("Marketplace Manager:", () => {
 
     describe("getCurrentMarketItem function:", async () => {
         it("should return current market item id", async () => {
-            await token.mint(user1.address, multiply(1000, ONE_ETHER));
-            await token.mint(user2.address, multiply(1000, ONE_ETHER));
+            await token.transfer(user1.address, multiply(1000, ONE_ETHER));
+            await token.transfer(user2.address, multiply(1000, ONE_ETHER));
 
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
 
@@ -400,8 +334,8 @@ describe("Marketplace Manager:", () => {
 
     describe("wasBuyer function:", async () => {
         it("should return current market item id", async () => {
-            await token.mint(user1.address, parseEther("1000"));
-            await token.mint(user2.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
+            await token.transfer(user2.address, parseEther("1000"));
 
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
@@ -453,7 +387,7 @@ describe("Marketplace Manager:", () => {
 
     describe("isRoyalty function:", async () => {
         beforeEach(async () => {
-            mkpManager.setCollectionFactory(collectionFactory.address);
+            await mkpManager.setCollectionFactory(collectionFactory.address);
 
             await collectionFactory.setPause(false);
             await collectionFactory.connect(user1).create(0, "NFT", "NFT", user1.address, 250);
@@ -469,8 +403,8 @@ describe("Marketplace Manager:", () => {
 
     describe("getMarketItemIdToMarketItem function:", async () => {
         it("should be return market item", async () => {
-            await token.mint(user1.address, parseEther("1000"));
-            await token.mint(user2.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
+            await token.transfer(user2.address, parseEther("1000"));
 
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
@@ -494,8 +428,8 @@ describe("Marketplace Manager:", () => {
 
     describe("setMarketItemIdToMarketItem function:", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, parseEther("1000"));
-            await token.mint(user2.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
+            await token.transfer(user2.address, parseEther("1000"));
 
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
@@ -525,8 +459,8 @@ describe("Marketplace Manager:", () => {
 
     describe("sellAvailableInMarketplace function:", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, ONE_ETHER);
-            await token.mint(owner.address, ONE_ETHER);
+            await token.transfer(user1.address, ONE_ETHER);
+            await token.transfer(owner.address, ONE_ETHER);
             await token.connect(user1).approve(mtvsManager.address, MAX_UINT_256);
 
             isSellOnMarket = true;
@@ -632,7 +566,7 @@ describe("Marketplace Manager:", () => {
 
     describe("sell function:", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -680,7 +614,7 @@ describe("Marketplace Manager:", () => {
 
     describe("cancelSell function:", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -723,8 +657,8 @@ describe("Marketplace Manager:", () => {
 
     describe("buy function:", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, parseEther("1000"));
-            await token.mint(user2.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
+            await token.transfer(user2.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
 
@@ -768,8 +702,8 @@ describe("Marketplace Manager:", () => {
 
     describe("makeWalletOrder function", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, parseEther("1000"));
-            await token.mint(user2.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
+            await token.transfer(user2.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user1).approve(orderManager.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
@@ -796,7 +730,7 @@ describe("Marketplace Manager:", () => {
 
         it("should revert when payment token is not allowed", async () => {
             await expect(
-                orderManager.connect(user1).makeWalletOrder(fakeToken.address, bidPrice, to, nftAddress, 1, 1, endTime)
+                orderManager.connect(user1).makeWalletOrder(user1.address, bidPrice, to, nftAddress, 1, 1, endTime)
             ).to.be.revertedWith("Payment token is not supported");
         });
 
@@ -835,8 +769,8 @@ describe("Marketplace Manager:", () => {
 
     describe("makeMarketItemOrder function", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, parseEther("1000"));
-            await token.mint(user2.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
+            await token.transfer(user2.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user1).approve(orderManager.address, MAX_UINT_256);
 
@@ -866,7 +800,7 @@ describe("Marketplace Manager:", () => {
                     .connect(user1)
                     .makeMarketItemOrder(
                         marketItemId,
-                        fakeToken.address,
+                        user1.address,
                         bidPrice,
                         endTime,
                         merkleTree.getHexProof(generateLeaf(user1.address))
@@ -983,8 +917,8 @@ describe("Marketplace Manager:", () => {
 
     describe("acceptWalletOrder function", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, parseEther("1000"));
-            await token.mint(user2.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
+            await token.transfer(user2.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user1).approve(orderManager.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
@@ -1028,8 +962,8 @@ describe("Marketplace Manager:", () => {
 
     describe("acceptMarketItemOrder function", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, parseEther("1000"));
-            await token.mint(user2.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
+            await token.transfer(user2.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user1).approve(orderManager.address, MAX_UINT_256);
 
@@ -1090,8 +1024,8 @@ describe("Marketplace Manager:", () => {
 
     describe("cancelWalletOrder function", async () => {
         beforeEach(async () => {
-            await token.mint(user1.address, parseEther("1000"));
-            await token.mint(user2.address, parseEther("1000"));
+            await token.transfer(user1.address, parseEther("1000"));
+            await token.transfer(user2.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user1).approve(orderManager.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);

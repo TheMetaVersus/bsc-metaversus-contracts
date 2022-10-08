@@ -47,18 +47,12 @@ contract MetaCitizen is
     uint256 public mintFee;
 
     /**
-     *  @notice treasury address that receive all mint fee
-     */
-    ITreasury public treasury;
-
-    /**
      *  @notice baseURI is base uri of collection
      */
     string public baseURI;
 
     event SetPaymentToken(address indexed oldToken, address indexed newToken);
     event SetMintFee(uint256 indexed oldFee, uint256 indexed newFee);
-    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to);
     event Minted(uint256 indexed tokenId, address indexed to);
 
@@ -66,11 +60,10 @@ contract MetaCitizen is
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        ITreasury _treasury,
         IERC20Upgradeable _paymentToken,
         uint256 _mintFee,
         IAdmin _admin
-    ) public initializer validTreasury(_treasury) notZero(_mintFee) validAdmin(_admin) {
+    ) public initializer notZero(_mintFee) validAdmin(_admin) {
         __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC721_init("MetaversusWorld Citizen", "MWC");
@@ -81,8 +74,11 @@ contract MetaCitizen is
         );
 
         paymentToken = _paymentToken;
-        treasury = _treasury;
         mintFee = _mintFee;
+
+        if (admin.metaCitizen() == address(0)) {
+            admin.registerMetaCitizen();
+        }
     }
 
     /**
@@ -111,19 +107,6 @@ contract MetaCitizen is
     }
 
     /**
-     *  @notice Set treasury to change TreasuryManager address.
-     *
-     *  @dev    Only owner or admin can call this function.
-     *
-     *  @param  _account new base URI that need to replace
-     */
-    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
-        ITreasury oldTreasury = treasury;
-        treasury = _account;
-        emit SetTreasury(oldTreasury, _account);
-    }
-
-    /**
      *  @notice Set minting fee
      *
      *  @dev    Only owner or admin can call this function.
@@ -147,7 +130,7 @@ contract MetaCitizen is
         _tokenCounter.increment();
         uint256 tokenId = _tokenCounter.current();
 
-        paymentToken.safeTransferFrom(_msgSender(), address(treasury), mintFee);
+        paymentToken.safeTransferFrom(_msgSender(), address(admin.treasury()), mintFee);
 
         _mint(_msgSender(), tokenId);
 

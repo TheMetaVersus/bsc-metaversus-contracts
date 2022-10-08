@@ -27,13 +27,12 @@ describe("MetaDrop", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
+            owner.address,
         ]);
+
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
 
@@ -49,24 +48,21 @@ describe("MetaDrop", () => {
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            treasury.address,
             token.address,
             TOKEN_0_1,
             admin.address,
         ]);
-        await admin.setMetaCitizen(metaCitizen.address);
 
         MetaDrop = await ethers.getContractFactory("MetaDrop");
         metaDrop = await upgrades.deployProxy(MetaDrop, [
             admin.address,
-            treasury.address,
             DEFAULT_SERVICE_NUMERATOR, // 10%
         ]);
         await metaDrop.deployed();
 
-        await token.mint(user1.address, TOTAL_SUPPLY);
-        await token.mint(user2.address, TOTAL_SUPPLY);
-        await token.mint(user3.address, TOTAL_SUPPLY);
+        await token.transfer(user1.address, TOTAL_SUPPLY.div(4));
+        await token.transfer(user2.address, TOTAL_SUPPLY.div(4));
+        await token.transfer(user3.address, TOTAL_SUPPLY.div(4));
 
         await token.connect(user1).approve(metaDrop.address, MaxUint256);
         await token.connect(user2).approve(metaDrop.address, MaxUint256);
@@ -95,29 +91,23 @@ describe("MetaDrop", () => {
     describe("Deployment", async () => {
         it("Should revert when admin contract is invalid", async () => {
             await expect(
-                upgrades.deployProxy(MetaDrop, [AddressZero, treasury.address, SERVICE_FEE_DENOMINATOR])
+                upgrades.deployProxy(MetaDrop, [AddressZero, SERVICE_FEE_DENOMINATOR])
             ).to.be.revertedWith("Invalid Admin contract");
 
             await expect(
-                upgrades.deployProxy(MetaDrop, [treasury.address, treasury.address, SERVICE_FEE_DENOMINATOR])
+                upgrades.deployProxy(MetaDrop, [treasury.address, SERVICE_FEE_DENOMINATOR])
             ).to.be.revertedWith("Invalid Admin contract");
         });
 
-        it("Should revert when Treasury contract is invalid", async () => {
-            await expect(
-                upgrades.deployProxy(MetaDrop, [admin.address, AddressZero, SERVICE_FEE_DENOMINATOR])
-            ).to.be.revertedWith("Invalid Treasury contract");
-        });
 
         it("Should throw error Service fee will exceed minting fee", async () => {
             await expect(
-                upgrades.deployProxy(MetaDrop, [admin.address, treasury.address, SERVICE_FEE_DENOMINATOR.add(1)])
+                upgrades.deployProxy(MetaDrop, [admin.address, SERVICE_FEE_DENOMINATOR.add(1)])
             ).to.be.revertedWith("Service fee will exceed minting fee");
         });
 
         it("Set initial state successful", async () => {
             expect(await metaDrop.mvtsAdmin()).to.equal(admin.address);
-            expect(await metaDrop.treasury()).to.equal(treasury.address);
             expect(await metaDrop.serviceFeeNumerator()).to.equal(DEFAULT_SERVICE_NUMERATOR);
         });
     });

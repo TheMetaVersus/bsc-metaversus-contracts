@@ -40,17 +40,11 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
     uint256 public price;
 
     /**
-     *  @notice treasury store the address of the TreasuryManager contract
-     */
-    ITreasury public treasury;
-
-    /**
      *  @notice uris mapping from token ID to token uri
      */
     mapping(uint256 => string) public uris;
 
     event SetPrice(uint256 oldPrice, uint256 price);
-    event SetTreasury(ITreasury indexed oldTreasury, ITreasury indexed newTreasury);
     event Bought(uint256 indexed tokenId, address indexed to);
 
     /**
@@ -60,29 +54,16 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
         string memory _name,
         string memory _symbol,
         IERC20Upgradeable _paymentToken,
-        ITreasury _treasury,
         uint96 _feeNumerator,
         uint256 _price,
         IAdmin _admin
-    ) public initializer validTreasury(_treasury) {
+    ) public initializer {
         __Validatable_init(_admin);
         __ERC721_init(_name, _symbol);
 
         paymentToken = _paymentToken;
-        treasury = _treasury;
         price = _price;
-        _setDefaultRoyalty(address(_treasury), _feeNumerator);
-    }
-
-    /**
-     *  @notice Set treasury to change TreasuryManager address.
-     *
-     *  @dev    Only owner or admin can call this function.
-     */
-    function setTreasury(ITreasury _account) external onlyAdmin validTreasury(_account) {
-        ITreasury oldTreasury = treasury;
-        treasury = _account;
-        emit SetTreasury(oldTreasury, treasury);
+        _setDefaultRoyalty(address(admin.treasury()), _feeNumerator);
     }
 
     /**
@@ -107,7 +88,7 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
 
         uris[tokenId] = uri;
         _mint(_msgSender(), tokenId);
-        paymentToken.safeTransferFrom(_msgSender(), address(treasury), price);
+        paymentToken.safeTransferFrom(_msgSender(), address(admin.treasury()), price);
 
         emit Bought(tokenId, _msgSender());
     }

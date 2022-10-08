@@ -9,7 +9,7 @@ const { parseEther } = require("ethers/lib/utils");
 
 describe("Marketplace interact with Order", () => {
     before(async () => {
-        TOTAL_SUPPLY = ethers.utils.parseEther("1000");
+        TOTAL_SUPPLY = ethers.utils.parseEther("10000000");
         PRICE = ethers.utils.parseEther("1");
         ONE_ETHER = ethers.utils.parseEther("1");
         ONE_WEEK = 604800;
@@ -26,20 +26,10 @@ describe("Marketplace interact with Order", () => {
 
         Token = await ethers.getContractFactory("MTVS");
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
-        ]);
-        fakeToken = await upgrades.deployProxy(Token, [
-            user1.address,
-            "Fake Metaversus Token",
-            "FMTVS",
-            TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
+            owner.address,
         ]);
 
         await admin.setPermittedPaymentToken(token.address, true);
@@ -47,7 +37,6 @@ describe("Marketplace interact with Order", () => {
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            treasury.address,
             token.address,
             MINT_FEE,
             admin.address,
@@ -57,20 +46,18 @@ describe("Marketplace interact with Order", () => {
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
             "NFT Metaversus",
             "nMTVS",
-            treasury.address,
             250,
             admin.address,
         ]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
-        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [treasury.address, 250, admin.address]);
+        tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, [
             "NFT test",
             "NFT",
             token.address,
-            treasury.address,
             250,
             PRICE,
             admin.address,
@@ -94,23 +81,13 @@ describe("Marketplace interact with Order", () => {
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
-
-        CollectionFactory = await ethers.getContractFactory("CollectionFactory");
-        collectionFactory = await upgrades.deployProxy(CollectionFactory, [
-            templateERC721.address,
-            templateERC1155.address,
-            admin.address,
-            user1.address,
-            user2.address,
-        ]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
         mtvsManager = await upgrades.deployProxy(MTVSManager, [
             tokenMintERC721.address,
             tokenMintERC1155.address,
             token.address,
-            treasury.address,
             mkpManager.address,
             collectionFactory.address,
             admin.address,
@@ -119,26 +96,22 @@ describe("Marketplace interact with Order", () => {
         OrderManager = await ethers.getContractFactory("OrderManager");
         orderManager = await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
 
-        await admin.setPermittedPaymentToken(token.address, true);
-        await admin.setPermittedPaymentToken(AddressZero, true);
-
         await admin.setPermittedNFT(tokenMintERC721.address, true);
         await admin.setPermittedNFT(tokenMintERC1155.address, true);
         await admin.setPermittedNFT(nftTest.address, true);
 
         await token.connect(user1).approve(orderManager.address, MaxUint256);
-        await token.mint(user1.address, parseEther("1000"));
+        await token.transfer(user1.address, parseEther("1000"));
 
         await token.connect(user2).approve(orderManager.address, MaxUint256);
-        await token.mint(user2.address, parseEther("1000"));
+        await token.transfer(user2.address, parseEther("1000"));
 
         await token.connect(user3).approve(orderManager.address, MaxUint256);
-        await token.mint(user3.address, parseEther("1000"));
+        await token.transfer(user3.address, parseEther("1000"));
 
         await mkpManager.setOrderManager(orderManager.address);
         await orderManager.setPause(false);
 
-        await admin.setMetaCitizen(metaCitizen.address);
         await metaCitizen.mint(user2.address);
     });
     describe("Buy/Mint a NFT ", async () => {

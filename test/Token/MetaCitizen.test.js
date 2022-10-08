@@ -21,57 +21,48 @@ describe("MetaCitizen", () => {
         admin = await upgrades.deployProxy(Admin, [owner.address]);
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
         token = await upgrades.deployProxy(Token, [
-            user1.address,
             "Metaversus Token",
             "MTVS",
             TOTAL_SUPPLY,
-            treasury.address,
-            admin.address,
+            owner.address,
         ]);
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
 
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            treasury.address,
             token.address,
             MINT_FEE,
             admin.address,
         ]);
 
-        await token.mint(user1.address, TOTAL_SUPPLY);
+        await token.transfer(user1.address, TOTAL_SUPPLY);
         await token.connect(user1).approve(metaCitizen.address, MaxUint256);
     });
 
     describe("Deployment", async () => {
-        it("Should revert when Treasury contract is invalid", async () => {
-            await expect(
-                upgrades.deployProxy(MetaCitizen, [AddressZero, token.address, MINT_FEE, admin.address])
-            ).to.be.revertedWith("Invalid Treasury contract");
-        });
-
         it("Should revert when payment token contract is invalid", async () => {
             await expect(
-                upgrades.deployProxy(MetaCitizen, [treasury.address, AddressZero, MINT_FEE, admin.address])
+                upgrades.deployProxy(MetaCitizen, [AddressZero, MINT_FEE, admin.address])
             ).to.be.revertedWith("Invalid payment token");
 
             await expect(
-                upgrades.deployProxy(MetaCitizen, [treasury.address, treasury.address, MINT_FEE, admin.address])
+                upgrades.deployProxy(MetaCitizen, [treasury.address, MINT_FEE, admin.address])
             ).to.be.revertedWith("Invalid payment token");
         });
 
         it("Should revert when mint fee is zero", async () => {
             await expect(
-                upgrades.deployProxy(MetaCitizen, [treasury.address, token.address, "0", admin.address])
+                upgrades.deployProxy(MetaCitizen, [token.address, "0", admin.address])
             ).to.be.revertedWith("Invalid amount");
         });
 
         it("Should revert when admin contract is invalid", async () => {
             await expect(
-                upgrades.deployProxy(MetaCitizen, [treasury.address, token.address, MINT_FEE, AddressZero])
+                upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, AddressZero])
             ).to.be.revertedWith("Invalid Admin contract");
 
             await expect(
-                upgrades.deployProxy(MetaCitizen, [treasury.address, treasury.address, MINT_FEE, token.address])
+                upgrades.deployProxy(MetaCitizen, [treasury.address, MINT_FEE, token.address])
             ).to.be.revertedWith("Invalid Admin contract");
         });
 
@@ -81,7 +72,6 @@ describe("MetaCitizen", () => {
             expect(name).to.equal("MetaversusWorld Citizen");
             expect(symbol).to.equal("MWC");
 
-            expect(await metaCitizen.treasury()).to.equal(treasury.address);
             expect(await metaCitizen.paymentToken()).to.equal(token.address);
             expect(await metaCitizen.mintFee()).to.equal(MINT_FEE);
         });
@@ -94,23 +84,6 @@ describe("MetaCitizen", () => {
             const newURI = await metaCitizen.tokenURI(1);
 
             expect(newURI).to.equal(URI + ".json");
-        });
-    });
-
-    describe("setTreasury", async () => {
-        it("should revert when caller is not an owner or admin", async () => {
-            await expect(metaCitizen.connect(user1).setTreasury(user2.address)).to.be.revertedWith(
-                "Caller is not an owner or admin"
-            );
-        });
-
-        it("should revert when address equal to zero address", async () => {
-            await expect(metaCitizen.setTreasury(AddressZero)).to.be.revertedWith("Invalid Treasury contract");
-        });
-
-        it("should set treasury successful", async () => {
-            await metaCitizen.setTreasury(treasury.address);
-            expect(await metaCitizen.treasury()).to.equal(treasury.address);
         });
     });
 
@@ -169,14 +142,16 @@ describe("MetaCitizen", () => {
         });
 
         it("should buy successful", async () => {
+            const balanceOf_before = await token.balanceOf(treasury.address);
+
             await expect(() => metaCitizen.connect(user1).buy()).to.changeTokenBalance(token, user1, -1 * MINT_FEE);
-            expect(await token.balanceOf(treasury.address)).to.equal(TOTAL_SUPPLY.add(MINT_FEE));
+
+            const balanceOf_after = await token.balanceOf(treasury.address);
+            expect(balanceOf_after.sub(balanceOf_before)).to.equal(MINT_FEE);
+
             expect(await metaCitizen.getTokenCounter()).to.equal(1);
             expect(await metaCitizen.ownerOf(1)).to.equal(user1.address);
             expect(await metaCitizen.balanceOf(user1.address)).to.equal(1);
-
-            expect(await token.balanceOf(user1.address)).to.equal(TOTAL_SUPPLY.sub(MINT_FEE));
-            expect(await token.balanceOf(treasury.address)).to.equal(TOTAL_SUPPLY.add(MINT_FEE));
         });
     });
 
@@ -199,7 +174,7 @@ describe("MetaCitizen", () => {
         it("should mint successful", async () => {
             await metaCitizen.mint(user1.address);
 
-            expect(await token.balanceOf(treasury.address)).to.equal(TOTAL_SUPPLY);
+            expect(await token.balanceOf(treasury.address)).to.equal(0);
             expect(await metaCitizen.ownerOf(1)).to.equal(user1.address);
             expect(await metaCitizen.balanceOf(user1.address)).to.equal(1);
         });

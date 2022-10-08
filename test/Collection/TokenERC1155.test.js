@@ -30,7 +30,7 @@ describe("TokenERC1155:", () => {
         ]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
-        mkpManager = await upgrades.deployProxy(MkpManager, [treasury.address, admin.address]);
+        mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
 
         await tokenERC1155.deployed();
     });
@@ -51,6 +51,15 @@ describe("TokenERC1155:", () => {
             expect(royaltiesInfo[0]).to.equal(treasury.address.toString());
             expect(royaltiesInfo[1].toString()).to.equal("250");
         });
+
+        it("Check variable", async () => {
+            expect(await tokenERC1155.name()).equal("My NFT");
+            expect(await tokenERC1155.symbol()).equal("M");
+            expect(await tokenERC1155.factory()).equal(owner.address);
+            expect(await tokenERC1155.owner()).equal(owner.address);
+            expect(await tokenERC1155.maxTotalSupply()).equal(100);
+            expect(await tokenERC1155.maxBatch()).equal(100);
+        });
     });
 
     describe("setURI function:", async () => {
@@ -63,6 +72,74 @@ describe("TokenERC1155:", () => {
             expect(newURI).to.equal(URI);
             await tokenERC1155.setURI("new_uri.json", 1);
             expect(await tokenERC1155.uri(1)).to.equal("new_uri.json");
+        });
+    });
+
+    describe("setMaxBatch", async () => {
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(tokenERC1155.connect(user1).setMaxBatch(50)).to.revertedWith(
+                "Caller is not an owner or admin"
+            );
+        });
+
+        it("Should revert Invalid maxBatch", async () => {
+            await expect(tokenERC1155.setMaxBatch(0)).to.revertedWith("Invalid maxBatch");
+        });
+
+        it("Should setMaxBatch successfully", async () => {
+            await tokenERC1155.setMaxBatch(50);
+            let maxBatch = await tokenERC1155.maxBatch();
+            expect(maxBatch).equal(50);
+
+            await tokenERC1155.setAdmin(user1.address, true);
+            await tokenERC1155.connect(user1).setMaxBatch(100);
+            maxBatch = await tokenERC1155.maxBatch();
+            expect(maxBatch).equal(100);
+        });
+    });
+
+    describe("setAdminByFactory", async () => {
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(tokenERC1155.connect(user1).setAdminByFactory(user1.address, true)).to.revertedWith(
+                "Caller is not the factory"
+            );
+        });
+
+        it("Should revert Invalid address", async () => {
+            await expect(tokenERC1155.setAdminByFactory(AddressZero, true)).to.revertedWith("Invalid address");
+        });
+
+        it("Should setAdminByFactory successfully", async () => {
+            await tokenERC1155.setAdminByFactory(user1.address, true);
+            let isAdmin = await tokenERC1155.isAdmin(user1.address);
+            expect(isAdmin).to.be.true;
+
+            await tokenERC1155.setAdminByFactory(user1.address, false);
+            isAdmin = await tokenERC1155.isAdmin(user1.address);
+            expect(isAdmin).to.be.false;
+        });
+    });
+
+    describe("setAdmin", async () => {
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(tokenERC1155.connect(user1).setAdmin(user1.address, true)).to.revertedWith(
+                "Ownable: caller is not the owner"
+            );
+        });
+
+        it("Should revert Invalid maxBatch", async () => {
+            await expect(tokenERC1155.setAdmin(AddressZero, true)).to.revertedWith("Invalid address");
+        });
+
+        it("Should setAdmin successfully", async () => {
+            await tokenERC1155.setAdmin(user1.address, true);
+
+            let isAdmin = await tokenERC1155.isAdmin(user1.address);
+            expect(isAdmin).to.be.true;
+
+            await tokenERC1155.setMaxBatch(50);
+            let maxBatch = await tokenERC1155.maxBatch();
+            expect(maxBatch).equal(50);
         });
     });
 

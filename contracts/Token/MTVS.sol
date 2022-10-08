@@ -4,10 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "../interfaces/IMTVS.sol";
-import "../Validatable.sol";
 
 /**
  *  @title  Dev Fungible token
@@ -18,35 +16,23 @@ import "../Validatable.sol";
  *          by the only controllers and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial.
  */
-contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
-    event Minted(address indexed receiver, uint256 amount);
+contract MTVS is ERC20Upgradeable, ERC165Upgradeable, IMTVS {
 
     /**
      *  @notice Initialize new logic contract.
      */
     function initialize(
-        address _curator,
         string memory _name,
         string memory _symbol,
         uint256 _totalSupply,
-        ITreasury _treasury,
-        IAdmin _admin
-    ) public initializer notZeroAddress(_curator) validTreasury(_treasury) notZero(_totalSupply) {
-        __Validatable_init(_admin);
+        address _treasury
+    ) public initializer {
         __ERC20_init(_name, _symbol);
 
-        _mint(address(_treasury), _totalSupply);
-    }
+        require(_treasury != address(0), "Invalid address");
+        require(_totalSupply > 0, "Invalid amount");
 
-    /**
-     *  @notice Mint token
-     *
-     *  @dev    Only controllers can call this function.
-     */
-    function mint(address receiver, uint256 amount) external onlyAdmin notZeroAddress(receiver) notZero(amount) {
-        _mint(receiver, amount);
-
-        emit Minted(receiver, amount);
+        _mint(_treasury, _totalSupply);
     }
 
     /**
@@ -54,7 +40,8 @@ contract MTVS is Validatable, ERC20Upgradeable, ERC165Upgradeable, IMTVS {
      *
      *  @dev   All caller can call this function.
      */
-    function burn(uint256 amount) external notZero(amount) {
+    function burn(uint256 amount) external {
+        require(amount > 0, "Invalid amount");
         _burn(_msgSender(), amount);
     }
 
