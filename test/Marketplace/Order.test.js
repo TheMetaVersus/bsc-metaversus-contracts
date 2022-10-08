@@ -1,9 +1,8 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { MaxUint256, AddressZero } = ethers.constants;
-const { add, divide, subtract } = require("js-big-decimal");
-const { getCurrentTime, skipTime } = require("../utils");
-const { MerkleTree } = require("merkletreejs");
+const { add, subtract } = require("js-big-decimal");
+const { getCurrentTime, skipTime, generateMerkleTree } = require("../utils");
 const keccak256 = require("keccak256");
 const { parseEther } = require("ethers/lib/utils");
 
@@ -15,7 +14,7 @@ const MINT_FEE = 1000;
 const BID_PRICE = parseEther("100");
 const BUY_BID_PRICE = add(BID_PRICE, parseEther("100"));
 
-describe.only("OrderManager:", () => {
+describe("OrderManager:", () => {
     beforeEach(async () => {
         [owner, user1, user2, user3] = await ethers.getSigners();
 
@@ -115,8 +114,7 @@ describe.only("OrderManager:", () => {
 
         await mkpManager.setOrder(orderManager.address);
 
-        const leaves = [user1.address, user2.address].map(value => keccak256(value));
-        merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+        merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
         rootHash = merkleTree.getHexRoot();
 
@@ -292,8 +290,7 @@ describe.only("OrderManager:", () => {
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
@@ -320,8 +317,7 @@ describe.only("OrderManager:", () => {
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
@@ -352,8 +348,8 @@ describe.only("OrderManager:", () => {
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
             await metaCitizen.mint(user2.address);
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
             const leaf = keccak256(user2.address);
@@ -386,8 +382,8 @@ describe.only("OrderManager:", () => {
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
             await metaCitizen.mint(user2.address);
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
             const leaf = keccak256(user2.address);
@@ -464,8 +460,7 @@ describe.only("OrderManager:", () => {
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
@@ -513,8 +508,7 @@ describe.only("OrderManager:", () => {
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
         });
@@ -590,8 +584,7 @@ describe.only("OrderManager:", () => {
                 .connect(user2)
                 .createNFT(false, 1, 100, "this_uri", ONE_ETHER, current + 100, current + 10000, token.address, []);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             await orderManager
                 .connect(user2)
@@ -639,8 +632,7 @@ describe.only("OrderManager:", () => {
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
@@ -687,8 +679,7 @@ describe.only("OrderManager:", () => {
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
@@ -824,8 +815,7 @@ describe.only("OrderManager:", () => {
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
@@ -851,7 +841,7 @@ describe.only("OrderManager:", () => {
 
         it("should be fail when not the seller !", async () => {
             await expect(orderManager.connect(user1).cancelSell(marketItemId + 1)).to.revertedWith(
-                "You are not the seller"
+                "ERROR: market ID is not exist !"
             );
         });
 
@@ -874,8 +864,7 @@ describe.only("OrderManager:", () => {
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            const leaves = [user1.address, user2.address].map(value => keccak256(value));
-            merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
+            merkleTree = await generateMerkleTree([user1.address, user2.address]);
 
             rootHash = merkleTree.getHexRoot();
 
