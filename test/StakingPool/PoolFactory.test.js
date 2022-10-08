@@ -2,11 +2,9 @@ const { expect } = require("chai");
 const { upgrades } = require("hardhat");
 const { multiply, add, subtract } = require("js-big-decimal");
 const { getCurrentTime, skipTime } = require("../utils");
-const { constants } = require("@openzeppelin/test-helpers");
+const { AddressZero } = ethers.constants;
 const aggregator_abi = require("../../artifacts/@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
 const { deployMockContract } = require("@ethereum-waffle/mock-contract");
-const { ZERO_ADDRESS } = require("@openzeppelin/test-helpers/src/constants");
-const { utils } = require("ethers");
 
 const abi = [
     {
@@ -104,8 +102,8 @@ describe("Pool Factory:", () => {
             tokenERC721.address,
             tokenERC1155.address,
             admin.address,
-            ZERO_ADDRESS,
-            ZERO_ADDRESS,
+            AddressZero,
+            AddressZero,
         ]);
 
         MTVSManager = await ethers.getContractFactory("MetaversusManager");
@@ -137,7 +135,7 @@ describe("Pool Factory:", () => {
 
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(upgrades.deployProxy(PoolFactory, [staking.address, constants.ZERO_ADDRESS])).to.revertedWith(
+            await expect(upgrades.deployProxy(PoolFactory, [staking.address, AddressZero])).to.revertedWith(
                 "Invalid Admin contract"
             );
             await expect(upgrades.deployProxy(PoolFactory, [staking.address, user1.address])).to.revertedWith(

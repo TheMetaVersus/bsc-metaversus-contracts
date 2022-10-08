@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-const { formatBytes32String, parseEther } = ethers.utils;
-const { MaxUint256, AddressZero } = ethers.constants;
+const { parseEther } = ethers.utils;
+const { AddressZero } = ethers.constants;
 
 const TOTAL_SUPPLY = parseEther("1000000000000");
 const TOKEN_0_1 = parseEther("0.1");
