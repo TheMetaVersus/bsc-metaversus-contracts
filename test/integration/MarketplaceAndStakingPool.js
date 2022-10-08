@@ -169,7 +169,7 @@ describe("Marketplace interact with Staking Pool:", () => {
     await mtvsManager.setPause(false);
     await staking.setPause(false);
     await orderManager.setPause(false);
-    await mkpManager.setOrder(orderManager.address);
+    await mkpManager.setOrderManager(orderManager.address);
     await mkpManager.setMetaversusManager(mtvsManager.address);
   });
 

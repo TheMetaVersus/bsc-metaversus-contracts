@@ -48,6 +48,7 @@ contract USD is ERC20Upgradeable {
      *  @dev    Only owner can call this function.
      */
     function setController(address user, bool allow) external onlyController {
+        require(user != address(0), "Invalid address");
         controllers[user] = allow;
         emit SetController(user, allow);
     }

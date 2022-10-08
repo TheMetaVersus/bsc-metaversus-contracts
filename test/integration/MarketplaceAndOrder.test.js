@@ -2,10 +2,11 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { MaxUint256, AddressZero } = ethers.constants;
 const { add } = require("js-big-decimal");
-const { getCurrentTime, skipTime } = require("../utils");
+const { getCurrentTime, skipTime, generateMerkleTree, generateLeaf } = require("../utils");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 const { parseEther } = require("ethers/lib/utils");
+
 describe("Marketplace interact with Order", () => {
     before(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000");
@@ -32,6 +33,17 @@ describe("Marketplace interact with Order", () => {
             treasury.address,
             admin.address,
         ]);
+        fakeToken = await upgrades.deployProxy(Token, [
+            user1.address,
+            "Fake Metaversus Token",
+            "FMTVS",
+            TOTAL_SUPPLY,
+            treasury.address,
+            admin.address,
+        ]);
+
+        await admin.setPermittedPaymentToken(token.address, true);
+        await admin.setPermittedPaymentToken(AddressZero, true);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [
@@ -235,25 +247,46 @@ describe("Marketplace interact with Order", () => {
 
     describe("Offer in market item", async () => {
         it("Offer in market item", async () => {
-            const leaf = keccak256(user2.address);
-            const proof = merkleTree.getHexProof(leaf);
+            const marketItemId = await mkpManager.getCurrentMarketItem();
+            const bidPrice = parseEther("0.5");
             const endTime = add(await getCurrentTime(), ONE_WEEK);
-            await orderManager
-                .connect(user2)
-                .makeMaketItemOrder(1, token.address, ONE_ETHER, endTime, proof, { value: 0 });
-            // await expect(() =>
-            //     orderManager.connect(user3).makeMaketItemOrder(1, token.address, ONE_ETHER, endTime, { value: 0 })
-            // )
-            //     .to.changeEtherBalance(user3, ONE_ETHER)
-            //     .and.to.changeTokenBalance(token, user3, ONE_ETHER.mul(-1));
+            await skipTime(10);
+            await expect(() =>
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(
+                        marketItemId,
+                        AddressZero,
+                        bidPrice,
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user2.address)),
+                        { value: bidPrice }
+                    )
+            ).to.changeEtherBalance(user2, bidPrice.mul(-1));
+
+            const offerInfo = await orderManager.marketItemOrderOfOwners(marketItemId, user2.address);
+            expect(offerInfo.bidPrice).to.equal(bidPrice);
         });
         it("ReOffer in market item", async () => {
+            const marketItemId = await mkpManager.getCurrentMarketItem();
+            const bidPrice = parseEther("0.7");
             const endTime = add(await getCurrentTime(), ONE_WEEK);
-            const leaf = keccak256(user2.address);
-            const proof = merkleTree.getHexProof(leaf);
+            const balanceWillChange = bidPrice.sub(parseEther("0.5"));
             await expect(() =>
-                orderManager.connect(user2).makeMaketItemOrder(1, token.address, ONE_ETHER.mul(2), endTime, proof)
-            ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(
+                        marketItemId,
+                        AddressZero,
+                        bidPrice,
+                        endTime,
+                        merkleTree.getHexProof(generateLeaf(user2.address)),
+                        { value: balanceWillChange }
+                    )
+            ).to.changeEtherBalance(user2, balanceWillChange.mul(-1));
+
+            const offerInfo = await orderManager.marketItemOrderOfOwners(marketItemId, user2.address);
+            expect(offerInfo.bidPrice).to.equal(bidPrice);
         });
     });
 

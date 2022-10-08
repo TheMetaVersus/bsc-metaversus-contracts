@@ -563,7 +563,7 @@ describe("Marketplace Manager:", () => {
 
             await expect(
                 orderManager.connect(user1).sellAvailableInMarketplace(0, 1, 1, newStartTime, newEndTime, token.address)
-            ).to.be.revertedWith("You are not the seller");
+            ).to.be.revertedWith("ERROR: market ID is not exist !");
         });
         it("should revert when price equal to zero: ", async () => {
             await mtvsManager
@@ -704,7 +704,9 @@ describe("Marketplace Manager:", () => {
         });
 
         it("should revert when market item ID not exist: ", async () => {
-            await expect(orderManager.connect(user1).cancelSell(2)).to.be.revertedWith("You are not the seller");
+            await expect(orderManager.connect(user1).cancelSell(2)).to.be.revertedWith(
+                "ERROR: market ID is not exist !"
+            );
         });
         it("should revert when caller is not seller: ", async () => {
             await expect(orderManager.cancelSell(1)).to.be.revertedWith("You are not the seller");
@@ -747,8 +749,10 @@ describe("Marketplace Manager:", () => {
         });
 
         it("should revert when market ID not exist: ", async () => {
-            await expect(orderManager.connect(user2).buy(0, [])).to.be.revertedWith("Market Item is not selling");
-            await expect(orderManager.connect(user2).buy(123, [])).to.be.revertedWith("Market Item is not selling");
+            await expect(orderManager.connect(user2).buy(0, [])).to.be.revertedWith("ERROR: market ID is not exist !");
+            await expect(orderManager.connect(user2).buy(123, [])).to.be.revertedWith(
+                "ERROR: market ID is not exist !"
+            );
         });
 
         it("should buy success: ", async () => {
@@ -829,7 +833,7 @@ describe("Marketplace Manager:", () => {
         });
     });
 
-    describe("makeMaketItemOrder function", async () => {
+    describe("makeMarketItemOrder function", async () => {
         beforeEach(async () => {
             await token.mint(user1.address, parseEther("1000"));
             await token.mint(user2.address, parseEther("1000"));
@@ -1008,11 +1012,16 @@ describe("Marketplace Manager:", () => {
         it("should revert when caller is not owner asset", async () => {
             await expect(orderManager.connect(user2).acceptWalletOrder(1)).to.be.revertedWith("Not the seller");
         });
+
         it("should accept offer success", async () => {
             await expect(() => orderManager.connect(user1).acceptWalletOrder(1)).to.changeTokenBalance(
                 token,
                 user1,
                 bidPrice
+                    .mul(975)
+                    .div(1000)
+                    .mul(975)
+                    .div(1000)
             );
         });
     });

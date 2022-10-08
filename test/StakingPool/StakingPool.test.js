@@ -57,6 +57,17 @@ describe("Staking Pool:", () => {
             treasury.address,
             admin.address,
         ]);
+        fakeToken = await upgrades.deployProxy(Token, [
+            user1.address,
+            "Fake Metaversus Token",
+            "FMTVS",
+            TOTAL_SUPPLY,
+            treasury.address,
+            admin.address,
+        ]);
+
+        await admin.setPermittedPaymentToken(token.address, true);
+        await admin.setPermittedPaymentToken(AddressZero, true);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [

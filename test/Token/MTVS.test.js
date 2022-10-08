@@ -103,14 +103,14 @@ describe("MTVS Token:", () => {
     describe("mint function:", async () => {
         it("should revert when caller not be controller: ", async () => {
             await expect(token.connect(user1).mint(user1.address, 100)).to.be.revertedWith(
-                "Ownable: caller is not a controller"
+                "Caller is not an owner or admin"
             );
         });
         it("should revert when receiver is zero address: ", async () => {
-            await expect(token.mint(AddressZero, 100)).to.be.revertedWith("ERROR: invalid address !");
+            await expect(token.mint(AddressZero, 100)).to.be.revertedWith("Invalid address");
         });
         it("should revert when amount equal to zero: ", async () => {
-            await expect(token.mint(user1.address, 0)).to.be.revertedWith("ERROR: Amount equal to zero !");
+            await expect(token.mint(user1.address, 0)).to.be.revertedWith("Invalid amount");
         });
         it("should mint success: ", async () => {
             await token.mint(user1.address, 100);
@@ -120,7 +120,7 @@ describe("MTVS Token:", () => {
 
     describe("burn function:", async () => {
         it("should revert when amount equal to zero: ", async () => {
-            await expect(token.burn(0)).to.be.revertedWith("ERROR: Amount equal to zero !");
+            await expect(token.burn(0)).to.be.revertedWith("Invalid amount");
         });
 
         it("should burn success: ", async () => {
