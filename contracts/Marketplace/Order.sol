@@ -213,18 +213,32 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         OrderInfo storage existOrder = walletOrderOfOwners[_nftAddress][_tokenId][_to][_msgSender()];
         // check for update
         if (existOrder.bidPrice != 0) {
-            // Transfer before update
-            if (_bidPrice > existOrder.bidPrice) {
-                _transferToken(_paymentToken, _bidPrice - existOrder.bidPrice, _msgSender(), address(this));
-            } else if (_bidPrice < existOrder.bidPrice) {
-                _transferToken(_paymentToken, existOrder.bidPrice - _bidPrice, address(this), _msgSender());
-            }
+            bool checkCall = _bidPrice > existOrder.bidPrice;
+            uint256 amount = checkCall ? _bidPrice - existOrder.bidPrice : existOrder.bidPrice - _bidPrice;
+
             // Update status
             existOrder.paymentToken = _paymentToken;
             existOrder.bidPrice = _bidPrice;
             existOrder.amount = _amount;
             existOrder.expiredTime = _time;
             existOrder.status = OrderStatus.PENDING;
+
+            if (_paymentToken != existOrder.paymentToken) {
+                // transfer current nft back user wallet
+                _transferToken(existOrder.paymentToken, existOrder.amount, address(this), _msgSender());
+                // transfer new asset into contract
+                _transferToken(_paymentToken, _amount, _msgSender(), address(this));
+            } else {
+                // Transfer before update
+                if (_bidPrice != existOrder.bidPrice) {
+                    _transferToken(
+                        _paymentToken,
+                        amount,
+                        checkCall ? _msgSender() : address(this),
+                        checkCall ? address(this) : _msgSender()
+                    );
+                }
+            }
 
             // Emit Event
             emit UpdateOrder(
@@ -247,6 +261,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
                 nftAddress: _nftAddress,
                 tokenId: _tokenId
             });
+
             OrderInfo memory orderInfo = OrderInfo({
                 amount: _amount,
                 paymentToken: _paymentToken,
@@ -363,11 +378,9 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
 
         if (existOrder.bidPrice != 0) {
             // Transfer before update
-            if (_bidPrice > existOrder.bidPrice) {
-                _transferToken(_paymentToken, _bidPrice - existOrder.bidPrice, _msgSender(), address(this));
-            } else if (_bidPrice < existOrder.bidPrice) {
-                _transferToken(_paymentToken, existOrder.bidPrice - _bidPrice, address(this), _msgSender());
-            }
+
+            bool checkCall = _bidPrice > existOrder.bidPrice;
+            uint256 amount = checkCall ? _bidPrice - existOrder.bidPrice : existOrder.bidPrice - _bidPrice;
 
             // Update status
             existOrder.paymentToken = _paymentToken;
@@ -376,6 +389,22 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             existOrder.expiredTime = _time;
             existOrder.status = OrderStatus.PENDING;
 
+            if (_paymentToken != existOrder.paymentToken) {
+                // transfer current nft back user wallet
+                _transferToken(existOrder.paymentToken, existOrder.amount, address(this), _msgSender());
+                // transfer new asset into contract
+                _transferToken(_paymentToken, amount, _msgSender(), address(this));
+            } else {
+                // Transfer before update
+                if (_bidPrice != existOrder.bidPrice) {
+                    _transferToken(
+                        _paymentToken,
+                        amount,
+                        checkCall ? _msgSender() : address(this),
+                        checkCall ? address(this) : _msgSender()
+                    );
+                }
+            }
             // Emit Event
             emit UpdateOrder(
                 _msgSender(),
@@ -408,7 +437,6 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             marketItemOrders[marketItemOrderIds.current()] = marketItemOrder;
 
             _transferToken(_paymentToken, _bidPrice, marketItemOrder.owner, address(this));
-
             // Emit Event
             emit MakeOrder(
                 marketItemOrderIds.current(),
