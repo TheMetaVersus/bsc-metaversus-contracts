@@ -162,6 +162,7 @@ describe("Staking Pool:", () => {
         await mtvsManager.setPause(false);
         await staking.setPause(false);
         await orderManager.setPause(false);
+        await metaCitizen.setPause(false);
         await mkpManager.setOrderManager(orderManager.address);
         await mkpManager.setMetaversusManager(mtvsManager.address);
 
@@ -551,11 +552,11 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime);
             await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith(
-                "ERROR: not allow unstake at this time"
+                "Not allow to unstake now"
             );
         });
 
-        it("should revert when ERROR: requested !: ", async () => {
+        it("should revert when Already requested: ", async () => {
             await token.transfer(user2.address, ONE_MILLION_ETHER);
             await token.transfer(user1.address, ONE_MILLION_ETHER);
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
@@ -585,7 +586,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime + poolDuration);
             await staking.connect(user1).requestUnstake();
-            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith("ERROR: requested !");
+            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith("Already requested");
         });
 
         it("should request success: ", async () => {
@@ -653,7 +654,7 @@ describe("Staking Pool:", () => {
 
             await staking.setStartTime(0);
             await expect(staking.connect(user1).requestClaim()).to.be.revertedWith(
-                "ERROR: not allow claim at this time"
+                "Not allow to claim now"
             );
         });
         it("should revert when more request: ", async () => {
@@ -686,7 +687,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime);
             await staking.connect(user1).requestClaim();
-            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("ERROR: requested !");
+            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("Already requested");
         });
         it("should request success: ", async () => {
             await token.transfer(user2.address, ONE_MILLION_ETHER);
@@ -755,7 +756,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).requestClaim();
             await skipTime(10 * 30 * 24 * 60 * 60 + 1); // 23h
 
-            await expect(staking.connect(user1).claim()).to.be.revertedWith("ERROR: staking pool had been expired !");
+            await expect(staking.connect(user1).claim()).to.be.revertedWith("Staking pool has expired");
         });
 
         it("should revert when not rquest claim before ", async () => {
@@ -787,7 +788,7 @@ describe("Staking Pool:", () => {
 
             await skipTime(30 * 24 * 60 * 60);
 
-            await expect(staking.connect(user1).claim()).to.be.revertedWith("ERROR: please request before");
+            await expect(staking.connect(user1).claim()).to.be.revertedWith("Must request claim first");
         });
 
         it("should accept lost 50% first ", async () => {
@@ -963,7 +964,7 @@ describe("Staking Pool:", () => {
             await skipTime(unstakeTime);
 
             await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith(
-                "ERROR: staking pool for NFT has not expired yet !"
+                "Staking pool has not expired yet"
             );
         });
         it("should revert when request not finish after 24 hours: ", async () => {
@@ -997,7 +998,7 @@ describe("Staking Pool:", () => {
             await skipTime(unstakeTime);
 
             await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith(
-                "ERROR: please request and can withdraw after pending time"
+                "Must request unstake first"
             );
         });
         it("should revert when connot unstake more than staked amount: ", async () => {
@@ -1031,7 +1032,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).requestUnstake();
             await skipTime(25 * 60 * 60);
             await expect(staking.connect(user1).unstake(OVER_AMOUNT)).to.be.revertedWith(
-                "ERROR: cannot unstake more than staked amount"
+                "Exceeds staked amount"
             );
         });
         it("should unstake success: ", async () => {

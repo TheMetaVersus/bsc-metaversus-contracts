@@ -30,6 +30,7 @@ struct DropRecord {
     uint256 maxSupply;
     uint256 startTime;
     uint256 endTime;
+    bool isCanceled;
 }
 
 /**

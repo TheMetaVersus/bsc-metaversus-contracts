@@ -69,7 +69,7 @@ describe("NftTest:", () => {
 
     describe("tokenURI function:", async () => {
         it("should revert when invalid tokenID params: ", async () => {
-            await expect(nftTest.tokenURI(2)).to.be.revertedWith("ERC721Metadata: URI query for nonexistent token.");
+            await expect(nftTest.tokenURI(2)).to.be.revertedWith("URI query for nonexistent token");
         });
     });
 

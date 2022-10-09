@@ -16,7 +16,7 @@ interface IStakingPool is IERC165Upgradeable {
         uint256 _poolDuration,
         address _pancakeRouter,
         address _busdToken,
-        address _aggregatorProxyBUSD_USD,
+        address _aggregatorProxyBUSD_USD, // solhint-disable-line var-name-mixedcase
         IAdmin _admin
     ) external;
 }

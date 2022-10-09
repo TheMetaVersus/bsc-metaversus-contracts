@@ -103,6 +103,7 @@ describe("Marketplace Manager:", () => {
         await orderManager.setPause(false);
         await mtvsManager.setPause(false);
         await mkpManager.setPause(false);
+        await metaCitizen.setPause(false);
 
         await mkpManager.setMetaversusManager(mtvsManager.address);
         await mkpManager.setOrderManager(orderManager.address);
@@ -210,7 +211,7 @@ describe("Marketplace Manager:", () => {
                         token.address,
                         rootHash
                     )
-            ).to.revertedWith("Caller is not a metaversus manager or order manager");
+            ).to.revertedWith("Caller is not MTVS manager or Order");
         });
 
         it("should revert when Invalid time", async () => {

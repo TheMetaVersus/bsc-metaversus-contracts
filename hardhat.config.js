@@ -10,10 +10,6 @@ require("@nomiclabs/hardhat-ethers");
 // See here: https://hardhat.org/guides/waffle-testing.html
 require("@nomiclabs/hardhat-waffle");
 
-// This plugin runs solhint on the project's sources and prints the report
-// See here: https://hardhat.org/plugins/nomiclabs-hardhat-solhint.html
-require("@nomiclabs/hardhat-solhint");
-
 // Verify and public source code on etherscan
 require("@nomiclabs/hardhat-etherscan");
 
