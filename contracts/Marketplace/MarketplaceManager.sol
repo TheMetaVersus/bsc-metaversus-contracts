@@ -74,12 +74,6 @@ contract MarketPlaceManager is
     mapping(address => bytes32) public nftAddressToRootHash;
 
     /**
-     *  @notice Mapping from OwnerAddress to MarketItemId[]
-     *  @dev OwnerAddress -> MarketItemId[]
-     */
-    mapping(address => EnumerableSetUpgradeable.UintSet) private _marketItemOfOwner;
-
-    /**
      *  @notice Mapping from MarketItemID to Market Item
      *  @dev MarketItemID -> MarketItem
      */
@@ -197,31 +191,6 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Transfer call
-     */
-    function extTransferCall(
-        IERC20Upgradeable _paymentToken,
-        uint256 _amount,
-        address _from,
-        address _to
-    ) public payable onlyOrder {
-        if (address(_paymentToken) == address(0)) {
-            if (_to == address(this)) {
-                require(msg.value == _amount, "Failed to send into contract");
-            } else {
-                (bool sent, ) = _to.call{ value: _amount }("");
-                require(sent, "Failed to send native");
-            }
-        } else {
-            if (_to == address(this)) {
-                IERC20Upgradeable(_paymentToken).safeTransferFrom(_from, _to, _amount);
-            } else {
-                IERC20Upgradeable(_paymentToken).transfer(_to, _amount);
-            }
-        }
-    }
-
-    /**
      *  @notice Create market info with data
      *
      *  @dev    All caller can call this function.
@@ -237,17 +206,16 @@ contract MarketPlaceManager is
         IERC20Upgradeable _paymentToken,
         bytes calldata _rootHash
     ) external onlyMetaversusOrOrder {
-        require(_msgSender().isContract(), "ERROR: only allow contract call !");
+        require(admin.isPermittedPaymentToken(_paymentToken), "Payment token is not supported");
         NFTHelper.Type nftType = NFTHelper.getType(_nftAddress);
-        require(nftType != NFTHelper.Type.NONE, "ERROR: NFT address is incompatible!");
-        require(block.timestamp <= _startTime && _startTime < _endTime, "ERROR: Invalid time");
+        require(block.timestamp <= _startTime && _startTime < _endTime, "Invalid time");
 
         _marketItemIds.increment();
 
         marketItemIdToMarketItem[_marketItemIds.current()] = MarketItem(
             _nftAddress,
             _tokenId,
-            nftType == NFTHelper.Type.ERC1155 ? _amount : 1,
+            _amount,
             _price,
             nftType,
             _seller,
@@ -255,24 +223,16 @@ contract MarketPlaceManager is
             MarketItemStatus.LISTING,
             _startTime,
             _endTime,
-            admin.isPermittedPaymentToken(_paymentToken) ? _paymentToken : IERC20Upgradeable(address(0)),
-            keccak256(abi.encodePacked((""))) != keccak256(_rootHash)
+            _paymentToken
         );
 
-        _marketItemOfOwner[_seller].add(_marketItemIds.current());
         nftAddressToRootHash[_nftAddress] = bytes32(_rootHash);
-        // approve
-        if (nftType == NFTHelper.Type.ERC1155) {
-            IERC1155Upgradeable(_nftAddress).setApprovalForAll(address(orderManager), true);
-        } else if (nftType == NFTHelper.Type.ERC721) {
-            IERC721Upgradeable(_nftAddress).approve(address(orderManager), _tokenId);
-        }
 
         emit MarketItemCreated(
             _marketItemIds.current(),
             _nftAddress,
             _tokenId,
-            nftType == NFTHelper.Type.ERC1155 ? _amount : 1,
+            _amount,
             _seller,
             _price,
             uint256(nftType),
@@ -280,7 +240,7 @@ contract MarketPlaceManager is
             _endTime,
             _paymentToken,
             _rootHash,
-            keccak256(abi.encodePacked((""))) != keccak256(_rootHash)
+            isPrivate(_marketItemIds.current())
         );
     }
 
@@ -290,13 +250,6 @@ contract MarketPlaceManager is
         nftAddressToRootHash[nftAddress] = bytes32(newRoot);
 
         emit SetNewRootHash(nftAddress, newRoot);
-    }
-
-    /**
-     * @dev Get Latest Market Item by the token id
-     */
-    function getLatestMarketItem() external view returns (MarketItem memory) {
-        return marketItemIdToMarketItem[_marketItemIds.current()];
     }
 
     /**
@@ -437,14 +390,9 @@ contract MarketPlaceManager is
      *  @notice mark user was buyer
      */
     function setIsBuyer(address newBuyer) external onlyOrder notZeroAddress(newBuyer) {
-        isBuyer[newBuyer] = true;
-    }
-
-    /**
-     *  @notice remove market item info from owner
-     */
-    function removeMarketItemOfOwner(address owner, uint256 marketItemId) external onlyOrder {
-        _marketItemOfOwner[owner].remove(marketItemId);
+        if (!isBuyer[newBuyer]) {
+            isBuyer[newBuyer] = true;
+        }
     }
 
     /**
@@ -462,5 +410,12 @@ contract MarketPlaceManager is
         bytes32 leaf = keccak256(abi.encodePacked(_account));
         bytes32 root = nftAddressToRootHash[marketItemIdToMarketItem[_marketItemId].nftContractAddress];
         return MerkleProofUpgradeable.verify(_proof, bytes32(root), leaf);
+    }
+
+    /**
+     *  @notice check private market item
+     */
+    function isPrivate(uint256 _marketItemId) public view returns (bool) {
+        return nftAddressToRootHash[marketItemIdToMarketItem[_marketItemId].nftContractAddress] > 0;
     }
 }
