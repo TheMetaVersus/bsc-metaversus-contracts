@@ -164,9 +164,9 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @notice Request withdraw before unstake activity
      */
     function requestUnstake() external nonReentrant whenNotPaused returns (uint256) {
-        require(startTime + poolDuration < block.timestamp && startTime != 0, "ERROR: not allow unstake at this time");
+        require(startTime + poolDuration < block.timestamp && startTime != 0, "Not allow to unstake now");
         UserInfo storage user = users[_msgSender()];
-        require(!user.lazyUnstake.isRequested, "ERROR: requested !");
+        require(!user.lazyUnstake.isRequested, "Already requested");
         user.lazyUnstake.isRequested = true;
         user.lazyUnstake.unlockedTime = block.timestamp + pendingTime;
 
@@ -178,9 +178,9 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @notice Request claim before unstake activity
      */
     function requestClaim() external nonReentrant whenNotPaused returns (uint256) {
-        require((startTime + poolDuration > block.timestamp) && startTime != 0, "ERROR: not allow claim at this time");
+        require((startTime + poolDuration > block.timestamp) && startTime != 0, "Not allow to claim now");
         UserInfo storage user = users[_msgSender()];
-        require(!user.lazyClaim.isRequested, "ERROR: requested !");
+        require(!user.lazyClaim.isRequested, "Already requested");
 
         user.lazyClaim.isRequested = true;
         user.lazyClaim.unlockedTime = block.timestamp + pendingTime;
@@ -195,12 +195,12 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @dev    Only user has NFT can call this function.
      */
     function stake(uint256 _amount) external notZero(_amount) nonReentrant whenNotPaused {
-        require(block.timestamp > startTime, "ERROR: not time for stake !");
+        require(block.timestamp > startTime, "Not time for stake");
         require(getAmountOutWith(_amount) >= 5e20, "Must stake more than 500$");
-        require(startTime + poolDuration > block.timestamp, "ERROR: staking pool for NFT had been expired !");
+        require(startTime + poolDuration > block.timestamp, "Staking pool has expired");
         require(
             IMarketplaceManager(mkpManager).wasBuyer(_msgSender()),
-            "ERROR: require buy any item in MTVS marketplace before staking !"
+            "Must buy a MTVS NFT"
         );
         // calculate pending rewards of staked amount before
         UserInfo storage user = users[_msgSender()];
@@ -227,8 +227,8 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      */
     function claim() external nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
-        require(startTime + poolDuration >= block.timestamp, "ERROR: staking pool had been expired !");
-        require(user.lazyClaim.isRequested, "ERROR: please request before");
+        require(startTime + poolDuration >= block.timestamp, "Staking pool has expired");
+        require(user.lazyClaim.isRequested, "Must request claim first");
 
         // update status of request
         user.lazyClaim.isRequested = false;
@@ -253,12 +253,12 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      */
     function unstake(uint256 _amount) external notZero(_amount) nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
-        require(startTime + poolDuration <= block.timestamp, "ERROR: staking pool for NFT has not expired yet !");
+        require(startTime + poolDuration <= block.timestamp, "Staking pool has not expired yet");
         require(
             user.lazyUnstake.isRequested && user.lazyUnstake.unlockedTime <= block.timestamp,
-            "ERROR: please request and can withdraw after pending time"
+            "Must request unstake first"
         );
-        require(user.totalAmount >= _amount, "ERROR: cannot unstake more than staked amount");
+        require(user.totalAmount >= _amount, "Exceeds staked amount");
 
         // Auto claim
         uint256 pending = pendingRewards(_msgSender());
