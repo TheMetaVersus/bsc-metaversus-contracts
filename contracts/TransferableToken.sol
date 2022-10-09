@@ -44,7 +44,7 @@ contract TransferableToken is Validatable {
     ) public payable {
         if (_to == address(this)) {
             if (isNativeToken(_paymentToken)) {
-                require(msg.value == _amount, "Failed to send into contrac");
+                require(msg.value == _amount, "Failed to send into contract");
             } else {
                 IERC20Upgradeable(_paymentToken).safeTransferFrom(_from, _to, _amount);
             }

@@ -16,9 +16,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
 
     function setIsBuyer(address newBuyer) external;
 
-    // MarketItemOfOwner
-    function removeMarketItemOfOwner(address owner, uint256 marketItemId) external;
-
     function extCreateMarketInfo(
         address _nftAddress,
         uint256 _tokenId,
@@ -32,13 +29,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
     ) external;
 
     function getListingFee(uint256 amount) external view returns (uint256);
-
-    function extTransferCall(
-        IERC20Upgradeable paymentToken,
-        uint256 amount,
-        address from,
-        address to
-    ) external payable;
 
     function extTransferNFTCall(
         address nftContractAddress,
@@ -63,4 +53,6 @@ interface IMarketplaceManager is IERC165Upgradeable {
         bytes32[] memory _proof,
         address _account
     ) external view returns (bool);
+
+    function isPrivate(uint256 _marketItemId) external view returns (bool);
 }

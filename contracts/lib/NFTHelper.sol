@@ -54,10 +54,7 @@ library NFTHelper {
         address _from,
         address _to
     ) internal {
-        NFTHelper.Type nftType = getType(_nftContractAddress);
-        require(nftType != NFTHelper.Type.NONE, "ERROR: NFT address is incompatible!");
-
-        if (nftType == NFTHelper.Type.ERC721) {
+        if (getType(_nftContractAddress) == NFTHelper.Type.ERC721) {
             IERC721Upgradeable(_nftContractAddress).safeTransferFrom(_from, _to, _tokenId);
         } else {
             IERC1155Upgradeable(_nftContractAddress).safeTransferFrom(_from, _to, _tokenId, _amount, "");
@@ -73,10 +70,6 @@ library NFTHelper {
             return IERC721Upgradeable(_nftContractAddress).ownerOf(_tokenId) != address(0);
         }
 
-        if (nftType == NFTHelper.Type.ERC1155) {
-            return true;
-        }
-
-        return false;
+        return nftType == NFTHelper.Type.ERC1155;
     }
 }
