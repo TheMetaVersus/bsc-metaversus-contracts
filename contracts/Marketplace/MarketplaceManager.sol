@@ -131,6 +131,7 @@ contract MarketPlaceManager is
     }
 
     modifier onlyMetaversusOrOrder() {
+        // solhint-disable-next-line reason-string
         require(
             _msgSender() == address(metaversusManager) || _msgSender() == address(orderManager),
             "Caller is not MTVS manager or Order"
@@ -138,6 +139,7 @@ contract MarketPlaceManager is
         _;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
     /**
