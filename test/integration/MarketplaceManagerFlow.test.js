@@ -1241,12 +1241,16 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
             ).to.revertedWith("Not the order time");
 
             await skipTime(10);
+            console.log(123123123);
+            await BT.expect(metaCitizen.mint(user5.address)).to.revertedWith("Pausable: paused");
             await BT.expect(metaCitizen.mint(user5.address)).to.revertedWith("Already have one");
             await BT.expect(() =>
                 orderManager
                     .connect(user5)
                     .makeMarketItemOrder(INFO.user1.sell_market_item_id, INFO.user5.bid_price, INFO.user5.end_time, [])
             ).changeTokenBalance(token, user5, INFO.user5.bid_price.mul(-1));
+
+            console.log(08908900989);
             INFO.user5.market_item_order_id = await orderManager.getCurrentMarketItemOrderId();
 
             // User 6 make order

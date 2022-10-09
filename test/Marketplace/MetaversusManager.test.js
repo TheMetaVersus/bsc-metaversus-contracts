@@ -78,6 +78,7 @@ describe("Metaversus Manager:", () => {
 
         await collectionFactory.setMetaversusManager(mtvsManager.address);
         await mkpManager.setMetaversusManager(mtvsManager.address);
+        await admin.setPermittedPaymentToken(token.address, true);
     });
 
     describe("Deployment:", async () => {
@@ -318,8 +319,7 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.status).to.equal(0, "Invalid status");
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
-            expect(marketItem.paymentToken).to.equal(AddressZero, "Invalid paymentToken");
-            expect(marketItem.isPrivate).to.be.true;
+            expect(marketItem.paymentToken).to.equal(token.address, "Invalid paymentToken");
 
             const amount = 100;
 
@@ -357,7 +357,6 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
             expect(marketItem.paymentToken).to.equal(token.address, "Invalid paymentToken");
-            expect(marketItem.isPrivate).to.be.true;
         });
 
         it("should create NFT to Wallet success: ", async () => {
@@ -439,8 +438,7 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.status).to.equal(0, "Invalid status");
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
-            expect(marketItem.paymentToken).to.equal(AddressZero, "Invalid paymentToken");
-            expect(marketItem.isPrivate).to.be.true;
+            expect(marketItem.paymentToken).to.equal(token.address, "Invalid paymentToken");
         });
     });
 
@@ -572,7 +570,6 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
             expect(marketItem.paymentToken).to.equal(token.address, "Invalid paymentToken");
-            expect(marketItem.isPrivate).to.be.true;
 
             const amount = 100;
 
@@ -609,7 +606,6 @@ describe("Metaversus Manager:", () => {
             expect(marketItem.startTime).to.equal(startTime, "Invalid startTime");
             expect(marketItem.endTime).to.equal(endTime, "Invalid endTime");
             expect(marketItem.paymentToken).to.equal(token.address, "Invalid paymentToken");
-            expect(marketItem.isPrivate).to.be.false;
         });
 
         it("should create NFT to Wallet success: ", async () => {

@@ -106,7 +106,7 @@ contract NftTest is Validatable, ReentrancyGuardUpgradeable, ERC721EnumerableUpg
      *  @dev    All caller can call this function.
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
+        require(_exists(tokenId), "URI query for nonexistent token");
         return uris[tokenId];
     }
 

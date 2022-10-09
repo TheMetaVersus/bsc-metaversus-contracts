@@ -58,7 +58,6 @@ describe("MetaDrop", () => {
             admin.address,
             DEFAULT_SERVICE_NUMERATOR, // 10%
         ]);
-        await metaDrop.deployed();
 
         await token.transfer(user1.address, TOTAL_SUPPLY.div(4));
         await token.transfer(user2.address, TOTAL_SUPPLY.div(4));
@@ -68,6 +67,7 @@ describe("MetaDrop", () => {
         await token.connect(user2).approve(metaDrop.address, MaxUint256);
         await token.connect(user3).approve(metaDrop.address, MaxUint256);
 
+        await metaCitizen.setPause(false);
         await metaCitizen.mint(user1.address);
         await metaCitizen.mint(user2.address);
         await metaCitizen.mint(user3.address);
@@ -100,22 +100,23 @@ describe("MetaDrop", () => {
         });
 
 
-        it("Should throw error Service fee will exceed minting fee", async () => {
+        it("Should throw error Service fee will exceed mint fee", async () => {
             await expect(
                 upgrades.deployProxy(MetaDrop, [admin.address, SERVICE_FEE_DENOMINATOR.add(1)])
-            ).to.be.revertedWith("Service fee will exceed minting fee");
+            ).to.be.revertedWith("Service fee will exceed mint fee");
         });
 
         it("Set initial state successful", async () => {
             expect(await metaDrop.mvtsAdmin()).to.equal(admin.address);
             expect(await metaDrop.serviceFeeNumerator()).to.equal(DEFAULT_SERVICE_NUMERATOR);
+            expect(await metaDrop.paused()).to.true;
         });
     });
 
     describe("setServiceFeeNumerator", async () => {
-        it("Should throw error Service fee will exceed minting fee", async () => {
+        it("Should throw error Service fee will exceed mint fee", async () => {
             await expect(metaDrop.setServiceFeeNumerator(SERVICE_FEE_DENOMINATOR.add(1))).to.be.revertedWith(
-                "Service fee will exceed minting fee"
+                "Service fee will exceed mint fee"
             );
         });
 
@@ -133,6 +134,8 @@ describe("MetaDrop", () => {
 
     describe("create", async () => {
         beforeEach(async () => {
+            await metaDrop.setPause(false);
+
             drop = {
                 root: merkleTree.getHexRoot(),
                 nft: tokenERC721.address,
@@ -144,6 +147,15 @@ describe("MetaDrop", () => {
                 startTime: dropStartTime,
                 endTime: dropEndTime,
             };
+        });
+
+        it("Should throw error when system pause", async () => {
+            await metaDrop.setPause(true);
+            await expect(
+                metaDrop.connect(user1).create(drop)
+            ).to.be.revertedWith(
+                "Pausable: paused"
+            );
         });
 
         it("Should throw error Invalid TokenCollectionERC721 contract", async () => {
@@ -213,11 +225,14 @@ describe("MetaDrop", () => {
             expect(createdDrop.endTime).to.equal(drop.endTime);
             expect(createdDrop.mintFee).to.equal(drop.mintFee);
             expect(createdDrop.mintableLimit).to.equal(drop.mintableLimit);
+            expect(createdDrop.isCanceled).to.be.false;
         });
     });
 
     describe("update", async () => {
         beforeEach(async () => {
+            await metaDrop.setPause(false);
+
             drop = {
                 root: merkleTree.getHexRoot(),
                 nft: tokenERC721.address,
@@ -253,9 +268,9 @@ describe("MetaDrop", () => {
             );
         });
 
-        it("Should throw error Only Drop owner can call this function", async () => {
+        it("Should throw error Caller is not drop owner", async () => {
             await expect(metaDrop.connect(user2).update(dropId, drop)).to.be.revertedWith(
-                "Only Drop owner can call this function"
+                "Caller is not drop owner"
             );
         });
 
@@ -291,6 +306,15 @@ describe("MetaDrop", () => {
             );
         });
 
+        it("Should throw error when system pause", async () => {
+            await metaDrop.setPause(true);
+            await expect(
+                metaDrop.connect(user1).update(dropId, drop)
+            ).to.be.revertedWith(
+                "Pausable: paused"
+            );
+        });
+
         it("Should update drop successful", async () => {
             const expectedUpdateDrop = {
                 root: formatBytes32String("0x1234"),
@@ -319,11 +343,62 @@ describe("MetaDrop", () => {
             expect(updatedDrop.endTime).to.equal(expectedUpdateDrop.endTime);
             expect(updatedDrop.mintFee).to.equal(expectedUpdateDrop.mintFee);
             expect(updatedDrop.mintableLimit).to.equal(expectedUpdateDrop.mintableLimit);
+            expect(updatedDrop.isCanceled).to.be.false;
+        });
+    });
+
+    describe("cancel", async () => {
+        beforeEach(async () => {
+            await metaDrop.setPause(false);
+
+            drop = {
+                root: merkleTree.getHexRoot(),
+                nft: tokenERC721.address,
+                paymentToken: token.address,
+                fundingReceiver: user1.address,
+                maxSupply: 100,
+                startTime: dropStartTime,
+                endTime: dropEndTime,
+                mintFee: TOKEN_0_1,
+                mintableLimit: 1,
+            };
+
+            await metaDrop.connect(user1).create(drop);
+
+            dropId = await metaDrop.getCurrentCounter();
+        });
+
+        it("Should throw error Invalid drop", async () => {
+            await expect(metaDrop.connect(user1).cancel("0")).to.be.revertedWith("Invalid drop");
+            await expect(metaDrop.connect(user1).cancel(dropId.add(1))).to.be.revertedWith("Invalid drop");
+        });
+
+        it("Should throw error Caller is not drop owner", async () => {
+            await expect(metaDrop.connect(user2).cancel(dropId)).to.be.revertedWith(
+                "Caller is not drop owner"
+            );
+        });
+
+        it("Should throw error when system pause", async () => {
+            await metaDrop.setPause(true);
+            await expect(
+                metaDrop.connect(user1).cancel(dropId)
+            ).to.be.revertedWith(
+                "Pausable: paused"
+            );
+        });
+
+        it("Should cancel successful", async () => {
+            await metaDrop.connect(user1).cancel(dropId);
+            const updatedDrop = await metaDrop.drops(dropId);
+            expect(updatedDrop.isCanceled).to.be.true;
         });
     });
 
     describe("mint", async () => {
         beforeEach(async () => {
+            await metaDrop.setPause(false);
+
             drop = {
                 root: merkleTree.getHexRoot(),
                 nft: tokenERC721.address,
@@ -342,27 +417,34 @@ describe("MetaDrop", () => {
 
         it("Should throw error Invalid drop", async () => {
             await expect(metaDrop.connect(user1).mint("0", proof_user1, 5)).to.be.revertedWith("Invalid drop");
-
             await expect(metaDrop.connect(user1).mint("2", proof_user1, 5)).to.be.revertedWith("Invalid drop");
         });
 
         it("Should throw error when not hold MTV Citizen", async () => {
             await expect(metaDrop.connect(user4).mint(dropId, proof_user4, 5)).to.be.revertedWith(
-                "Not permitted to mint token at the moment"
+                "Not permitted to mint now"
             );
         });
 
         it("Should throw error when drop is not active", async () => {
             // Drop is not started yet
             await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
-                "Not permitted to mint token at the moment"
+                "Not permitted to mint now"
             );
 
             // Drop has ended
             await setTime(dropEndTime);
             await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
-                "Not permitted to mint token at the moment"
+                "Not permitted to mint now"
             );
+        });
+
+        it("Should throw error when drop has canceled", async () => {
+            await setTime(dropStartTime);
+            await metaDrop.cancel(dropId);
+            await expect(
+                metaDrop.connect(user1).mint(dropId, proof_user1, 5)
+            ).to.be.revertedWith("Not permitted to mint now");
         });
 
         it("Should throw error when is not in whitelist", async () => {
@@ -372,7 +454,7 @@ describe("MetaDrop", () => {
 
             await expect(
                 metaDrop.connect(user_notWhitelisted).mint(dropId, proof_user_notWhitelisted, 5)
-            ).to.be.revertedWith("Not permitted to mint token at the moment");
+            ).to.be.revertedWith("Not permitted to mint now");
         });
 
         it("Should throw error Can not mint tokens anymore", async () => {
@@ -414,7 +496,16 @@ describe("MetaDrop", () => {
 
             await expect(
                 metaDrop.connect(user1).mint(dropId, proof_user1, drop.mintableLimit, { value: TOKEN_0_1 })
-            ).to.be.revertedWith("Do not pay both token in same time");
+            ).to.be.revertedWith("Can not pay both token");
+        });
+
+        it("Should throw error when system pause", async () => {
+            await metaDrop.setPause(true);
+            await expect(
+                metaDrop.connect(user1).mint(dropId, proof_user1, drop.mintableLimit)
+            ).to.be.revertedWith(
+                "Pausable: paused"
+            );
         });
 
         it("Should mint successful by native coin", async () => {
@@ -464,6 +555,8 @@ describe("MetaDrop", () => {
 
     describe("mintableAmount", async () => {
         beforeEach(async () => {
+            await metaDrop.setPause(false);
+
             drop = {
                 root: merkleTree.getHexRoot(),
                 nft: tokenERC721.address,

@@ -55,6 +55,7 @@ describe("OrderManager:", () => {
             MINT_FEE,
             admin.address,
         ]);
+        await metaCitizen.setPause(false);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
