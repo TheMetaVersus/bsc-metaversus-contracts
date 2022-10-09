@@ -67,6 +67,7 @@ describe("MetaDrop", () => {
         await token.connect(user2).approve(metaDrop.address, MaxUint256);
         await token.connect(user3).approve(metaDrop.address, MaxUint256);
 
+        await metaCitizen.setPause(false);
         await metaCitizen.mint(user1.address);
         await metaCitizen.mint(user2.address);
         await metaCitizen.mint(user3.address);

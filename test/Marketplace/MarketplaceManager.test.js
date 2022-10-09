@@ -103,6 +103,7 @@ describe("Marketplace Manager:", () => {
         await orderManager.setPause(false);
         await mtvsManager.setPause(false);
         await mkpManager.setPause(false);
+        await metaCitizen.setPause(false);
 
         await mkpManager.setMetaversusManager(mtvsManager.address);
         await mkpManager.setOrderManager(orderManager.address);

@@ -162,6 +162,7 @@ describe("Staking Pool:", () => {
         await mtvsManager.setPause(false);
         await staking.setPause(false);
         await orderManager.setPause(false);
+        await metaCitizen.setPause(false);
         await mkpManager.setOrderManager(orderManager.address);
         await mkpManager.setMetaversusManager(mtvsManager.address);
 

@@ -47,6 +47,7 @@ describe("Admin", () => {
             TOKEN_0_1,
             admin.address,
         ]);
+        await metaCitizen.setPause(false);
     });
 
     describe("Deployment", async () => {
