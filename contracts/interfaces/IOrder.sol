@@ -11,9 +11,7 @@ interface IOrder is IERC165Upgradeable {
     function sellAvailableInMarketplace(
         uint256 marketItemId,
         uint256 price,
-        uint256 amount,
         uint256 startTime,
-        uint256 endTime,
-        IERC20Upgradeable paymentToken
+        uint256 endTime
     ) external;
 }
