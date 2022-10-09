@@ -33,6 +33,7 @@ contract Adminable is OwnableUpgradeable {
         _;
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function __Adminable_init() internal onlyInitializing {
         OwnableUpgradeable.__Ownable_init();
     }

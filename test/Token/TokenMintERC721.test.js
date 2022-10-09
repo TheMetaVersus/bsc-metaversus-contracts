@@ -74,7 +74,7 @@ describe("TokenMintERC721", () => {
     describe("tokenURI function", async () => {
         it("should revert when invalid tokenID params", async () => {
             await expect(tokenMintERC721.tokenURI(2)).to.be.revertedWith(
-                "ERC721Metadata: URI query for nonexistent token."
+                "URI query for nonexistent token"
             );
         });
     });

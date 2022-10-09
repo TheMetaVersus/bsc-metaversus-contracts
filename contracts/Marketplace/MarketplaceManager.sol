@@ -133,7 +133,7 @@ contract MarketPlaceManager is
     modifier onlyMetaversusOrOrder() {
         require(
             _msgSender() == address(metaversusManager) || _msgSender() == address(orderManager),
-            "Caller is not a metaversus manager or order manager"
+            "Caller is not MTVS manager or Order"
         );
         _;
     }

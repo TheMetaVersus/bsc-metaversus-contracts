@@ -210,7 +210,7 @@ describe("Marketplace Manager:", () => {
                         token.address,
                         rootHash
                     )
-            ).to.revertedWith("Caller is not a metaversus manager or order manager");
+            ).to.revertedWith("Caller is not MTVS manager or Order");
         });
 
         it("should revert when Invalid time", async () => {
