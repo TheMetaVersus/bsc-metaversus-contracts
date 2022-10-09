@@ -142,6 +142,7 @@ describe("OrderManager:", () => {
             await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
 
             expect(await orderManager.marketplace()).to.equal(mkpManager.address);
+            expect(await orderManager.admin()).to.equal(admin.address);
         });
     });
 
@@ -149,6 +150,8 @@ describe("OrderManager:", () => {
         beforeEach(async () => {
             await orderManager.setPause(false);
             endTime = add(await getCurrentTime(), ONE_WEEK);
+
+            await tokenMintERC721.mintBatch(user2.address, Array(10).fill("this_uri"));
         });
 
         it("should revert when contract is paused", async () => {
@@ -170,14 +173,72 @@ describe("OrderManager:", () => {
 
         it("should be fail when insufficient allowance", async () => {
             await expect(
-                orderManager.makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
+                orderManager.makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime)
             ).to.revertedWith("ERC20: insufficient allowance");
+        });
+
+        it("should be fail when invalid bid price", async () => {
+            await expect(
+                orderManager.makeWalletOrder(token.address, 0, user1.address, nftTest.address, 1, 1, endTime)
+            ).to.revertedWith("Invalid amount");
+        });
+
+        it("should be fail when invalid amount", async () => {
+            await expect(
+                orderManager.makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 0, endTime)
+            ).to.revertedWith("Invalid amount");
+        });
+
+        it("should be fail when invalid wallets", async () => {
+            await expect(
+                orderManager.makeWalletOrder(token.address, BID_PRICE, AddressZero, nftTest.address, 1, 1, endTime)
+            ).to.revertedWith("Invalid wallets");
+
+            await expect(
+                orderManager.makeWalletOrder(token.address, BID_PRICE, nftTest.address, nftTest.address, 1, 1, endTime)
+            ).to.revertedWith("Invalid wallets");
+        });
+
+        it("should be fail when invalid time", async () => {
+            await expect(
+                orderManager.makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, 0)
+            ).to.revertedWith("Invalid order time");
+        });
+
+        it("should be fail when update payment token", async () => {
+            await orderManager
+                .connect(user1)
+                .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
+
+            await expect(
+                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, tokenMintERC721.address, 1, 1, endTime)
+            ).to.revertedWith("Can not update payment token");
+        });
+
+        it("should be fail when invalid nft address", async () => {
+            await expect(
+                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, AddressZero, 1, 1, endTime)
+            ).to.revertedWith("Invalid nft address");
+
+            await expect(
+                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, token.address, 1, 1, endTime)
+            ).to.revertedWith("Invalid nft address");
+        });
+
+        it("should be fail when user does not own this token", async () => {
+            await expect(
+                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user3.address, tokenMintERC721.address, 1, 1, endTime)
+            ).to.revertedWith("User does not own this token");
+
+            await expect(
+                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, tokenMintERC1155.address, 1, 1, endTime)
+            ).to.revertedWith("User does not own this token");
         });
 
         it("Should be ok when create new offer", async () => {
             await orderManager
                 .connect(user1)
-                .makeWalletOrder(token.address, BID_PRICE, user2.address, nftTest.address, 1, 1, endTime);
+                .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
             const order = await orderManager.getOrderByWalletOrderId(1);
 
@@ -186,7 +247,7 @@ describe("OrderManager:", () => {
             expect(order[1].bidPrice).to.equal(BID_PRICE);
 
             expect(order[0].to).to.equal(user2.address);
-            expect(order[0].nftAddress).to.equal(nftTest.address);
+            expect(order[0].nftAddress).to.equal(tokenMintERC721.address);
             expect(order[0].tokenId).to.equal(1);
             expect(order[1].expiredTime).to.equal(endTime);
         });
@@ -194,7 +255,7 @@ describe("OrderManager:", () => {
         it("Should be ok when update offer", async () => {
             await orderManager
                 .connect(user1)
-                .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
+                .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
             let order = await orderManager.getOrderByWalletOrderId(1);
 
@@ -205,8 +266,8 @@ describe("OrderManager:", () => {
                 .makeWalletOrder(
                     token.address,
                     add(BID_PRICE, parseEther("100")),
-                    user1.address,
-                    nftTest.address,
+                    user2.address,
+                    tokenMintERC721.address,
                     1,
                     1,
                     endTime
@@ -219,7 +280,7 @@ describe("OrderManager:", () => {
         it("Should be ok when update offer less than", async () => {
             await orderManager
                 .connect(user1)
-                .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime);
+                .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
             let order = await orderManager.getOrderByWalletOrderId(1);
 
@@ -230,8 +291,8 @@ describe("OrderManager:", () => {
                     .makeWalletOrder(
                         token.address,
                         BID_PRICE.sub(parseEther("10")),
-                        user1.address,
-                        nftTest.address,
+                        user2.address,
+                        tokenMintERC721.address,
                         1,
                         1,
                         endTime
@@ -240,6 +301,78 @@ describe("OrderManager:", () => {
 
             order = await orderManager.getOrderByWalletOrderId(1);
             expect(order[1].bidPrice).to.equal(BID_PRICE.sub(parseEther("10")));
+        });
+
+        it("Should be ok when create new offer using native", async () => {
+            await expect(() => orderManager
+                .connect(user1)
+                .makeWalletOrder(AddressZero, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime, { value: BID_PRICE }))
+                .to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
+
+            const order = await orderManager.getOrderByWalletOrderId(1);
+
+            expect(order[0].owner).to.equal(user1.address);
+            expect(order[1].paymentToken).to.equal(AddressZero);
+            expect(order[1].bidPrice).to.equal(BID_PRICE);
+
+            expect(order[0].to).to.equal(user2.address);
+            expect(order[0].nftAddress).to.equal(tokenMintERC721.address);
+            expect(order[0].tokenId).to.equal(1);
+            expect(order[1].expiredTime).to.equal(endTime);
+        });
+
+        it("Should be ok when update offer native", async () => {
+            await expect(() => orderManager
+                .connect(user1)
+                .makeWalletOrder(AddressZero, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime, { value: BID_PRICE }))
+                .to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
+
+            let order = await orderManager.getOrderByWalletOrderId(1);
+
+            expect(order[1].bidPrice).to.equal(BID_PRICE);
+
+            await expect(() => orderManager
+                .connect(user1)
+                .makeWalletOrder(
+                    AddressZero,
+                    BID_PRICE.add(ONE_ETHER),
+                    user2.address,
+                    tokenMintERC721.address,
+                    1,
+                    1,
+                    endTime,
+                    { value: ONE_ETHER }
+                )).to.changeEtherBalances([user1], [ONE_ETHER.mul(-1)]);
+
+            order = await orderManager.getOrderByWalletOrderId(1);
+            expect(order[1].bidPrice).to.equal(BID_PRICE.add(ONE_ETHER));
+        });
+
+        it("Should be ok when update offer less than native", async () => {
+            await expect(() => orderManager
+                .connect(user1)
+                .makeWalletOrder(AddressZero, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime, { value: BID_PRICE })
+            ).to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
+
+            let order = await orderManager.getOrderByWalletOrderId(1);
+
+            expect(order[1].bidPrice).to.equal(BID_PRICE);
+            await expect(() =>
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(
+                        AddressZero,
+                        BID_PRICE.sub(ONE_ETHER),
+                        user2.address,
+                        tokenMintERC721.address,
+                        1,
+                        1,
+                        endTime
+                    )
+            ).to.changeEtherBalance(user1, ONE_ETHER);
+
+            order = await orderManager.getOrderByWalletOrderId(1);
+            expect(order[1].bidPrice).to.equal(BID_PRICE.sub(ONE_ETHER));
         });
     });
 
