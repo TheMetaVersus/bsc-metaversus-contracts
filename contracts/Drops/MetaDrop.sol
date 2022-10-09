@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "./MetaDropStructs.sol";
-import "../Validatable.sol";
+import "../TransferableToken.sol";
 
 /**
  *  @title  MetaVersus NFT Drop
@@ -19,7 +19,7 @@ import "../Validatable.sol";
  *          can mint token with paying a fee. In case the tokens are not sold entirely, anyone can buy
  *          the remaining in public sale round with the higher price.
  */
-contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
+contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -56,7 +56,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
     uint256 public constant SERVICE_FEE_DENOMINATOR = 1e6;
 
     event CreatedDrop(DropRecord drop);
-    event UpdatedDrop(DropRecord oldDrop, DropRecord newDrop);
+    event UpdatedDrop(uint256 indexed dropId, DropRecord oldDrop, DropRecord newDrop);
     event MintedToken(uint256 indexed dropId, address indexed account, uint256 indexed amount, uint256 fee);
     event SetServiceFeeNumerator(uint256 indexed oldNumerator, uint256 indexed newNumerator);
 
@@ -68,11 +68,8 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(
-        IAdmin _mvtsAdmin,
-        uint256 _serviceFeeNumerator
-    ) public initializer validAdmin(_mvtsAdmin) {
-        __Validatable_init(_mvtsAdmin);
+    function initialize(IAdmin _mvtsAdmin, uint256 _serviceFeeNumerator) public initializer validAdmin(_mvtsAdmin) {
+        __TransferableToken_init(_mvtsAdmin);
         __ReentrancyGuard_init();
 
         mvtsAdmin = _mvtsAdmin;
@@ -171,7 +168,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         drop.startTime = _newDrop.startTime;
         drop.endTime = _newDrop.endTime;
 
-        emit UpdatedDrop(oldDrop, drop);
+        emit UpdatedDrop(_dropId, oldDrop, drop);
     }
 
     /**
@@ -226,28 +223,43 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
         DropRecord memory _drop,
         uint256 _mintFee
     ) private {
-        uint256 serviceFee;
+        IERC20Upgradeable paymentToken = IERC20Upgradeable(_drop.paymentToken);
+
+        if (isNativeToken(paymentToken)) {
+            require(msg.value == _mintFee, "Not enough fee");
+        }
 
         // Payout service fee for drop service
+        uint256 serviceFee;
         if (_drop.serviceFeeNumerator > 0) {
             serviceFee = (_mintFee * _drop.serviceFeeNumerator) / SERVICE_FEE_DENOMINATOR;
-
-            if (_drop.paymentToken != address(0)) {
-                IERC20Upgradeable(_drop.paymentToken).safeTransferFrom(_account, admin.treasury(), serviceFee);
-            } else {
-                require(msg.value == _mintFee, "Not enough fee");
-                (bool sent, ) = admin.treasury().call{ value: serviceFee }("");
-                require(sent, "Failed to send native");
-            }
+            _payout(paymentToken, _account, admin.treasury(), serviceFee);
         }
 
         // Payout minting fee for creator
         uint256 creatorFee = _mintFee - serviceFee;
-        if (_drop.paymentToken != address(0)) {
-            IERC20Upgradeable(_drop.paymentToken).safeTransferFrom(_account, _drop.fundingReceiver, creatorFee);
+        _payout(paymentToken, _account, _drop.fundingReceiver, creatorFee);
+    }
+
+    /**
+     *  @notice payout token to treasury and funding receiver
+     *
+     *  @param  _token      Address of payment token
+     *  @param  _from       Account of minted user
+     *  @param  _to         Drop infromation of the payout
+     *  @param  _amount     Token amount to transfer
+     */
+    function _payout(
+        IERC20Upgradeable _token,
+        address _from,
+        address _to,
+        uint256 _amount
+    ) private {
+        if (isNativeToken(_token)) {
+            transferNativeToken(_to, _amount);
         } else {
-            (bool sent, ) = _drop.fundingReceiver.call{ value: creatorFee }("");
-            require(sent, "Failed to send native");
+            require(msg.value == 0, "Do not pay both token in same time");
+            _token.safeTransferFrom(_from, _to, _amount);
         }
     }
 
@@ -290,7 +302,7 @@ contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
     ) public view returns (bool) {
         if (!admin.isOwnedMetaCitizen(_account)) return false;
         if (!isDropActive(_dropId)) return false;
-        return Validatable.isValidProof(_proof, drops[_dropId].root, _account);
+        return isValidProof(_proof, drops[_dropId].root, _account);
     }
 
     /**

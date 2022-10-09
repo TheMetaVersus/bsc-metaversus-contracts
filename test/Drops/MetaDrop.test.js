@@ -409,6 +409,14 @@ describe("MetaDrop", () => {
             expect(await tokenERC721.balanceOf(user1.address)).to.equal(drop.mintableLimit);
         });
 
+        it("Should throw error when pay with both ERC-20 token and native token", async () => {
+            await setTime(dropStartTime);
+
+            await expect(
+                metaDrop.connect(user1).mint(dropId, proof_user1, drop.mintableLimit, { value: TOKEN_0_1 })
+            ).to.be.revertedWith("Do not pay both token in same time");
+        });
+
         it("Should mint successful by native coin", async () => {
             drop.paymentToken = AddressZero;
             drop.startTime = (await getCurrentTime()) + 10;

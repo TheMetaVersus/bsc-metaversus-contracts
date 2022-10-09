@@ -9,32 +9,13 @@ import "./Validatable.sol";
 contract TransferableToken is Validatable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /**
-     *  @notice Gas limit when transfer token
-     */
-    uint256 public tokenTransferGasLimit;
-
-    event SetTokenTransferGasLimit(uint256 oldValue, uint256 newValue);
-
     /*------------------Initializer------------------*/
 
     function __TransferableToken_init(IAdmin _admin) internal onlyInitializing validAdmin(_admin) {
         __Validatable_init(_admin);
-
-        tokenTransferGasLimit = 2300;
     }
 
     /*------------------External Funtions------------------*/
-
-    /**
-     *  @notice Check payment token or native token
-     */
-    function setTokenTransferGasLimit(uint256 _newValue) external onlyAdmin {
-        uint256 oldTokenTransferGasLimit = tokenTransferGasLimit;
-        tokenTransferGasLimit = _newValue;
-
-        emit SetTokenTransferGasLimit(oldTokenTransferGasLimit, tokenTransferGasLimit);
-    }
 
     /**
      *  @notice Check payment token or native token
@@ -46,13 +27,9 @@ contract TransferableToken is Validatable {
     /**
      *  @notice Transfer native token
      */
-    function transferNativeToken(
-        address _to,
-        uint256 _value, // solhint-disable-line no-unused-vars
-        uint256 _gasLimit // solhint-disable-line no-unused-vars
-    ) internal {
+    function transferNativeToken(address _to, uint256 _amount) internal {
         // solhint-disable-next-line indent
-        (bool success, ) = _to.call{ value: _value, gas: _gasLimit }(new bytes(0));
+        (bool success, ) = _to.call{ value: _amount }("");
         require(success, "SafeTransferNative: transfer failed");
     }
 
@@ -73,8 +50,7 @@ contract TransferableToken is Validatable {
             }
         } else {
             if (isNativeToken(_paymentToken)) {
-                (bool success, ) = _to.call{ value: _amount, gas: tokenTransferGasLimit }(new bytes(0));
-                require(success, "SafeTransferNative: transfer failed");
+                transferNativeToken(_to, _amount);
             } else {
                 IERC20Upgradeable(_paymentToken).safeTransfer(_to, _amount);
             }
