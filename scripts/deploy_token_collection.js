@@ -1,5 +1,6 @@
 const hre = require("hardhat");
 const ethers = hre.ethers;
+const contract = require("../contracts.json");
 
 async function main() {
   // Loading contract factory.
@@ -16,6 +17,14 @@ async function main() {
 
   const tokenERC1155 = await TokenERC1155.deploy();
   console.log("TokenERC1155 template deployed in:", tokenERC1155.address);
+
+  const contractAddresses = {
+    ...contract,
+    tokenERC721: tokenERC721.address,
+    tokenERC1155: tokenERC1155.address
+  };
+  console.log("contract Address:", contractAddresses);
+  await fs.writeFileSync("contracts.json", JSON.stringify(contractAddresses));
 }
 
 // We recommend this pattern to be able to use async/await everywhere

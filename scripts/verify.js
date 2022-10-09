@@ -108,6 +108,14 @@ async function main() {
   } catch (err) {
     console.log("err :>> ", err);
   }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.metaDrop,
+      contract: "contracts/Drops/MetaDrop.sol:MetaDrop"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
 }
 
 main()
