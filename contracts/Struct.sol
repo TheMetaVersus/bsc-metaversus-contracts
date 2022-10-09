@@ -35,7 +35,6 @@ struct MarketItem {
     uint256 startTime;                              // Time when the NFT push to Marketplace
     uint256 endTime;                                // Time when the NFT expire at Marketplace
     IERC20Upgradeable paymentToken;                 // Token to transfer
-    bool isPrivate;                                 // Access status
 }
 
 //  prettier-ignore
@@ -54,6 +53,7 @@ struct MarketItemOrder {
 
 //  prettier-ignore
 struct OrderInfo {
+    uint256 id;                                     // id order
     uint256 amount;                                 // Amount to transfer
     IERC20Upgradeable paymentToken;                 // Token to transfer
     uint256 bidPrice;                               // Bid price
