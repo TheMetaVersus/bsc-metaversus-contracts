@@ -21,36 +21,19 @@ describe("Marketplace interact with Tokens:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            admin.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, admin.address]);
 
         USD = await ethers.getContractFactory("USD");
         usd = await upgrades.deployProxy(USD, [user1.address, "USD Token", "USD", TOTAL_SUPPLY, treasury.address]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
-        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            "NFT Metaversus",
-            "nMTVS",
-            250,
-            admin.address,
-        ]);
+        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, admin.address]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
-        nftTest = await upgrades.deployProxy(NftTest, [
-            "NFT test",
-            "NFT",
-            token.address,
-            250,
-            PRICE,
-            admin.address,
-        ]);
+        nftTest = await upgrades.deployProxy(NftTest, ["NFT test", "NFT", token.address, 250, PRICE, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
@@ -101,14 +84,6 @@ describe("Marketplace interact with Tokens:", () => {
         });
 
         it("Unpause contracts", async () => {
-            expect(await orderManager.paused()).to.equal(true);
-            expect(await mtvsManager.paused()).to.equal(true);
-            expect(await mkpManager.paused()).to.equal(true);
-
-            await orderManager.setPause(false);
-            await mtvsManager.setPause(false);
-            await mkpManager.setPause(false);
-
             expect(await orderManager.paused()).to.equal(false);
             expect(await mtvsManager.paused()).to.equal(false);
             expect(await mkpManager.paused()).to.equal(false);

@@ -89,9 +89,7 @@ describe("Marketplace interact with Order", () => {
         await token.transfer(user3.address, parseEther("1000"));
 
         await mkpManager.setOrderManager(orderManager.address);
-        await orderManager.setPause(false);
 
-        await metaCitizen.setPause(false);
         await metaCitizen.mint(user2.address);
     });
     describe("Buy/Mint a NFT ", async () => {

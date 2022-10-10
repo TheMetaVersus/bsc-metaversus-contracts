@@ -19,14 +19,14 @@ const BUY_BID_PRICE = BID_PRICE.add(BID_PRICE);
 const OrderStatus = {
     PENDING: 0,
     ACCEPTED: 1,
-    CANCELED: 2
-}
+    CANCELED: 2,
+};
 
 const MARKET_ITEM_STATUS = {
     LISTING: 0,
     SOLD: 1,
-    CANCELED: 2
-}
+    CANCELED: 2,
+};
 
 describe("OrderManager:", () => {
     beforeEach(async () => {
@@ -39,44 +39,22 @@ describe("OrderManager:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            owner.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
-        metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            token.address,
-            MINT_FEE,
-            admin.address,
-        ]);
-        await metaCitizen.setPause(false);
+        metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, admin.address]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
-        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            "NFT Metaversus",
-            "nMTVS",
-            250,
-            admin.address,
-        ]);
+        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, admin.address]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
-        nftTest = await upgrades.deployProxy(NftTest, [
-            "NFT test",
-            "NFT",
-            token.address,
-            250,
-            PRICE,
-            admin.address,
-        ]);
+        nftTest = await upgrades.deployProxy(NftTest, ["NFT test", "NFT", token.address, 250, PRICE, admin.address]);
 
         TemplateERC721 = await ethers.getContractFactory("TokenERC721");
         templateERC721 = await TemplateERC721.deploy();
@@ -141,18 +119,6 @@ describe("OrderManager:", () => {
             );
         });
 
-        it("Should revert when invalid MarketplaceManager contract address", async () => {
-            await expect(upgrades.deployProxy(OrderManager, [AddressZero, admin.address])).to.revertedWith(
-                "Invalid MarketplaceManager contract"
-            );
-            await expect(upgrades.deployProxy(OrderManager, [user1.address, admin.address])).to.revertedWith(
-                "Invalid MarketplaceManager contract"
-            );
-            await expect(upgrades.deployProxy(OrderManager, [treasury.address, admin.address])).to.revertedWith(
-                "Invalid MarketplaceManager contract"
-            );
-        });
-
         it("should be ok", async () => {
             await upgrades.deployProxy(OrderManager, [mkpManager.address, admin.address]);
 
@@ -163,7 +129,6 @@ describe("OrderManager:", () => {
 
     describe("makeWalletOrder function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
             await tokenMintERC721.mintBatch(user2.address, Array(10).fill("this_uri"));
@@ -188,7 +153,15 @@ describe("OrderManager:", () => {
 
         it("should be fail when insufficient allowance", async () => {
             await expect(
-                orderManager.makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime)
+                orderManager.makeWalletOrder(
+                    token.address,
+                    BID_PRICE,
+                    user2.address,
+                    tokenMintERC721.address,
+                    1,
+                    1,
+                    endTime
+                )
             ).to.revertedWith("ERC20: insufficient allowance");
         });
 
@@ -222,7 +195,9 @@ describe("OrderManager:", () => {
 
         it("should be fail when offer my self", async () => {
             await expect(
-                orderManager.connect(user1).makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
             ).to.revertedWith("User can not offer");
         });
 
@@ -232,27 +207,61 @@ describe("OrderManager:", () => {
                 .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
             await expect(
-                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, tokenMintERC721.address, 1, 1, endTime)
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(
+                        AddressZero,
+                        BID_PRICE.add(ONE_ETHER),
+                        user2.address,
+                        tokenMintERC721.address,
+                        1,
+                        1,
+                        endTime
+                    )
             ).to.revertedWith("Can not update payment token");
         });
 
         it("should be fail when invalid nft address", async () => {
             await expect(
-                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, AddressZero, 1, 1, endTime)
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, AddressZero, 1, 1, endTime)
             ).to.revertedWith("Invalid nft address");
 
             await expect(
-                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, token.address, 1, 1, endTime)
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, token.address, 1, 1, endTime)
             ).to.revertedWith("Invalid nft address");
         });
 
         it("should be fail when invalid token id", async () => {
             await expect(
-                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user3.address, tokenMintERC721.address, 1, 1, endTime)
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(
+                        AddressZero,
+                        BID_PRICE.add(ONE_ETHER),
+                        user3.address,
+                        tokenMintERC721.address,
+                        1,
+                        1,
+                        endTime
+                    )
             ).to.revertedWith("Invalid token id");
 
             await expect(
-                orderManager.connect(user1).makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, tokenMintERC1155.address, 1, 1, endTime)
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(
+                        AddressZero,
+                        BID_PRICE.add(ONE_ETHER),
+                        user2.address,
+                        tokenMintERC1155.address,
+                        1,
+                        1,
+                        endTime
+                    )
             ).to.revertedWith("Invalid token id");
         });
 
@@ -326,10 +335,13 @@ describe("OrderManager:", () => {
 
         it("Should be ok when create new offer using native", async () => {
             const eth_before = await ethers.provider.getBalance(orderManager.address);
-            await expect(() => orderManager
-                .connect(user1)
-                .makeWalletOrder(AddressZero, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime, { value: BID_PRICE }))
-                .to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
+            await expect(() =>
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(AddressZero, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime, {
+                        value: BID_PRICE,
+                    })
+            ).to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
 
             const eth_after = await ethers.provider.getBalance(orderManager.address);
 
@@ -348,36 +360,44 @@ describe("OrderManager:", () => {
         });
 
         it("Should be ok when update offer native more than amount", async () => {
-            await expect(() => orderManager
-                .connect(user1)
-                .makeWalletOrder(AddressZero, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime, { value: BID_PRICE }))
-                .to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
+            await expect(() =>
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(AddressZero, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime, {
+                        value: BID_PRICE,
+                    })
+            ).to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
 
             let order = await orderManager.getOrderByWalletOrderId(1);
 
             expect(order[1].bidPrice).to.equal(BID_PRICE);
 
-            await expect(() => orderManager
-                .connect(user1)
-                .makeWalletOrder(
-                    AddressZero,
-                    BID_PRICE.add(ONE_ETHER),
-                    user2.address,
-                    tokenMintERC721.address,
-                    1,
-                    1,
-                    endTime,
-                    { value: ONE_ETHER }
-                )).to.changeEtherBalances([user1], [ONE_ETHER.mul(-1)]);
+            await expect(() =>
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(
+                        AddressZero,
+                        BID_PRICE.add(ONE_ETHER),
+                        user2.address,
+                        tokenMintERC721.address,
+                        1,
+                        1,
+                        endTime,
+                        { value: ONE_ETHER }
+                    )
+            ).to.changeEtherBalances([user1], [ONE_ETHER.mul(-1)]);
 
             order = await orderManager.getOrderByWalletOrderId(1);
             expect(order[1].bidPrice).to.equal(BID_PRICE.add(ONE_ETHER));
         });
 
         it("Should be ok when update offer native less than amount", async () => {
-            await expect(() => orderManager
-                .connect(user1)
-                .makeWalletOrder(AddressZero, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime, { value: BID_PRICE })
+            await expect(() =>
+                orderManager
+                    .connect(user1)
+                    .makeWalletOrder(AddressZero, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime, {
+                        value: BID_PRICE,
+                    })
             ).to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
 
             let order = await orderManager.getOrderByWalletOrderId(1);
@@ -404,11 +424,8 @@ describe("OrderManager:", () => {
 
     describe("makeMarketItemOrder function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
             current = await getCurrentTime();
             endTime = current + ONE_WEEK;
-
-            await mtvsManager.setPause(false);
 
             await mtvsManager
                 .connect(user2)
@@ -433,9 +450,9 @@ describe("OrderManager:", () => {
 
         it("should revert when invalid price", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
-            await expect(
-                orderManager.connect(user2).makeMarketItemOrder(marketItemId, 0, endTime, [])
-            ).to.revertedWith("Invalid amount");
+            await expect(orderManager.connect(user2).makeMarketItemOrder(marketItemId, 0, endTime, [])).to.revertedWith(
+                "Invalid amount"
+            );
         });
 
         it("should revert when invalid order time", async () => {
@@ -499,12 +516,7 @@ describe("OrderManager:", () => {
             await expect(
                 orderManager
                     .connect(user2)
-                    .makeMarketItemOrder(
-                        2,
-                        BUY_BID_PRICE,
-                        endTime,
-                        merkleTree.getHexProof(generateLeaf(user2.address))
-                    )
+                    .makeMarketItemOrder(2, BUY_BID_PRICE, endTime, merkleTree.getHexProof(generateLeaf(user2.address)))
             ).to.revertedWith("Require own MetaCitizen NFT");
         });
 
@@ -543,9 +555,9 @@ describe("OrderManager:", () => {
             expect(order[1].bidPrice).to.equal(BUY_BID_PRICE);
             expect(order[0].marketItemId).to.equal(marketItemId);
 
-            await orderManager.connect(user2).cancelMarketItemOrder(currentOrderId);
+            await orderManager.connect(user2).cancelOrder(false, currentOrderId);
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
-            expect((await orderManager.getCurrentMarketItemOrderId())).to.equal(currentOrderId.add(1));
+            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(currentOrderId.add(1));
         });
 
         it("Should be ok when update buy offer more than amount", async () => {
@@ -648,8 +660,11 @@ describe("OrderManager:", () => {
 
             const balance_before = await ethers.provider.getBalance(orderManager.address);
 
-            await expect(() => orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE }))
-                .to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
+            await expect(() =>
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE })
+            ).to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
 
             const balance_after = await ethers.provider.getBalance(orderManager.address);
             expect(balance_after.sub(balance_before)).to.equal(BUY_BID_PRICE);
@@ -662,7 +677,7 @@ describe("OrderManager:", () => {
             expect(order[1].bidPrice).to.equal(BUY_BID_PRICE);
             expect(order[0].marketItemId).to.equal(marketItemId);
 
-            await orderManager.connect(user2).cancelMarketItemOrder(currentOrderId);
+            await orderManager.connect(user2).cancelOrder(false, currentOrderId);
 
             order = await orderManager.getOrderByMarketItemOrderId(currentOrderId);
 
@@ -672,8 +687,10 @@ describe("OrderManager:", () => {
             expect(order[1].bidPrice).to.equal(BUY_BID_PRICE);
             expect(order[1].status).to.equal(OrderStatus.CANCELED);
 
-            await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE });
-            expect((await orderManager.getCurrentMarketItemOrderId())).to.equal(currentOrderId.add(1));
+            await orderManager
+                .connect(user2)
+                .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE });
+            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(currentOrderId.add(1));
 
             currentOrderId = await orderManager.getCurrentMarketItemOrderId();
             order = await orderManager.getOrderByMarketItemOrderId(currentOrderId);
@@ -711,17 +728,22 @@ describe("OrderManager:", () => {
 
             await skipTime(100);
             let marketItemId = await mkpManager.getCurrentMarketItem();
-            await expect(() => orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE }))
-                .to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
+            await expect(() =>
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE })
+            ).to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
 
             let order = await orderManager.getOrderByMarketItemOrderId(1);
             expect(order[1].bidPrice).to.equal(BUY_BID_PRICE);
 
-            await expect(() => orderManager
-                .connect(user2)
-                .makeMarketItemOrder(marketItemId, BUY_BID_PRICE.add(ETHER_100), endTime, proof, { value: ETHER_100 }))
-                .to.changeEtherBalance(user2, ETHER_100.mul(-1));
-
+            await expect(() =>
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(marketItemId, BUY_BID_PRICE.add(ETHER_100), endTime, proof, {
+                        value: ETHER_100,
+                    })
+            ).to.changeEtherBalance(user2, ETHER_100.mul(-1));
 
             order = await orderManager.getOrderByMarketItemOrderId(1);
             expect(order[1].bidPrice).to.equal(BUY_BID_PRICE.add(ETHER_100));
@@ -750,17 +772,21 @@ describe("OrderManager:", () => {
 
             await skipTime(100);
             let marketItemId = await mkpManager.getCurrentMarketItem();
-            await expect(() => orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE }))
-                .to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
+            await expect(() =>
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE })
+            ).to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
 
             let order = await orderManager.getOrderByMarketItemOrderId(1);
             expect(order[1].bidPrice).to.equal(BUY_BID_PRICE);
 
             const balance_before = await ethers.provider.getBalance(orderManager.address);
-            await expect(() => orderManager
-                .connect(user2)
-                .makeMarketItemOrder(marketItemId, BUY_BID_PRICE.sub(ETHER_10), endTime, proof))
-                .to.changeEtherBalance(user2, ETHER_10);
+            await expect(() =>
+                orderManager
+                    .connect(user2)
+                    .makeMarketItemOrder(marketItemId, BUY_BID_PRICE.sub(ETHER_10), endTime, proof)
+            ).to.changeEtherBalance(user2, ETHER_10);
 
             const balance_after = await ethers.provider.getBalance(orderManager.address);
             expect(balance_before.sub(balance_after)).to.equal(ETHER_10);
@@ -772,7 +798,6 @@ describe("OrderManager:", () => {
 
     describe("acceptWalletOrder function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
             await metaCitizen.mint(user2.address);
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
@@ -791,25 +816,27 @@ describe("OrderManager:", () => {
             await orderManager.setPause(true);
             expect(await orderManager.paused()).to.equal(true);
 
-            await expect(orderManager.connect(user1).acceptWalletOrder(1)).to.revertedWith("Pausable: paused");
+            await expect(orderManager.connect(user1).acceptOrder(true, 1)).to.revertedWith("Pausable: paused");
         });
 
         it("should be fail when Invalid seller of asset", async () => {
-            await expect(orderManager.connect(user3).acceptWalletOrder(1)).to.revertedWith("Not the seller");
+            await expect(orderManager.connect(user3).acceptOrder(true, 1)).to.revertedWith("Not the seller");
         });
 
         it("should be fail when Invalid order id", async () => {
-            await expect(orderManager.connect(user3).acceptWalletOrder(0)).to.revertedWith("Wallet order ID is not exist");
+            await expect(orderManager.connect(user3).acceptOrder(true, 0)).to.revertedWith(
+                "Wallet order ID is not exist"
+            );
         });
 
         it("should be fail when Order is not available", async () => {
-            await orderManager.connect(user2).cancelWalletOrder(1);
-            await expect(orderManager.connect(user1).acceptWalletOrder(1)).to.revertedWith("Order is not available");
+            await orderManager.connect(user2).cancelOrder(true, 1);
+            await expect(orderManager.connect(user1).acceptOrder(true, 1)).to.revertedWith("Order is not available");
         });
 
         it("should be fail when Overtime", async () => {
             await skipTime(ONE_WEEK);
-            await expect(orderManager.connect(user1).acceptWalletOrder(1)).to.revertedWith("Order is expired");
+            await expect(orderManager.connect(user1).acceptOrder(true, 1)).to.revertedWith("Order is expired");
         });
 
         it("Should be ok", async () => {
@@ -826,11 +853,7 @@ describe("OrderManager:", () => {
             let royaltiesAmount;
 
             if (isRoyalty) {
-                const royaltyInfo = await mkpManager.getRoyaltyInfo(
-                    nftTest.address,
-                    1,
-                    netSaleValue
-                );
+                const royaltyInfo = await mkpManager.getRoyaltyInfo(nftTest.address, 1, netSaleValue);
 
                 expect(royaltyInfo[0]).to.equal(treasury.address);
 
@@ -842,7 +865,11 @@ describe("OrderManager:", () => {
             // listingFee to treasury
             const balance_treasury_before = await token.balanceOf(treasury.address);
 
-            await expect(() => orderManager.connect(user1).acceptWalletOrder(1)).to.changeTokenBalance(token, user1, netSaleValue);
+            await expect(() => orderManager.connect(user1).acceptOrder(true, 1)).to.changeTokenBalance(
+                token,
+                user1,
+                netSaleValue
+            );
             expect(await nftTest.ownerOf(1)).to.equal(user2.address);
 
             const balance_treasury_after = await token.balanceOf(treasury.address);
@@ -853,7 +880,6 @@ describe("OrderManager:", () => {
 
     describe("acceptMarketItemOrder function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
             await metaCitizen.mint(user2.address);
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
@@ -877,40 +903,42 @@ describe("OrderManager:", () => {
 
             await skipTime(10);
             const marketItemId = await mkpManager.getCurrentMarketItem();
-            await orderManager
-                .connect(user2)
-                .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
+            await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
         });
 
         it("should revert when contract is paused", async () => {
             await orderManager.setPause(true);
             expect(await orderManager.paused()).to.equal(true);
 
-            await expect(orderManager.connect(user1).acceptMarketItemOrder(1)).to.revertedWith("Pausable: paused");
+            await expect(orderManager.connect(user1).acceptOrder(false, 1)).to.revertedWith("Pausable: paused");
         });
 
         it("should be fail when Market item order ID is not exist", async () => {
-            await expect(orderManager.connect(user3).acceptMarketItemOrder(0)).to.revertedWith("Market item order ID is not exist");
+            await expect(orderManager.connect(user3).acceptOrder(false, 0)).to.revertedWith(
+                "Market item order ID is not exist"
+            );
         });
 
         it("should be fail when not the seller", async () => {
-            await expect(orderManager.connect(user3).acceptMarketItemOrder(1)).to.revertedWith("Not the seller");
+            await expect(orderManager.connect(user3).acceptOrder(false, 1)).to.revertedWith("Not the seller");
         });
 
         it("should be fail when Market Item is not available", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user1).cancelSell(marketItemId);
-            await expect(orderManager.connect(user1).acceptMarketItemOrder(1)).to.revertedWith("Market Item is not available");
+            await expect(orderManager.connect(user1).acceptOrder(false, 1)).to.revertedWith(
+                "Market Item is not available"
+            );
         });
 
         it("should be fail when Order is not available", async () => {
-            await orderManager.connect(user2).cancelMarketItemOrder(1);
-            await expect(orderManager.connect(user1).acceptMarketItemOrder(1)).to.revertedWith("Order is not available");
+            await orderManager.connect(user2).cancelOrder(false, 1);
+            await expect(orderManager.connect(user1).acceptOrder(false, 1)).to.revertedWith("Order is not available");
         });
 
         it("should be fail when Overtime", async () => {
             await skipTime(ONE_WEEK);
-            await expect(orderManager.connect(user1).acceptMarketItemOrder(1)).to.revertedWith("Order is expired");
+            await expect(orderManager.connect(user1).acceptOrder(false, 1)).to.revertedWith("Order is expired");
         });
 
         it("Should be ok", async () => {
@@ -925,11 +953,7 @@ describe("OrderManager:", () => {
             let royaltiesAmount;
 
             if (isRoyalty) {
-                const royaltyInfo = await mkpManager.getRoyaltyInfo(
-                    nftTest.address,
-                    1,
-                    netSaleValue
-                );
+                const royaltyInfo = await mkpManager.getRoyaltyInfo(nftTest.address, 1, netSaleValue);
 
                 expect(royaltyInfo[0]).to.equal(treasury.address);
 
@@ -941,7 +965,11 @@ describe("OrderManager:", () => {
             // listingFee to treasury
             const balance_treasury_before = await token.balanceOf(treasury.address);
 
-            await expect(() => orderManager.connect(user1).acceptMarketItemOrder(1)).to.changeTokenBalance(token, user1, netSaleValue);
+            await expect(() => orderManager.connect(user1).acceptOrder(false, 1)).to.changeTokenBalance(
+                token,
+                user1,
+                netSaleValue
+            );
             expect(await nftTest.ownerOf(1)).to.equal(user2.address);
 
             const balance_treasury_after = await token.balanceOf(treasury.address);
@@ -952,8 +980,6 @@ describe("OrderManager:", () => {
 
     describe("Sell function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
-
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
@@ -1011,9 +1037,11 @@ describe("OrderManager:", () => {
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
 
-            await expect(() => orderManager
-                .connect(user1)
-                .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash)).to.changeTokenBalance(nftTest, user1, -1);
+            await expect(() =>
+                orderManager
+                    .connect(user1)
+                    .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash)
+            ).to.changeTokenBalance(nftTest, user1, -1);
 
             const leaf = keccak256(user1.address);
             const proof = merkleTree.getHexProof(leaf);
@@ -1029,8 +1057,6 @@ describe("OrderManager:", () => {
 
     describe("cancelWalletOrder function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
-            await mtvsManager.setPause(false);
             const current = await getCurrentTime();
 
             await token.transfer(user1.address, ONE_ETHER);
@@ -1062,7 +1088,8 @@ describe("OrderManager:", () => {
                     tokenMintERC1155.address,
                     1,
                     1,
-                    current + 100000, { value: BID_PRICE }
+                    current + 100000,
+                    { value: BID_PRICE }
                 );
         });
 
@@ -1070,24 +1097,31 @@ describe("OrderManager:", () => {
             await orderManager.setPause(true);
             expect(await orderManager.paused()).to.equal(true);
 
-            await expect(orderManager.cancelWalletOrder(1)).to.revertedWith("Pausable: paused");
+            await expect(orderManager.cancelOrder(true, 1)).to.revertedWith("Pausable: paused");
         });
 
         it("should be fail when Invalid bidder", async () => {
-            await expect(orderManager.connect(user1).cancelWalletOrder(1)).to.revertedWith("Not the owner of offer");
+            await expect(orderManager.connect(user1).cancelOrder(true, 1)).to.revertedWith("Not the owner of offer");
         });
 
         it("should be fail when Order is not available", async () => {
-            await orderManager.connect(user2).cancelWalletOrder(1);
-            await expect(orderManager.connect(user2).cancelWalletOrder(1)).to.revertedWith("Order is not available");
+            await orderManager.connect(user2).cancelOrder(true, 1);
+            await expect(orderManager.connect(user2).cancelOrder(true, 1)).to.revertedWith("Order is not available");
         });
 
         it("Should be ok", async () => {
-            await expect(() => orderManager.connect(user2).cancelWalletOrder(1)).to.changeTokenBalance(token, user2, BID_PRICE);
+            await expect(() => orderManager.connect(user2).cancelOrder(true, 1)).to.changeTokenBalance(
+                token,
+                user2,
+                BID_PRICE
+            );
             let order = await orderManager.getOrderByWalletOrderId(1);
             expect(order[1].status).to.equal(OrderStatus.CANCELED);
 
-            await expect(() => orderManager.connect(user3).cancelWalletOrder(2)).to.changeEtherBalance(user3, BID_PRICE);
+            await expect(() => orderManager.connect(user3).cancelOrder(true, 2)).to.changeEtherBalance(
+                user3,
+                BID_PRICE
+            );
             order = await orderManager.getOrderByWalletOrderId(2);
             expect(order[1].status).to.equal(OrderStatus.CANCELED);
         });
@@ -1095,7 +1129,6 @@ describe("OrderManager:", () => {
 
     describe("cancelMarketItemOrder function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
             await metaCitizen.mint(user2.address);
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
@@ -1118,33 +1151,31 @@ describe("OrderManager:", () => {
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
             await skipTime(10);
-            await orderManager
-                .connect(user2)
-                .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
+            await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
         });
 
         it("should revert when contract is paused", async () => {
             await orderManager.setPause(true);
             expect(await orderManager.paused()).to.equal(true);
 
-            await expect(orderManager.cancelMarketItemOrder(1)).to.revertedWith("Pausable: paused");
+            await expect(orderManager.cancelOrder(false, 1)).to.revertedWith("Pausable: paused");
         });
 
         it("should be fail when Invalid bidder", async () => {
-            await expect(orderManager.connect(user1).cancelMarketItemOrder(1)).to.revertedWith(
-                "Not the owner of offer"
-            );
+            await expect(orderManager.connect(user1).cancelOrder(false, 1)).to.revertedWith("Not the owner of offer");
         });
 
         it("should be fail when Order is not available", async () => {
-            await orderManager.connect(user2).cancelMarketItemOrder(1);
-            await expect(orderManager.connect(user2).cancelMarketItemOrder(1)).to.revertedWith("Order is not available");
+            await orderManager.connect(user2).cancelOrder(false, 1);
+            await expect(orderManager.connect(user2).cancelOrder(false, 1)).to.revertedWith("Order is not available");
         });
 
         it("Should be ok", async () => {
             const currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
 
-            await expect(() => orderManager.connect(user2).cancelMarketItemOrder(currentMarketItemOrderId)).to.changeTokenBalance(token, user2, BUY_BID_PRICE);
+            await expect(() =>
+                orderManager.connect(user2).cancelOrder(false, currentMarketItemOrderId)
+            ).to.changeTokenBalance(token, user2, BUY_BID_PRICE);
 
             const orderAfter = await orderManager.getOrderByMarketItemOrderId(currentMarketItemOrderId);
 
@@ -1174,7 +1205,9 @@ describe("OrderManager:", () => {
 
             let currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
 
-            await expect(() => orderManager.connect(user2).cancelMarketItemOrder(currentMarketItemOrderId)).to.changeEtherBalance(user2, BUY_BID_PRICE);
+            await expect(() =>
+                orderManager.connect(user2).cancelOrder(false, currentMarketItemOrderId)
+            ).to.changeEtherBalance(user2, BUY_BID_PRICE);
 
             let orderAfter = await orderManager.getOrderByMarketItemOrderId(currentMarketItemOrderId);
 
@@ -1202,7 +1235,9 @@ describe("OrderManager:", () => {
 
             currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
 
-            await expect(() => orderManager.connect(user2).cancelMarketItemOrder(currentMarketItemOrderId)).to.changeEtherBalance(user2, ONE_ETHER.mul(10));
+            await expect(() =>
+                orderManager.connect(user2).cancelOrder(false, currentMarketItemOrderId)
+            ).to.changeEtherBalance(user2, ONE_ETHER.mul(10));
 
             orderAfter = await orderManager.getOrderByMarketItemOrderId(currentMarketItemOrderId);
 
@@ -1214,7 +1249,6 @@ describe("OrderManager:", () => {
 
     describe("sellAvailableInMarketplace function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
             await metaCitizen.mint(user2.address);
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
@@ -1240,21 +1274,16 @@ describe("OrderManager:", () => {
             await orderManager.setPause(true);
             expect(await orderManager.paused()).to.equal(true);
 
-            await expect(
-                orderManager.sellAvailableInMarketplace(1, PRICE, startTime + 10, endTime)
-            ).to.revertedWith("Pausable: paused");
+            await expect(orderManager.sellAvailableInMarketplace(1, PRICE, startTime + 10, endTime)).to.revertedWith(
+                "Pausable: paused"
+            );
         });
 
         it("should be fail when market item is not free", async () => {
             await expect(
                 orderManager
                     .connect(user1)
-                    .sellAvailableInMarketplace(
-                        marketItemId,
-                        PRICE.add(ETHER_100),
-                        startTime,
-                        endTime,
-                    )
+                    .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), startTime, endTime)
             ).to.revertedWith("Not expired yet");
         });
 
@@ -1263,12 +1292,7 @@ describe("OrderManager:", () => {
             await expect(
                 orderManager
                     .connect(user2)
-                    .sellAvailableInMarketplace(
-                        marketItemId,
-                        PRICE.add(ETHER_100),
-                        startTime,
-                        endTime,
-                    )
+                    .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), startTime, endTime)
             ).to.revertedWith("You are not the seller");
         });
 
@@ -1279,64 +1303,31 @@ describe("OrderManager:", () => {
             await expect(
                 orderManager
                     .connect(user2)
-                    .sellAvailableInMarketplace(
-                        marketItemId,
-                        PRICE.add(ETHER_100),
-                        startTime,
-                        endTime,
-                    )
+                    .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), startTime, endTime)
             ).to.revertedWith("Market Item is not available");
         });
 
         it("should be fail when Market ID is not exist", async () => {
             await expect(
-                orderManager
-                    .connect(user2)
-                    .sellAvailableInMarketplace(
-                        0,
-                        PRICE.add(ETHER_100),
-                        startTime,
-                        endTime,
-                    )
+                orderManager.connect(user2).sellAvailableInMarketplace(0, PRICE.add(ETHER_100), startTime, endTime)
             ).to.revertedWith("Market ID is not exist");
 
             await expect(
-                orderManager
-                    .connect(user2)
-                    .sellAvailableInMarketplace(
-                        100,
-                        PRICE.add(ETHER_100),
-                        startTime,
-                        endTime,
-                    )
+                orderManager.connect(user2).sellAvailableInMarketplace(100, PRICE.add(ETHER_100), startTime, endTime)
             ).to.revertedWith("Market ID is not exist");
         });
 
         it("should be fail when Invalid amount", async () => {
             await skipTime(ONE_WEEK);
             await expect(
-                orderManager
-                    .connect(user2)
-                    .sellAvailableInMarketplace(
-                        marketItemId,
-                        0,
-                        startTime,
-                        endTime,
-                    )
+                orderManager.connect(user2).sellAvailableInMarketplace(marketItemId, 0, startTime, endTime)
             ).to.revertedWith("Invalid amount");
         });
 
         it("should be fail when Invalid end time", async () => {
             await skipTime(ONE_WEEK);
             await expect(
-                orderManager
-                    .connect(user1)
-                    .sellAvailableInMarketplace(
-                        marketItemId,
-                        ONE_ETHER,
-                        startTime,
-                        endTime,
-                    )
+                orderManager.connect(user1).sellAvailableInMarketplace(marketItemId, ONE_ETHER, startTime, endTime)
             ).to.revertedWith("Invalid end time");
         });
 
@@ -1347,12 +1338,7 @@ describe("OrderManager:", () => {
             const newEndTime = add(await getCurrentTime(), ONE_WEEK * 2);
             await orderManager
                 .connect(user1)
-                .sellAvailableInMarketplace(
-                    marketItemId,
-                    PRICE.add(ETHER_100),
-                    newStartTime,
-                    newEndTime
-                );
+                .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), newStartTime, newEndTime);
 
             const marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
             expect(marketItem.price).to.equal(PRICE.add(ETHER_100));
@@ -1364,7 +1350,6 @@ describe("OrderManager:", () => {
         });
 
         it("should update amount when soldAvailable ERC1155", async () => {
-            await mtvsManager.setPause(false);
             let current = await getCurrentTime();
 
             await mtvsManager
@@ -1384,12 +1369,7 @@ describe("OrderManager:", () => {
             current = await getCurrentTime();
             await orderManager
                 .connect(user2)
-                .sellAvailableInMarketplace(
-                    marketItemId,
-                    PRICE.add(ETHER_100),
-                    current + 10,
-                    current + 10000,
-                );
+                .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), current + 10, current + 10000);
             marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
             expect(marketItem.amount).to.equal(100);
             expect(marketItem.price).to.equal(PRICE.add(ETHER_100));
@@ -1402,12 +1382,7 @@ describe("OrderManager:", () => {
             current = await getCurrentTime();
             await orderManager
                 .connect(user2)
-                .sellAvailableInMarketplace(
-                    marketItemId,
-                    ETHER_100,
-                    current + 10,
-                    current + 10000,
-                );
+                .sellAvailableInMarketplace(marketItemId, ETHER_100, current + 10, current + 10000);
             marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
             expect(marketItem.amount).to.equal(100);
             expect(marketItem.price).to.equal(ETHER_100);
@@ -1420,7 +1395,6 @@ describe("OrderManager:", () => {
 
     describe("cancelSell function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
@@ -1466,13 +1440,15 @@ describe("OrderManager:", () => {
                 "Market ID is not exist"
             );
 
-            await expect(orderManager.connect(user1).cancelSell(0)).to.revertedWith(
-                "Market ID is not exist"
-            );
+            await expect(orderManager.connect(user1).cancelSell(0)).to.revertedWith("Market ID is not exist");
         });
 
         it("should be ok", async () => {
-            await expect(() => orderManager.connect(user1).cancelSell(marketItemId)).to.changeTokenBalance(nftTest, user1, 1);
+            await expect(() => orderManager.connect(user1).cancelSell(marketItemId)).to.changeTokenBalance(
+                nftTest,
+                user1,
+                1
+            );
 
             let marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
             expect(marketItem.price).to.equal(1000);
@@ -1481,8 +1457,6 @@ describe("OrderManager:", () => {
             expect(marketItem.endTime).to.equal(endTime);
             expect(marketItem.paymentToken).to.equal(token.address);
             expect(await nftTest.ownerOf(1)).to.equal(user1.address);
-
-            await mtvsManager.setPause(false);
 
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
@@ -1520,7 +1494,6 @@ describe("OrderManager:", () => {
 
     describe("buy function:", async () => {
         beforeEach(async () => {
-            await orderManager.setPause(false);
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
@@ -1553,9 +1526,7 @@ describe("OrderManager:", () => {
                 "Market ID is not exist"
             );
 
-            await expect(orderManager.connect(user1).buy(0, [])).to.revertedWith(
-                "Market ID is not exist"
-            );
+            await expect(orderManager.connect(user1).buy(0, [])).to.revertedWith("Market ID is not exist");
         });
 
         it("should be fail when Market Item is not available", async () => {
@@ -1607,11 +1578,7 @@ describe("OrderManager:", () => {
             let royaltiesAmount;
 
             if (isRoyalty) {
-                const royaltyInfo = await mkpManager.getRoyaltyInfo(
-                    nftTest.address,
-                    1,
-                    netSaleValue
-                );
+                const royaltyInfo = await mkpManager.getRoyaltyInfo(nftTest.address, 1, netSaleValue);
 
                 expect(royaltyInfo[0]).to.equal(treasury.address);
 
@@ -1623,7 +1590,11 @@ describe("OrderManager:", () => {
             // listingFee to treasury
             const balance_treasury_before = await token.balanceOf(treasury.address);
 
-            await expect(() => orderManager.connect(user2).buy(marketItemId, proof)).to.changeTokenBalances(token, [user1, user2], [netSaleValue, ONE_ETHER.mul(-1)]);
+            await expect(() => orderManager.connect(user2).buy(marketItemId, proof)).to.changeTokenBalances(
+                token,
+                [user1, user2],
+                [netSaleValue, ONE_ETHER.mul(-1)]
+            );
 
             marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
             expect(marketItem.status).to.equal(MARKET_ITEM_STATUS.SOLD);
@@ -1659,11 +1630,7 @@ describe("OrderManager:", () => {
             let royaltiesAmount;
 
             if (isRoyalty) {
-                const royaltyInfo = await mkpManager.getRoyaltyInfo(
-                    nftTest.address,
-                    1,
-                    netSaleValue
-                );
+                const royaltyInfo = await mkpManager.getRoyaltyInfo(nftTest.address, 1, netSaleValue);
 
                 expect(royaltyInfo[0]).to.equal(treasury.address);
 
@@ -1675,7 +1642,9 @@ describe("OrderManager:", () => {
             // listingFee to treasury
             const balance_treasury_before = await ethers.provider.getBalance(treasury.address);
 
-            await expect(() => orderManager.connect(user2).buy(marketItemId, proof, { value: ONE_ETHER })).to.changeEtherBalances([user1, user2], [netSaleValue, ONE_ETHER.mul(-1)]);
+            await expect(() =>
+                orderManager.connect(user2).buy(marketItemId, proof, { value: ONE_ETHER })
+            ).to.changeEtherBalances([user1, user2], [netSaleValue, ONE_ETHER.mul(-1)]);
 
             marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
             expect(marketItem.status).to.equal(MARKET_ITEM_STATUS.SOLD);
@@ -1711,11 +1680,7 @@ describe("OrderManager:", () => {
             let royaltiesAmount;
 
             if (isRoyalty) {
-                const royaltyInfo = await mkpManager.getRoyaltyInfo(
-                    nftTest.address,
-                    1,
-                    netSaleValue
-                );
+                const royaltyInfo = await mkpManager.getRoyaltyInfo(nftTest.address, 1, netSaleValue);
 
                 expect(royaltyInfo[0]).to.equal(treasury.address);
 
@@ -1727,7 +1692,9 @@ describe("OrderManager:", () => {
             // listingFee to treasury
             const balance_treasury_before = await ethers.provider.getBalance(treasury.address);
 
-            await expect(() => orderManager.connect(user2).buy(marketItemId, proof, { value: ONE_ETHER })).to.changeEtherBalances([user1, user2], [netSaleValue, ONE_ETHER.mul(-1)]);
+            await expect(() =>
+                orderManager.connect(user2).buy(marketItemId, proof, { value: ONE_ETHER })
+            ).to.changeEtherBalances([user1, user2], [netSaleValue, ONE_ETHER.mul(-1)]);
 
             marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
             expect(marketItem.status).to.equal(MARKET_ITEM_STATUS.SOLD);

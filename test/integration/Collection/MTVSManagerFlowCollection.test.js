@@ -66,10 +66,10 @@ describe("MTVSManagerFlowCollection", () => {
             admin.address,
         ]);
 
-        await collectionFactory.setPause(false);
+        // await collectionFactory.setPause(false);
         await collectionFactory.setMetaversusManager(mtvsManager.address);
 
-        await mtvsManager.setPause(false);
+        // await mtvsManager.setPause(false);
         await mkpManager.setMetaversusManager(mtvsManager.address);
 
         merkleTree = generateMerkleTree([owner.address, user1.address, user2.address]);

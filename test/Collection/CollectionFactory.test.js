@@ -161,14 +161,18 @@ describe("CollectionFactory", () => {
 
     describe("setTemplateAddress", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(collectionFactory.connect(user1).setTemplateAddress(user1.address, user1.address)).to.revertedWith(
-                "Caller is not an owner or admin"
-            );
+            await expect(
+                collectionFactory.connect(user1).setTemplateAddress(user1.address, user1.address)
+            ).to.revertedWith("Caller is not an owner or admin");
         });
 
         it("Should revert Invalid address", async () => {
-            await expect(collectionFactory.setTemplateAddress(AddressZero, user1.address)).to.revertedWith("Invalid address");
-            await expect(collectionFactory.setTemplateAddress(user1.address, AddressZero)).to.revertedWith("Invalid address");
+            await expect(collectionFactory.setTemplateAddress(AddressZero, user1.address)).to.revertedWith(
+                "Invalid address"
+            );
+            await expect(collectionFactory.setTemplateAddress(user1.address, AddressZero)).to.revertedWith(
+                "Invalid address"
+            );
         });
 
         it("Should setTemplateAddress successfully", async () => {
@@ -182,10 +186,6 @@ describe("CollectionFactory", () => {
     });
 
     describe("create", async () => {
-        beforeEach(async () => {
-            await collectionFactory.setPause(false);
-        });
-
         it("should revert Exceeding the maxCollection", async () => {
             await collectionFactory.setMaxCollection(1);
             await collectionFactory.create(0, "NFT", "NFT", user1.address, 250);

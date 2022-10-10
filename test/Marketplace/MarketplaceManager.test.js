@@ -17,8 +17,8 @@ const NFT_TYPE1155 = 1;
 const MARKET_ITEM_STATUS = {
     LISTING: 0,
     SOLD: 1,
-    CANCELED: 2
-}
+    CANCELED: 2,
+};
 
 describe("Marketplace Manager:", () => {
     beforeEach(async () => {
@@ -31,43 +31,22 @@ describe("Marketplace Manager:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            owner.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(ADDRESS_ZERO, true);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
-        metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            token.address,
-            MINT_FEE,
-            admin.address,
-        ]);
+        metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, admin.address]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
-        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            "NFT Metaversus",
-            "nMTVS",
-            250,
-            admin.address,
-        ]);
+        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, admin.address]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
-        nftTest = await upgrades.deployProxy(NftTest, [
-            "NFT test",
-            "NFT",
-            token.address,
-            250,
-            PRICE,
-            admin.address,
-        ]);
+        nftTest = await upgrades.deployProxy(NftTest, ["NFT test", "NFT", token.address, 250, PRICE, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
@@ -100,11 +79,6 @@ describe("Marketplace Manager:", () => {
         ]);
         await admin.connect(owner).setAdmin(mtvsManager.address, true);
 
-        await orderManager.setPause(false);
-        await mtvsManager.setPause(false);
-        await mkpManager.setPause(false);
-        await metaCitizen.setPause(false);
-
         await mkpManager.setMetaversusManager(mtvsManager.address);
         await mkpManager.setOrderManager(orderManager.address);
         merkleTree = generateMerkleTree([user1.address, user2.address]);
@@ -113,12 +87,8 @@ describe("Marketplace Manager:", () => {
 
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(upgrades.deployProxy(MkpManager, [ADDRESS_ZERO])).to.revertedWith(
-                "Invalid Admin contract"
-            );
-            await expect(upgrades.deployProxy(MkpManager, [user1.address])).to.revertedWith(
-                "Invalid Admin contract"
-            );
+            await expect(upgrades.deployProxy(MkpManager, [ADDRESS_ZERO])).to.revertedWith("Invalid Admin contract");
+            await expect(upgrades.deployProxy(MkpManager, [user1.address])).to.revertedWith("Invalid Admin contract");
             await expect(upgrades.deployProxy(MkpManager, [treasury.address])).to.revertedWith(
                 "Invalid Admin contract"
             );
@@ -221,17 +191,7 @@ describe("Marketplace Manager:", () => {
             await expect(
                 mtvsManager
                     .connect(user2)
-                    .createNFT(
-                        true,
-                        0,
-                        1,
-                        "this_uri",
-                        ONE_ETHER,
-                        0,
-                        endTime,
-                        token.address,
-                        merkleTree.getHexRoot()
-                    )
+                    .createNFT(true, 0, 1, "this_uri", ONE_ETHER, 0, endTime, token.address, merkleTree.getHexRoot())
             ).to.be.revertedWith("Invalid time");
 
             await expect(
@@ -276,17 +236,19 @@ describe("Marketplace Manager:", () => {
             startTime = (await getCurrentTime()) + 3600;
             endTime = startTime + 86400;
 
-            await mtvsManager.connect(user2).createNFT(
-                true,
-                0,
-                1,
-                "this_uri",
-                ONE_ETHER,
-                startTime,
-                endTime,
-                token.address,
-                merkleTree.getHexRoot()
-            );
+            await mtvsManager
+                .connect(user2)
+                .createNFT(
+                    true,
+                    0,
+                    1,
+                    "this_uri",
+                    ONE_ETHER,
+                    startTime,
+                    endTime,
+                    token.address,
+                    merkleTree.getHexRoot()
+                );
 
             let marketItemId = await mkpManager.getCurrentMarketItem();
             marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);
@@ -312,7 +274,6 @@ describe("Marketplace Manager:", () => {
 
             await mkpManager.setCollectionFactory(collectionFactory.address);
 
-            await collectionFactory.setPause(false);
             await collectionFactory.connect(user1).create(0, "NFT", "NFT", user1.address, 250);
             collection1 = await collectionFactory.getCollectionInfo(1);
             await collectionFactory.connect(user2).create(0, "NFT", "NFT", user2.address, 250);
@@ -452,7 +413,6 @@ describe("Marketplace Manager:", () => {
         beforeEach(async () => {
             await mkpManager.setCollectionFactory(collectionFactory.address);
 
-            await collectionFactory.setPause(false);
             await collectionFactory.connect(user1).create(0, "NFT", "NFT", user1.address, 250);
             collection1 = await collectionFactory.getCollectionInfo(1);
             await collectionFactory.connect(user2).create(0, "NFT", "NFT", user2.address, 250);

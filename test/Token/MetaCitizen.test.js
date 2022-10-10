@@ -20,22 +20,11 @@ describe("MetaCitizen", () => {
 
         admin = await upgrades.deployProxy(Admin, [owner.address]);
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            owner.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
 
-        metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            token.address,
-            MINT_FEE,
-            admin.address,
-        ]);
-
-        await metaCitizen.setPause(false);
+        metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, admin.address]);
 
         await token.transfer(user1.address, TOTAL_SUPPLY);
         await token.connect(user1).approve(metaCitizen.address, MaxUint256);
@@ -43,9 +32,9 @@ describe("MetaCitizen", () => {
 
     describe("Deployment", async () => {
         it("Should revert when payment token contract is invalid", async () => {
-            await expect(
-                upgrades.deployProxy(MetaCitizen, [AddressZero, MINT_FEE, admin.address])
-            ).to.be.revertedWith("Invalid payment token");
+            await expect(upgrades.deployProxy(MetaCitizen, [AddressZero, MINT_FEE, admin.address])).to.be.revertedWith(
+                "Invalid payment token"
+            );
 
             await expect(
                 upgrades.deployProxy(MetaCitizen, [treasury.address, MINT_FEE, admin.address])
@@ -53,15 +42,15 @@ describe("MetaCitizen", () => {
         });
 
         it("Should revert when mint fee is zero", async () => {
-            await expect(
-                upgrades.deployProxy(MetaCitizen, [token.address, "0", admin.address])
-            ).to.be.revertedWith("Invalid amount");
+            await expect(upgrades.deployProxy(MetaCitizen, [token.address, "0", admin.address])).to.be.revertedWith(
+                "Invalid amount"
+            );
         });
 
         it("Should revert when admin contract is invalid", async () => {
-            await expect(
-                upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, AddressZero])
-            ).to.be.revertedWith("Invalid Admin contract");
+            await expect(upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, AddressZero])).to.be.revertedWith(
+                "Invalid Admin contract"
+            );
 
             await expect(
                 upgrades.deployProxy(MetaCitizen, [treasury.address, MINT_FEE, token.address])

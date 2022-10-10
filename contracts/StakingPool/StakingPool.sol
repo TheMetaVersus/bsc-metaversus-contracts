@@ -442,7 +442,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      */
     function getAmountOutWith(uint amount) public view returns (uint) {
         (, int price, , , ) = AggregatorV3Interface(aggregatorProxyBUSD_USD).latestRoundData();
-        return (getPriceFormatUSD(address(stakeToken), busdToken, amount) * 1e8) / uint(price);
+        return ((getPriceFormatUSD(address(stakeToken), busdToken, 1e18) * amount) / uint(price * 1e10));
     }
 
     /**

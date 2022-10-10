@@ -29,20 +29,10 @@ describe("Metaversus Manager:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            owner.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
-        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            "NFT Metaversus",
-            "nMTVS",
-            250,
-            admin.address,
-        ]);
+        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, admin.address]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
@@ -210,14 +200,13 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should set collectionFactory address success: ", async () => {
-            const collectionFactory_v2 = await upgrades.deployProxy(CollectionFactory,
-                [
-                    tokenERC721.address,
-                    tokenERC1155.address,
-                    admin.address,
-                    user1.address,
-                    user2.address
-                ]);
+            const collectionFactory_v2 = await upgrades.deployProxy(CollectionFactory, [
+                tokenERC721.address,
+                tokenERC1155.address,
+                admin.address,
+                user1.address,
+                user2.address,
+            ]);
             await mtvsManager.setCollectionFactory(collectionFactory_v2.address);
             expect(await mtvsManager.collectionFactory()).to.equal(collectionFactory_v2.address);
         });
@@ -226,26 +215,27 @@ describe("Metaversus Manager:", () => {
     describe("createNFT function:", async () => {
         beforeEach(async () => {
             merkleTree = generateMerkleTree([user1.address, user2.address]);
-            await mtvsManager.setPause(false);
         });
 
         it("should revert when contract pause: ", async () => {
             await mtvsManager.setPause(true);
             await admin.setAdmin(mtvsManager.address, true);
 
-            await expect(mtvsManager
-                .connect(user1)
-                .createNFT(
-                    true,
-                    NFTType.ERC1155,
-                    0,
-                    "this_uri",
-                    ONE_ETHER,
-                    startTime,
-                    endTime,
-                    token.address,
-                    merkleTree.getHexRoot()
-                )).to.revertedWith("Pausable: paused");
+            await expect(
+                mtvsManager
+                    .connect(user1)
+                    .createNFT(
+                        true,
+                        NFTType.ERC1155,
+                        0,
+                        "this_uri",
+                        ONE_ETHER,
+                        startTime,
+                        endTime,
+                        token.address,
+                        merkleTree.getHexRoot()
+                    )
+            ).to.revertedWith("Pausable: paused");
         });
 
         it("should revert when amount equal to zero amount: ", async () => {
@@ -444,9 +434,6 @@ describe("Metaversus Manager:", () => {
 
     describe("createNFT limit function:", async () => {
         beforeEach(async () => {
-            await collectionFactory.setPause(false);
-            await mtvsManager.setPause(false);
-
             await collectionFactory.connect(user2).create(0, "NFT", "NFT", user1.address, 250);
             await collectionFactory.connect(user2).create(1, "NFT1155", "NFT1155", user1.address, 250);
 
@@ -502,20 +489,21 @@ describe("Metaversus Manager:", () => {
 
         it("should revert when contract pause: ", async () => {
             await mtvsManager.setPause(true);
-
-            await expect(mtvsManager
-                .connect(user2)
-                .createNFTLimit(
-                    true,
-                    nft_721.address,
-                    1,
-                    "this_uri",
-                    ONE_ETHER,
-                    startTime,
-                    endTime,
-                    token.address,
-                    merkleTree.getHexRoot()
-                )).to.revertedWith("Pausable: paused");
+            await expect(
+                mtvsManager
+                    .connect(user2)
+                    .createNFTLimit(
+                        true,
+                        nft_721.address,
+                        1,
+                        "this_uri",
+                        ONE_ETHER,
+                        startTime,
+                        endTime,
+                        token.address,
+                        merkleTree.getHexRoot()
+                    )
+            ).to.revertedWith("Pausable: paused");
         });
 
         it("should revert User is not create collection: ", async () => {
@@ -660,12 +648,12 @@ describe("Metaversus Manager:", () => {
 
         it("should revert when contract pause: ", async () => {
             const price = 10000;
-            await expect(mtvsManager.connect(user2).buyTicketEvent(1, price)).to.revertedWith("Pausable: paused");
+            await expect(mtvsManager.connect(user2).buyTicketEvent(1, price)).to.revertedWith(
+                "ERC20: insufficient allowance"
+            );
         });
 
         it("should buy ticket success: ", async () => {
-            await mtvsManager.setPause(false);
-
             await token.transfer(user2.address, AMOUNT);
             await token.approve(user2.address, MaxUint256);
             await token.connect(user2).approve(mtvsManager.address, MaxUint256);

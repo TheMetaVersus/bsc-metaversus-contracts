@@ -57,7 +57,7 @@ async function main() {
 
   const mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
   await mkpManager.deployed();
-  // await mkpManager.setPause(false);
+
   console.log("mkpManager deployed in:", mkpManager.address);
   console.log(
     "========================================================================================="
@@ -149,9 +149,12 @@ async function main() {
     "========================================================================================="
   );
   // Set permitted token
-  await admin.setPermittedPaymentToken(process.env.ZERO_ADDRESS, true);
-  await admin.setPermittedPaymentToken(mtvs.address, true);
-  await admin.setPermittedPaymentToken(usd.address, true);
+  let tx = await admin.setPermittedPaymentToken(process.env.ZERO_ADDRESS, true);
+  await tx.wait();
+  tx = await admin.setPermittedPaymentToken(mtvs.address, true);
+  await tx.wait();
+  tx = await admin.setPermittedPaymentToken(usd.address, true);
+  await tx.wait();
 
   const metaCitizen = await upgrades.deployProxy(MetaCitizen, [
     mtvs.address,
@@ -341,13 +344,17 @@ async function main() {
     "========================================================================================="
   );
   // Preparation
-  await admin.setAdmin(mtvsManager.address, true);
+  tx = await admin.setAdmin(mtvsManager.address, true);
+  await tx.wait();
   console.log("setAdmin done !");
-  await mkpManager.setMetaversusManager(mtvsManager.address);
+  tx = await mkpManager.setMetaversusManager(mtvsManager.address);
+  await tx.wait();
   console.log("setMetaversusManager done !");
-  await mkpManager.setOrderManager(orderManager.address);
+  tx = await mkpManager.setOrderManager(orderManager.address);
+  await tx.wait();
   console.log("setOrderManager done !");
-  await collectionFactory.setMetaversusManager(mtvsManager.address);
+  tx = await collectionFactory.setMetaversusManager(mtvsManager.address);
+  await tx.wait();
   console.log("setMetaversusManager done !");
 
   const contractAddresses = {

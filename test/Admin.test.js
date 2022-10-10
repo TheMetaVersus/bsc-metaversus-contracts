@@ -21,13 +21,8 @@ describe("Admin", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            admin.address,
-        ]);
-       
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, admin.address]);
+
         TokenERC721 = await ethers.getContractFactory("TokenERC721");
         tokenERC721 = await upgrades.deployProxy(TokenERC721, [
             owner.address,
@@ -42,12 +37,7 @@ describe("Admin", () => {
         await admin.setPermittedPaymentToken(AddressZero, true);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
-        metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            token.address,
-            TOKEN_0_1,
-            admin.address,
-        ]);
-        await metaCitizen.setPause(false);
+        metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, TOKEN_0_1, admin.address]);
     });
 
     describe("Deployment", async () => {
