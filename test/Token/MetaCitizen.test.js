@@ -35,6 +35,8 @@ describe("MetaCitizen", () => {
             admin.address,
         ]);
 
+        await metaCitizen.setPause(false);
+
         await token.transfer(user1.address, TOTAL_SUPPLY);
         await token.connect(user1).approve(metaCitizen.address, MaxUint256);
     });
@@ -106,7 +108,7 @@ describe("MetaCitizen", () => {
         });
     });
 
-    describe("setMintFee function", async () => {
+    describe("setMintFee", async () => {
         it("should revert when Ownable: caller is not an owner or admin", async () => {
             await expect(metaCitizen.connect(user1).setMintFee(1000)).to.be.revertedWith(
                 "aller is not an owner or admin"
@@ -126,7 +128,12 @@ describe("MetaCitizen", () => {
         });
     });
 
-    describe("buy function", async () => {
+    describe("buy", async () => {
+        it("should revert when pause", async () => {
+            await metaCitizen.setPause(true);
+            await expect(metaCitizen.connect(user1).buy()).to.be.revertedWith("Pausable: paused");
+        });
+
         it("should revert when user already have one", async () => {
             await metaCitizen.connect(user1).buy();
             await expect(metaCitizen.connect(user1).buy()).to.be.revertedWith("Already have one");
@@ -155,7 +162,12 @@ describe("MetaCitizen", () => {
         });
     });
 
-    describe("mint function", async () => {
+    describe("mint", async () => {
+        it("should revert when pause", async () => {
+            await metaCitizen.setPause(true);
+            await expect(metaCitizen.mint(user1.address)).to.be.revertedWith("Pausable: paused");
+        });
+
         it("should revert when receiver is zero address", async () => {
             await expect(metaCitizen.mint(AddressZero)).to.be.revertedWith("Invalid address");
         });
@@ -167,8 +179,8 @@ describe("MetaCitizen", () => {
         });
 
         it("should revert when user already have one", async () => {
-            await metaCitizen.connect(user1).buy();
-            await expect(metaCitizen.connect(user1).buy()).to.be.revertedWith("Already have one");
+            await metaCitizen.mint(user1.address);
+            await expect(metaCitizen.mint(user1.address)).to.be.revertedWith("Already have one");
         });
 
         it("should mint successful", async () => {
@@ -180,7 +192,7 @@ describe("MetaCitizen", () => {
         });
     });
 
-    describe("supportsInterface function", async () => {
+    describe("supportsInterface", async () => {
         it("should supportsInterface", async () => {
             let boolVal = await metaCitizen.supportsInterface(0x01ffc9a7);
             expect(boolVal).to.be.true;

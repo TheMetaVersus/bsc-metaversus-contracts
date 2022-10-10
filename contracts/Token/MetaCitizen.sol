@@ -124,7 +124,7 @@ contract MetaCitizen is
      *
      *  @dev    Anyone can call this function.
      */
-    function buy() external nonReentrant {
+    function buy() external nonReentrant whenNotPaused {
         require(balanceOf(_msgSender()) == 0, "Already have one");
 
         _tokenCounter.increment();
@@ -144,7 +144,7 @@ contract MetaCitizen is
      *
      *  @param  _to address that be minted to
      */
-    function mint(address _to) external onlyAdmin notZeroAddress(_to) {
+    function mint(address _to) external onlyAdmin notZeroAddress(_to) whenNotPaused {
         require(balanceOf(_to) == 0, "Already have one");
 
         _tokenCounter.increment();
@@ -159,7 +159,7 @@ contract MetaCitizen is
      * @dev See {IERC721Metadata-tokenURI}.
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token.");
+        require(_exists(tokenId), "URI query for nonexistent token");
         return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, ".json")) : ".json";
     }
 

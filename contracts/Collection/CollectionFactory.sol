@@ -90,7 +90,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
         bytes32 salt = bytes32(_currentId);
         address _template = _typeNft == NFTHelper.Type.ERC721 ? address(templateERC721) : address(templateERC1155);
         ICollection _collection = ICollection(ClonesUpgradeable.cloneDeterministic(address(_template), salt));
-        require(address(_collection) != address(0), "Non Exist Collection, Please check your transfer");
+        require(address(_collection) != address(0), "Clone collection failed");
 
         // store
         CollectionInfo memory newInfo = CollectionInfo(_typeNft, salt, address(_collection), admin.owner());

@@ -57,6 +57,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
 
     event CreatedDrop(DropRecord drop);
     event UpdatedDrop(uint256 indexed dropId, DropRecord oldDrop, DropRecord newDrop);
+    event CanceledDrop(uint256 indexed dropId);
     event MintedToken(uint256 indexed dropId, address indexed account, uint256 indexed amount, uint256 fee);
     event SetServiceFeeNumerator(uint256 indexed oldNumerator, uint256 indexed newNumerator);
 
@@ -74,7 +75,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
 
         mvtsAdmin = _mvtsAdmin;
 
-        require(_serviceFeeNumerator <= SERVICE_FEE_DENOMINATOR, "Service fee will exceed minting fee");
+        require(_serviceFeeNumerator <= SERVICE_FEE_DENOMINATOR, "Service fee will exceed mint fee");
         serviceFeeNumerator = _serviceFeeNumerator;
     }
 
@@ -86,7 +87,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
      *  @param _newNumerator New service fee numerator
      */
     function setServiceFeeNumerator(uint256 _newNumerator) external onlyAdmin {
-        require(_newNumerator <= SERVICE_FEE_DENOMINATOR, "Service fee will exceed minting fee");
+        require(_newNumerator <= SERVICE_FEE_DENOMINATOR, "Service fee will exceed mint fee");
 
         uint256 oldNumerator = serviceFeeNumerator;
         serviceFeeNumerator = _newNumerator;
@@ -102,6 +103,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
      */
     function create(DropParams memory _drop)
         external
+        whenNotPaused
         validTokenCollectionERC721(ITokenERC721(_drop.nft))
         validPaymentToken(IERC20Upgradeable(_drop.paymentToken))
     {
@@ -109,7 +111,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
         require(_drop.fundingReceiver != address(0), "Invalid funding receiver");
         require(_drop.maxSupply > 0, "Invalid minting supply");
 
-        require(_drop.startTime > block.timestamp, "Invalid start time");
+        require(_drop.startTime > block.timestamp, "Invalid start time"); // solhint-disable-line not-rely-on-time
         require(_drop.endTime > _drop.startTime, "Invalid end time");
 
         _dropCounter.increment();
@@ -127,7 +129,8 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
             mintableLimit: _drop.mintableLimit,
             maxSupply: _drop.maxSupply,
             startTime: _drop.startTime,
-            endTime: _drop.endTime
+            endTime: _drop.endTime,
+            isCanceled: false
         });
 
         emit CreatedDrop(drops[dropId]);
@@ -143,13 +146,14 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
      */
     function update(uint256 _dropId, DropParams memory _newDrop)
         external
+        whenNotPaused
         validDrop(_dropId)
         validTokenCollectionERC721(ITokenERC721(_newDrop.nft))
         validPaymentToken(IERC20Upgradeable(_newDrop.paymentToken))
     {
         DropRecord storage drop = drops[_dropId];
 
-        require(_msgSender() == drop.owner, "Only Drop owner can call this function");
+        require(_msgSender() == drop.owner, "Caller is not drop owner");
         require(_newDrop.root != 0, "Invalid root");
         require(_newDrop.fundingReceiver != address(0), "Invalid funding receiver");
         require(_newDrop.maxSupply > 0, "Invalid minting supply");
@@ -172,6 +176,23 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
     }
 
     /**
+     *  @notice Cancel a drop event
+     *
+     *  @dev    Only drop owner can call this function
+     *
+     *  @param  _dropId     Id of drop
+     */
+    function cancel(uint256 _dropId) external whenNotPaused validDrop(_dropId) {
+        DropRecord storage drop = drops[_dropId];
+        require(_msgSender() == drop.owner, "Caller is not drop owner");
+        require(!drop.isCanceled, "Already canceled");
+
+        drop.isCanceled = true;
+
+        emit CanceledDrop(_dropId);
+    }
+
+    /**
      *  @notice Minting a token with a fee.
      *
      *  @dev    With `private sale`, only White List winners can mint token.
@@ -186,9 +207,9 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
         uint256 _dropId,
         bytes32[] memory _proof,
         uint256 _amount
-    ) external payable validDrop(_dropId) nonReentrant {
+    ) external payable validDrop(_dropId) nonReentrant whenNotPaused {
         bool canBuy = canBuyToken(_dropId, _msgSender(), _proof);
-        require(canBuy, "Not permitted to mint token at the moment");
+        require(canBuy, "Not permitted to mint now");
 
         uint256 mintable = mintableAmount(_dropId, _msgSender());
         require(mintable >= _amount, "Can not mint tokens anymore");
@@ -258,7 +279,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
         if (isNativeToken(_token)) {
             transferNativeToken(_to, _amount);
         } else {
-            require(msg.value == 0, "Do not pay both token in same time");
+            require(msg.value == 0, "Can not pay both token");
             _token.safeTransferFrom(_from, _to, _amount);
         }
     }
@@ -311,6 +332,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
      *  @param  _dropId     Id of drop
      */
     function isDropActive(uint256 _dropId) private view returns (bool) {
+        if (drops[_dropId].isCanceled) return false;
         return
             block.timestamp >= drops[_dropId].startTime && // solhint-disable-line not-rely-on-time
             block.timestamp <= drops[_dropId].endTime; // solhint-disable-line not-rely-on-time
