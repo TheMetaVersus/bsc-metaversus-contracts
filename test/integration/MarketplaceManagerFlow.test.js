@@ -80,10 +80,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         await admin.setAdmin(user1.address, true);
         await admin.setAdmin(mtvsManager.address, true);
 
-        await orderManager.setPause(false);
-        await mtvsManager.setPause(false);
-        await mkpManager.setPause(false);
-
         await mkpManager.setMetaversusManager(mtvsManager.address);
         await mkpManager.setOrderManager(orderManager.address);
 
@@ -200,7 +196,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         it("user1 accept offer of user2", async () => {
             await BT.updateFee(tokenMintERC721.connect(user1).approve(orderManager.address, INFO.user1.token_id));
             await BT.expect(() =>
-                orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(
                 token,
                 user1,
@@ -214,7 +210,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
 
         it("user3 cancel offer", async () => {
             await BT.expect(() =>
-                orderManager.connect(user3).cancelWalletOrder(INFO.user3.order_id)
+                orderManager.connect(user3).cancelOrder(true, INFO.user3.order_id)
             ).changeTokenBalance(token, user3, INFO.user3.bid_price);
         });
 
@@ -336,11 +332,11 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
 
         it("cancel all offers", async () => {
             await BT.expect(() =>
-                orderManager.connect(user2).cancelWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user2).cancelOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(token, user2, INFO.user2.bid_price);
 
             await BT.expect(() =>
-                orderManager.connect(user3).cancelWalletOrder(INFO.user3.order_id)
+                orderManager.connect(user3).cancelOrder(true, INFO.user3.order_id)
             ).changeTokenBalance(token, user3, INFO.user3.bid_price);
         });
 
@@ -494,7 +490,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
             );
             INFO.user1.sell_market_item_id = await mkpManager.getCurrentMarketItem();
 
-            await BT.expect(orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)).to.revertedWith(
+            await BT.expect(orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)).to.revertedWith(
                 "ERC721: caller is not token owner nor approved"
             );
         });
@@ -507,7 +503,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         it("user1 accept user2 offer", async () => {
             await BT.updateFee(tokenMintERC721.connect(user1).approve(orderManager.address, INFO.user1.token_id));
             await BT.expect(() =>
-                orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(
                 token,
                 user1,
@@ -662,7 +658,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
             );
             INFO.user1.sell_market_item_id = await mkpManager.getCurrentMarketItem();
 
-            await BT.expect(orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)).to.revertedWith(
+            await BT.expect(orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)).to.revertedWith(
                 "ERC721: caller is not token owner nor approved"
             );
         });
@@ -677,8 +673,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
             ).to.revertedWith("Not the order time");
 
             await skipTime(10);
-            await BT.expect(metaCitizen.mint(user4.address)).to.revertedWith("Pausable: paused");
-            await BT.updateFee(metaCitizen.setPause(false));
 
             await BT.updateFee(metaCitizen.mint(user4.address));
             await BT.expect(() =>
@@ -690,14 +684,14 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         });
 
         it("user1 accept user2(fail), user3(fail), user4(ok)", async () => {
-            await BT.expect(orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)).to.revertedWith(
+            await BT.expect(orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)).to.revertedWith(
                 "ERC721: caller is not token owner nor approved"
             );
-            await BT.expect(orderManager.connect(user1).acceptWalletOrder(INFO.user3.order_id)).to.revertedWith(
+            await BT.expect(orderManager.connect(user1).acceptOrder(true, INFO.user3.order_id)).to.revertedWith(
                 "ERC721: caller is not token owner nor approved"
             );
             await BT.expect(() =>
-                orderManager.connect(user1).acceptMarketItemOrder(INFO.user4.market_item_order_id)
+                orderManager.connect(user1).acceptOrder(false, INFO.user4.market_item_order_id)
             ).changeTokenBalance(
                 token,
                 user1,
@@ -950,7 +944,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
 
         it("user 2 cancel offer", async () => {
             await BT.expect(() =>
-                orderManager.connect(user2).cancelWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user2).cancelOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(token, user2, INFO.user2.bid_price);
         });
 
@@ -1042,7 +1036,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
 
         it("user 1 accept user5's offer", async () => {
             await BT.expect(() =>
-                orderManager.connect(user1).acceptMarketItemOrder(INFO.user5.market_item_order_id)
+                orderManager.connect(user1).acceptOrder(false, INFO.user5.market_item_order_id)
             ).changeEtherBalance(
                 user1,
                 INFO.user5.bid_price
@@ -1271,7 +1265,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         it("user 1 accept user2's offer", async () => {
             await BT.updateFee(tokenMintERC721.connect(user1).approve(orderManager.address, INFO.user1.token_id));
             await BT.expect(() =>
-                orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(
                 token,
                 user1,
@@ -1435,9 +1429,9 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         });
 
         it("all cancel offers", async () => {
-            await BT.updateFee(orderManager.connect(user2).cancelMarketItemOrder(INFO.user2.market_item_order_id));
-            await BT.updateFee(orderManager.connect(user3).cancelMarketItemOrder(INFO.user3.market_item_order_id));
-            await BT.updateFee(orderManager.connect(user4).cancelMarketItemOrder(INFO.user4.market_item_order_id));
+            await BT.updateFee(orderManager.connect(user2).cancelOrder(false, INFO.user2.market_item_order_id));
+            await BT.updateFee(orderManager.connect(user3).cancelOrder(false, INFO.user3.market_item_order_id));
+            await BT.updateFee(orderManager.connect(user4).cancelOrder(false, INFO.user4.market_item_order_id));
         });
 
         it("Check balance after flowNFT721_", async () => {
@@ -1651,7 +1645,7 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
         it("user1 accept offer of user2", async () => {
             await BT.updateFee(tokenMintERC1155.connect(user1).setApprovalForAll(orderManager.address, true));
             await BT.expect(() =>
-                orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(
                 token,
                 user1,
@@ -1665,7 +1659,7 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
 
         it("user3 cancel offer", async () => {
             await BT.expect(() =>
-                orderManager.connect(user3).cancelWalletOrder(INFO.user3.order_id)
+                orderManager.connect(user3).cancelOrder(true, INFO.user3.order_id)
             ).changeTokenBalance(token, user3, INFO.user3.bid_price);
         });
 
@@ -1783,11 +1777,11 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
 
         it("cancel all offers", async () => {
             await BT.expect(() =>
-                orderManager.connect(user2).cancelWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user2).cancelOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(token, user2, INFO.user2.bid_price);
 
             await BT.expect(() =>
-                orderManager.connect(user3).cancelWalletOrder(INFO.user3.order_id)
+                orderManager.connect(user3).cancelOrder(true, INFO.user3.order_id)
             ).changeTokenBalance(token, user3, INFO.user3.bid_price);
         });
 
@@ -1940,7 +1934,7 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
             );
             INFO.user1.sell_market_item_id = await mkpManager.getCurrentMarketItem();
 
-            await BT.expect(orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)).to.revertedWith(
+            await BT.expect(orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)).to.revertedWith(
                 "ERC1155: insufficient balance for transfer"
             );
         });
@@ -1953,7 +1947,7 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
         it("user1 accept user2 offer", async () => {
             await BT.updateFee(tokenMintERC1155.connect(user1).setApprovalForAll(orderManager.address, true));
             await BT.expect(() =>
-                orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(
                 token,
                 user1,
@@ -2107,7 +2101,7 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
             );
             INFO.user1.sell_market_item_id = await mkpManager.getCurrentMarketItem();
 
-            await BT.expect(orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)).to.revertedWith(
+            await BT.expect(orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)).to.revertedWith(
                 "ERC1155: insufficient balance for transfer"
             );
         });
@@ -2131,14 +2125,14 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
         });
 
         it("user1 accept user2(fail), user3(fail), user4(ok)", async () => {
-            await BT.expect(orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)).to.revertedWith(
+            await BT.expect(orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)).to.revertedWith(
                 "ERC1155: insufficient balance for transfer"
             );
-            await BT.expect(orderManager.connect(user1).acceptWalletOrder(INFO.user3.order_id)).to.revertedWith(
+            await BT.expect(orderManager.connect(user1).acceptOrder(true, INFO.user3.order_id)).to.revertedWith(
                 "ERC1155: insufficient balance for transfer"
             );
             await BT.expect(() =>
-                orderManager.connect(user1).acceptMarketItemOrder(INFO.user4.market_item_order_id)
+                orderManager.connect(user1).acceptOrder(false, INFO.user4.market_item_order_id)
             ).changeTokenBalance(
                 token,
                 user1,
@@ -2391,7 +2385,7 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
 
         it("user 2 cancel offer", async () => {
             await BT.expect(() =>
-                orderManager.connect(user2).cancelWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user2).cancelOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(token, user2, INFO.user2.bid_price);
         });
 
@@ -2475,7 +2469,7 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
 
         it("user 1 accept user5's offer", async () => {
             await BT.expect(() =>
-                orderManager.connect(user1).acceptMarketItemOrder(INFO.user5.market_item_order_id)
+                orderManager.connect(user1).acceptOrder(false, INFO.user5.market_item_order_id)
             ).changeTokenBalance(
                 token,
                 user1,
@@ -2695,7 +2689,7 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
         it("user 1 accept user2's offer", async () => {
             await BT.updateFee(tokenMintERC1155.connect(user1).setApprovalForAll(orderManager.address, true));
             await BT.expect(() =>
-                orderManager.connect(user1).acceptWalletOrder(INFO.user2.order_id)
+                orderManager.connect(user1).acceptOrder(true, INFO.user2.order_id)
             ).changeTokenBalance(
                 token,
                 user1,
@@ -2857,9 +2851,9 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
         });
 
         it("all cancel offers", async () => {
-            await BT.updateFee(orderManager.connect(user2).cancelMarketItemOrder(INFO.user2.market_item_order_id));
-            await BT.updateFee(orderManager.connect(user3).cancelMarketItemOrder(INFO.user3.market_item_order_id));
-            await BT.updateFee(orderManager.connect(user4).cancelMarketItemOrder(INFO.user4.market_item_order_id));
+            await BT.updateFee(orderManager.connect(user2).cancelOrder(false, INFO.user2.market_item_order_id));
+            await BT.updateFee(orderManager.connect(user3).cancelOrder(false, INFO.user3.market_item_order_id));
+            await BT.updateFee(orderManager.connect(user4).cancelOrder(false, INFO.user4.market_item_order_id));
         });
 
         it("Check balance after flowNFT1155_", async () => {

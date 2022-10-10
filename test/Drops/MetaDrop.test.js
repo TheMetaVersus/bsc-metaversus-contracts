@@ -26,12 +26,7 @@ describe("MetaDrop", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            owner.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
@@ -47,11 +42,7 @@ describe("MetaDrop", () => {
         ]);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
-        metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            token.address,
-            TOKEN_0_1,
-            admin.address,
-        ]);
+        metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, TOKEN_0_1, admin.address]);
 
         MetaDrop = await ethers.getContractFactory("MetaDrop");
         metaDrop = await upgrades.deployProxy(MetaDrop, [
@@ -67,7 +58,7 @@ describe("MetaDrop", () => {
         await token.connect(user2).approve(metaDrop.address, MaxUint256);
         await token.connect(user3).approve(metaDrop.address, MaxUint256);
 
-        await metaCitizen.setPause(false);
+        // await metaCitizen.setPause(false);
         await metaCitizen.mint(user1.address);
         await metaCitizen.mint(user2.address);
         await metaCitizen.mint(user3.address);
@@ -90,15 +81,14 @@ describe("MetaDrop", () => {
 
     describe("Deployment", async () => {
         it("Should revert when admin contract is invalid", async () => {
-            await expect(
-                upgrades.deployProxy(MetaDrop, [AddressZero, SERVICE_FEE_DENOMINATOR])
-            ).to.be.revertedWith("Invalid Admin contract");
+            await expect(upgrades.deployProxy(MetaDrop, [AddressZero, SERVICE_FEE_DENOMINATOR])).to.be.revertedWith(
+                "Invalid Admin contract"
+            );
 
             await expect(
                 upgrades.deployProxy(MetaDrop, [treasury.address, SERVICE_FEE_DENOMINATOR])
             ).to.be.revertedWith("Invalid Admin contract");
         });
-
 
         it("Should throw error Service fee will exceed mint fee", async () => {
             await expect(
@@ -109,7 +99,7 @@ describe("MetaDrop", () => {
         it("Set initial state successful", async () => {
             expect(await metaDrop.mvtsAdmin()).to.equal(admin.address);
             expect(await metaDrop.serviceFeeNumerator()).to.equal(DEFAULT_SERVICE_NUMERATOR);
-            expect(await metaDrop.paused()).to.true;
+            expect(await metaDrop.paused()).to.false;
         });
     });
 
@@ -134,8 +124,6 @@ describe("MetaDrop", () => {
 
     describe("create", async () => {
         beforeEach(async () => {
-            await metaDrop.setPause(false);
-
             drop = {
                 root: merkleTree.getHexRoot(),
                 nft: tokenERC721.address,
@@ -151,11 +139,7 @@ describe("MetaDrop", () => {
 
         it("Should throw error when system pause", async () => {
             await metaDrop.setPause(true);
-            await expect(
-                metaDrop.connect(user1).create(drop)
-            ).to.be.revertedWith(
-                "Pausable: paused"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Pausable: paused");
         });
 
         it("Should throw error Invalid TokenCollectionERC721 contract", async () => {
@@ -231,8 +215,6 @@ describe("MetaDrop", () => {
 
     describe("update", async () => {
         beforeEach(async () => {
-            await metaDrop.setPause(false);
-
             drop = {
                 root: merkleTree.getHexRoot(),
                 nft: tokenERC721.address,
@@ -269,9 +251,7 @@ describe("MetaDrop", () => {
         });
 
         it("Should throw error Caller is not drop owner", async () => {
-            await expect(metaDrop.connect(user2).update(dropId, drop)).to.be.revertedWith(
-                "Caller is not drop owner"
-            );
+            await expect(metaDrop.connect(user2).update(dropId, drop)).to.be.revertedWith("Caller is not drop owner");
         });
 
         it("Should throw error Invalid funding receiver", async () => {
@@ -308,11 +288,7 @@ describe("MetaDrop", () => {
 
         it("Should throw error when system pause", async () => {
             await metaDrop.setPause(true);
-            await expect(
-                metaDrop.connect(user1).update(dropId, drop)
-            ).to.be.revertedWith(
-                "Pausable: paused"
-            );
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Pausable: paused");
         });
 
         it("Should update drop successful", async () => {
@@ -349,8 +325,6 @@ describe("MetaDrop", () => {
 
     describe("cancel", async () => {
         beforeEach(async () => {
-            await metaDrop.setPause(false);
-
             drop = {
                 root: merkleTree.getHexRoot(),
                 nft: tokenERC721.address,
@@ -374,18 +348,12 @@ describe("MetaDrop", () => {
         });
 
         it("Should throw error Caller is not drop owner", async () => {
-            await expect(metaDrop.connect(user2).cancel(dropId)).to.be.revertedWith(
-                "Caller is not drop owner"
-            );
+            await expect(metaDrop.connect(user2).cancel(dropId)).to.be.revertedWith("Caller is not drop owner");
         });
 
         it("Should throw error when system pause", async () => {
             await metaDrop.setPause(true);
-            await expect(
-                metaDrop.connect(user1).cancel(dropId)
-            ).to.be.revertedWith(
-                "Pausable: paused"
-            );
+            await expect(metaDrop.connect(user1).cancel(dropId)).to.be.revertedWith("Pausable: paused");
         });
 
         it("Should cancel successful", async () => {
@@ -397,8 +365,6 @@ describe("MetaDrop", () => {
 
     describe("mint", async () => {
         beforeEach(async () => {
-            await metaDrop.setPause(false);
-
             drop = {
                 root: merkleTree.getHexRoot(),
                 nft: tokenERC721.address,
@@ -442,9 +408,9 @@ describe("MetaDrop", () => {
         it("Should throw error when drop has canceled", async () => {
             await setTime(dropStartTime);
             await metaDrop.cancel(dropId);
-            await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, 5)
-            ).to.be.revertedWith("Not permitted to mint now");
+            await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
+                "Not permitted to mint now"
+            );
         });
 
         it("Should throw error when is not in whitelist", async () => {
@@ -501,9 +467,7 @@ describe("MetaDrop", () => {
 
         it("Should throw error when system pause", async () => {
             await metaDrop.setPause(true);
-            await expect(
-                metaDrop.connect(user1).mint(dropId, proof_user1, drop.mintableLimit)
-            ).to.be.revertedWith(
+            await expect(metaDrop.connect(user1).mint(dropId, proof_user1, drop.mintableLimit)).to.be.revertedWith(
                 "Pausable: paused"
             );
         });
@@ -555,8 +519,6 @@ describe("MetaDrop", () => {
 
     describe("mintableAmount", async () => {
         beforeEach(async () => {
-            await metaDrop.setPause(false);
-
             drop = {
                 root: merkleTree.getHexRoot(),
                 nft: tokenERC721.address,

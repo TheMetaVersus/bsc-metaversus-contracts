@@ -54,6 +54,7 @@ struct MarketItemOrder {
 //  prettier-ignore
 struct OrderInfo {
     uint256 id;                                     // id order
+    address owner;                                  // owner address
     uint256 amount;                                 // Amount to transfer
     IERC20Upgradeable paymentToken;                 // Token to transfer
     uint256 bidPrice;                               // Bid price

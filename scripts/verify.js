@@ -2,14 +2,22 @@ const hre = require("hardhat");
 const contracts = require("../contracts-verify.json");
 
 async function main() {
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.treasury,
-      contract: "contracts/Token/Treasury.sol:Treasury"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.admin,
+  //     contract: "contracts/Admin.sol:Admin"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.treasury,
+  //     contract: "contracts/Treasury.sol:Treasury"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
   // try {
   //   await hre.run("verify:verify", {
   //     address: contracts.usd,
@@ -27,47 +35,10 @@ async function main() {
   //   console.log("err :>> ", err);
   // }
 
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.tokenMintERC721,
-      contract: "contracts/Token/TokenMintERC721.sol:TokenMintERC721"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
-
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.tokenMintERC1155,
-      contract: "contracts/Token/TokenMintERC1155.sol:TokenMintERC1155"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
-
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.mtvsManager,
-      contract: "contracts/Marketplace/MetaversusManager.sol:MetaversusManager"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
-
-  try {
-    await hre.run("verify:verify", {
-      address: contracts.mkpManager,
-      contract:
-        "contracts/Marketplace/MarketplaceManager.sol:MarketPlaceManager"
-    });
-  } catch (err) {
-    console.log("err :>> ", err);
-  }
-
   // try {
   //   await hre.run("verify:verify", {
-  //     address: contracts.staking30d,
-  //     contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+  //     address: contracts.tokenMintERC721,
+  //     contract: "contracts/Token/TokenMintERC721.sol:TokenMintERC721"
   //   });
   // } catch (err) {
   //   console.log("err :>> ", err);
@@ -75,8 +46,8 @@ async function main() {
 
   // try {
   //   await hre.run("verify:verify", {
-  //     address: contracts.staking60d,
-  //     contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+  //     address: contracts.tokenMintERC1155,
+  //     contract: "contracts/Token/TokenMintERC1155.sol:TokenMintERC1155"
   //   });
   // } catch (err) {
   //   console.log("err :>> ", err);
@@ -84,8 +55,18 @@ async function main() {
 
   // try {
   //   await hre.run("verify:verify", {
-  //     address: contracts.staking90d,
-  //     contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+  //     address: contracts.mtvsManager,
+  //     contract: "contracts/Marketplace/MetaversusManager.sol:MetaversusManager"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
+
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.mkpManager,
+  //     contract:
+  //       "contracts/Marketplace/MarketplaceManager.sol:MarketPlaceManager"
   //   });
   // } catch (err) {
   //   console.log("err :>> ", err);
@@ -112,6 +93,22 @@ async function main() {
     await hre.run("verify:verify", {
       address: contracts.metaDrop,
       contract: "contracts/Drops/MetaDrop.sol:MetaDrop"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.orderManager,
+      contract: "contracts/Marketplace/Marketplace.sol:OrderManager"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.metaCitizen,
+      contract: "contracts/Token/MetaCitizen.sol:MetaCitizen"
     });
   } catch (err) {
     console.log("err :>> ", err);

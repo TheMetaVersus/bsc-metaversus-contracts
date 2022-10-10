@@ -118,12 +118,9 @@ describe("Marketplace interact with Staking Pool:", () => {
 
         CURRENT = await getCurrentTime();
         await admin.setAdmin(mtvsManager.address, true);
-        await mtvsManager.setPause(false);
-        await staking.setPause(false);
-        await orderManager.setPause(false);
+
         await mkpManager.setOrderManager(orderManager.address);
         await mkpManager.setMetaversusManager(mtvsManager.address);
-        await metaCitizen.setPause(false);
     });
 
     describe("Setup: Set permitted tokens => Set start time for staking pool", () => {

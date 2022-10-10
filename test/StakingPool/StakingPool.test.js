@@ -49,43 +49,22 @@ describe("Staking Pool:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            owner.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
-        metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            token.address,
-            MINT_FEE,
-            admin.address,
-        ]);
+        metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, admin.address]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
-        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            "NFT Metaversus",
-            "nMTVS",
-            250,
-            admin.address,
-        ]);
+        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, admin.address]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
-        nftTest = await upgrades.deployProxy(NftTest, [
-            "NFT test",
-            "NFT",
-            token.address,
-            250,
-            PRICE,
-            admin.address,
-        ]);
+        nftTest = await upgrades.deployProxy(NftTest, ["NFT test", "NFT", token.address, 250, PRICE, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
@@ -159,10 +138,7 @@ describe("Staking Pool:", () => {
         await mkpManager.setOrderManager(orderManager.address);
 
         await admin.setAdmin(mtvsManager.address, true);
-        await mtvsManager.setPause(false);
-        await staking.setPause(false);
-        await orderManager.setPause(false);
-        await metaCitizen.setPause(false);
+
         await mkpManager.setOrderManager(orderManager.address);
         await mkpManager.setMetaversusManager(mtvsManager.address);
 
@@ -551,9 +527,7 @@ describe("Staking Pool:", () => {
 
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime);
-            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith(
-                "Not allow to unstake now"
-            );
+            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith("Not allow to unstake now");
         });
 
         it("should revert when Already requested: ", async () => {
@@ -653,9 +627,7 @@ describe("Staking Pool:", () => {
             await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             await staking.setStartTime(0);
-            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith(
-                "Not allow to claim now"
-            );
+            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("Not allow to claim now");
         });
         it("should revert when more request: ", async () => {
             await token.transfer(user2.address, ONE_MILLION_ETHER);
@@ -997,9 +969,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(unstakeTime);
 
-            await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith(
-                "Must request unstake first"
-            );
+            await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith("Must request unstake first");
         });
         it("should revert when connot unstake more than staked amount: ", async () => {
             await token.transfer(user2.address, ONE_MILLION_ETHER);
@@ -1031,9 +1001,7 @@ describe("Staking Pool:", () => {
             await skipTime(unstakeTime);
             await staking.connect(user1).requestUnstake();
             await skipTime(25 * 60 * 60);
-            await expect(staking.connect(user1).unstake(OVER_AMOUNT)).to.be.revertedWith(
-                "Exceeds staked amount"
-            );
+            await expect(staking.connect(user1).unstake(OVER_AMOUNT)).to.be.revertedWith("Exceeds staked amount");
         });
         it("should unstake success: ", async () => {
             await token.transfer(staking.address, ONE_MILLION_ETHER);
