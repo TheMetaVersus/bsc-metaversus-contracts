@@ -5,15 +5,9 @@ const contract = require("../contracts.json");
 const contractVerify = require("../contracts-verify.json");
 
 async function main() {
-  //Loading accountscontract
-  const accounts = await ethers.getSigners();
-  const addresses = accounts.map(item => item.address);
-  const owner = addresses[0];
-
   // Loading contract factory.
-  const CollectionFactory = await ethers.getContractFactory(
-    "CollectionFactory"
-  );
+  const MetaDrop = await ethers.getContractFactory("MetaDrop");
+
   // Deploy contracts
   console.log(
     "========================================================================================="
@@ -23,33 +17,29 @@ async function main() {
     "========================================================================================="
   );
 
-  // Factory
-  const collectionFactory = await upgrades.deployProxy(CollectionFactory, [
-    contract.tokenERC721,
-    contract.tokenERC1155,
+  const metaDrop = await upgrades.deployProxy(MetaDrop, [
     contract.admin,
-    contract.admin,
-    contract.metaDrop
+    (process.env.DEFAULT_SERVICE_NUMERATOR = 100000)
   ]);
 
-  await collectionFactory.deployed();
-  console.log("CollectionFactory deployed in:", collectionFactory.address);
+  await metaDrop.deployed();
+  console.log("MetaDrop deployed in:", metaDrop.address);
 
-  const collectionFactoryVerify = await upgrades.erc1967.getImplementationAddress(
-    collectionFactory.address
+  const metaDropVerify = await upgrades.erc1967.getImplementationAddress(
+    metaDrop.address
   );
-  console.log("CollectionFactory verify deployed in:", collectionFactoryVerify);
+  console.log("MetaDrop verify deployed in:", metaDropVerify);
 
   const contractAddresses = {
     ...contract,
-    collectionFactory: collectionFactory.address
+    metaDrop: metaDrop.address
   };
   console.log("contract Address:", contractAddresses);
   await fs.writeFileSync("contracts.json", JSON.stringify(contractAddresses));
 
   const contractAddresses_verify = {
     ...contractVerify,
-    collectionFactory: collectionFactoryVerify
+    metaDrop: metaDropVerify
   };
 
   await fs.writeFileSync(

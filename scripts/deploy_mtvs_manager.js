@@ -5,15 +5,7 @@ const contract = require("../contracts.json");
 const contractVerify = require("../contracts-verify.json");
 
 async function main() {
-  //Loading accountscontract
-  const accounts = await ethers.getSigners();
-  const addresses = accounts.map(item => item.address);
-  const owner = addresses[0];
-
-  // Loading contract factory.
-  const CollectionFactory = await ethers.getContractFactory(
-    "CollectionFactory"
-  );
+  const MTVSManager = await ethers.getContractFactory("MetaversusManager");
   // Deploy contracts
   console.log(
     "========================================================================================="
@@ -23,33 +15,35 @@ async function main() {
     "========================================================================================="
   );
 
-  // Factory
-  const collectionFactory = await upgrades.deployProxy(CollectionFactory, [
-    contract.tokenERC721,
-    contract.tokenERC1155,
-    contract.admin,
-    contract.admin,
-    contract.metaDrop
+  const mtvsManager = await upgrades.deployProxy(MTVSManager, [
+    contract.tokenMintERC721,
+    contract.tokenMintERC1155,
+    contract.mtvs,
+    mkpManager.address,
+    contract.collectionFactory,
+    contract.admin
   ]);
-
-  await collectionFactory.deployed();
-  console.log("CollectionFactory deployed in:", collectionFactory.address);
-
-  const collectionFactoryVerify = await upgrades.erc1967.getImplementationAddress(
-    collectionFactory.address
+  await mtvsManager.deployed();
+  console.log("mtvsManager deployed in:", mtvsManager.address);
+  console.log(
+    "========================================================================================="
   );
-  console.log("CollectionFactory verify deployed in:", collectionFactoryVerify);
+
+  const mtvsManagerVerify = await upgrades.erc1967.getImplementationAddress(
+    mtvsManager.address
+  );
+  console.log("mtvsManagerVerify deployed in:", mtvsManagerVerify);
 
   const contractAddresses = {
     ...contract,
-    collectionFactory: collectionFactory.address
+    mtvsManager: mtvsManager.address
   };
   console.log("contract Address:", contractAddresses);
   await fs.writeFileSync("contracts.json", JSON.stringify(contractAddresses));
 
   const contractAddresses_verify = {
     ...contractVerify,
-    collectionFactory: collectionFactoryVerify
+    mtvsManager: mtvsManagerVerify
   };
 
   await fs.writeFileSync(
