@@ -12,6 +12,7 @@ async function main() {
   const USD = await ethers.getContractFactory("USD");
   const MTVS = await ethers.getContractFactory("MTVS");
   const Treasury = await ethers.getContractFactory("Treasury");
+  const MetaCitizen = await ethers.getContractFactory("MetaCitizen");
   const TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
   const TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
   const TokenERC721 = await ethers.getContractFactory("TokenERC721");
@@ -37,10 +38,10 @@ async function main() {
   const Admin = await ethers.getContractFactory("Admin");
   const admin = await upgrades.deployProxy(Admin, [owner]);
   await admin.deployed();
-
-  const treasury = await upgrades.deployProxy(Treasury, [admin.address]);
-  await treasury.deployed();
-
+  console.log("admin deployed in:", admin.address);
+  console.log(
+    "========================================================================================="
+  );
   const mtvs = await upgrades.deployProxy(MTVS, [
     "Metaversus Token",
     "MTVS",
@@ -48,11 +49,93 @@ async function main() {
     admin.address
   ]);
   await mtvs.deployed();
+
   console.log("mtvs deployed in:", mtvs.address);
   console.log(
     "========================================================================================="
   );
 
+  const mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
+  await mkpManager.deployed();
+  // await mkpManager.setPause(false);
+  console.log("mkpManager deployed in:", mkpManager.address);
+  console.log(
+    "========================================================================================="
+  );
+
+  // Factory Pool
+  const staking = await Staking.deploy();
+  console.log("staking template deployed in:", staking.address);
+  console.log(
+    "========================================================================================="
+  );
+  const poolFactory = await upgrades.deployProxy(PoolFactory, [
+    staking.address,
+    admin.address
+  ]);
+  await poolFactory.deployed();
+  console.log("PoolFactory deployed in:", poolFactory.address);
+  console.log(
+    "========================================================================================="
+  );
+  const tx_pool30d = await poolFactory.create(
+    mtvs.address,
+    mtvs.address,
+    mkpManager.address,
+    process.env.REWARD_RATE_30_DAY,
+    process.env.POOL_DURATION_30_DAY,
+    process.env.PANCAKE_ROUTER,
+    process.env.BUSD_TOKEN,
+    process.env.EACA_AGGREGATOR_BUSD_USD_TESTNET
+  );
+
+  await tx_pool30d.wait();
+  let all = await poolFactory.getAllPool();
+  console.log("Pool 30 days deployed", all[0]["poolAddress"]);
+  console.log(
+    "========================================================================================="
+  );
+  const tx_pool60d = await poolFactory.create(
+    mtvs.address,
+    mtvs.address,
+    mkpManager.address,
+    process.env.REWARD_RATE_60_DAY,
+    process.env.POOL_DURATION_60_DAY,
+    process.env.PANCAKE_ROUTER,
+    process.env.BUSD_TOKEN,
+    process.env.EACA_AGGREGATOR_BUSD_USD_TESTNET
+  );
+
+  await tx_pool60d.wait();
+  all = await poolFactory.getAllPool();
+  console.log("Pool 60 days deployed", all[1]["poolAddress"]);
+  console.log(
+    "========================================================================================="
+  );
+  const tx_pool90d = await poolFactory.create(
+    mtvs.address,
+    mtvs.address,
+    mkpManager.address,
+    process.env.REWARD_RATE_90_DAY,
+    process.env.POOL_DURATION_90_DAY,
+    process.env.PANCAKE_ROUTER,
+    process.env.BUSD_TOKEN,
+    process.env.EACA_AGGREGATOR_BUSD_USD_TESTNET
+  );
+
+  await tx_pool90d.wait();
+  all = await poolFactory.getAllPool();
+  console.log("Pool 90 days deployed", all[2]["poolAddress"]);
+  console.log(
+    "========================================================================================="
+  );
+  const treasury = await upgrades.deployProxy(Treasury, [admin.address]);
+  await treasury.deployed();
+
+  console.log("treasury deployed in:", treasury.address);
+  console.log(
+    "========================================================================================="
+  );
   const usd = await upgrades.deployProxy(USD, [
     admin.address,
     "USD Token Test",
@@ -65,7 +148,22 @@ async function main() {
   console.log(
     "========================================================================================="
   );
+  // Set permitted token
+  await admin.setPermittedPaymentToken(process.env.ZERO_ADDRESS, true);
+  await admin.setPermittedPaymentToken(mtvs.address, true);
+  await admin.setPermittedPaymentToken(usd.address, true);
 
+  const metaCitizen = await upgrades.deployProxy(MetaCitizen, [
+    mtvs.address,
+    process.env.MINT_FEE,
+    admin.address
+  ]);
+  await metaCitizen.deployed();
+
+  console.log("metaCitizen deployed in:", metaCitizen.address);
+  console.log(
+    "========================================================================================="
+  );
   const tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
     "NFT Metaversus",
     "nMTVS",
@@ -73,6 +171,7 @@ async function main() {
     admin.address
   ]);
   await tokenMintERC721.deployed();
+
   console.log("tokenMintERC721 deployed in:", tokenMintERC721.address);
   console.log(
     "========================================================================================="
@@ -83,6 +182,7 @@ async function main() {
     admin.address
   ]);
   await tokenMintERC1155.deployed();
+
   console.log("tokenMintERC1155 deployed in:", tokenMintERC1155.address);
   console.log(
     "========================================================================================="
@@ -118,10 +218,6 @@ async function main() {
 
   await collectionFactory.deployed();
   console.log("CollectionFactory deployed in:", collectionFactory.address);
-
-  const mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
-  await mkpManager.deployed();
-  console.log("mkpManager deployed in:", mkpManager.address);
   console.log(
     "========================================================================================="
   );
@@ -139,63 +235,16 @@ async function main() {
     "========================================================================================="
   );
 
-  // Factory Pool
-  const staking = await Staking.deploy();
-  console.log("staking template deployed in:", staking.address);
-  const poolFactory = await upgrades.deployProxy(PoolFactory, [
-    staking.address,
+  const OrderManager = await ethers.getContractFactory("OrderManager");
+  const orderManager = await upgrades.deployProxy(OrderManager, [
+    mkpManager.address,
     admin.address
   ]);
-  await poolFactory.deployed();
-  await poolFactory.setPause(false);
-  console.log("PoolFactory deployed in:", poolFactory.address);
-
-  const tx_pool30d = await poolFactory.create(
-    mtvs.address,
-    mtvs.address,
-    mkpManager.address,
-    process.env.REWARD_RATE_30_DAY,
-    process.env.POOL_DURATION_30_DAY,
-    process.env.PANCAKE_ROUTER,
-    process.env.BUSD_TOKEN,
-    process.env.EACA_AGGREGATOR_BUSD_USD_TESTNET
-  );
-
-  await tx_pool30d.wait();
-  console.log("Pool 30 days deployed");
-  const tx_pool60d = await poolFactory.create(
-    mtvs.address,
-    mtvs.address,
-    mkpManager.address,
-    process.env.REWARD_RATE_60_DAY,
-    process.env.POOL_DURATION_60_DAY,
-    process.env.PANCAKE_ROUTER,
-    process.env.BUSD_TOKEN,
-    process.env.EACA_AGGREGATOR_BUSD_USD_TESTNET
-  );
-
-  await tx_pool60d.wait();
-  console.log("Pool 60 days deployed");
-  const tx_pool90d = await poolFactory.create(
-    mtvs.address,
-    mtvs.address,
-    mkpManager.address,
-    process.env.REWARD_RATE_90_DAY,
-    process.env.POOL_DURATION_90_DAY,
-    process.env.PANCAKE_ROUTER,
-    process.env.BUSD_TOKEN,
-    process.env.EACA_AGGREGATOR_BUSD_USD_TESTNET
-  );
-
-  await tx_pool90d.wait();
-  console.log("Pool 90 days deployed");
-  const all = await poolFactory.getAllPool();
-  console.log(all);
-
+  await orderManager.deployed();
+  console.log("OrderManager deployed in:", orderManager.address);
   console.log(
     "========================================================================================="
   );
-
   console.log("VERIFY ADDRESSES");
   console.log(
     "========================================================================================="
@@ -225,6 +274,13 @@ async function main() {
     mtvs.address
   );
   console.log("mtvsVerify deployed in:", mtvsVerify);
+  console.log(
+    "========================================================================================="
+  );
+  const metaCitizenVerify = await upgrades.erc1967.getImplementationAddress(
+    metaCitizen.address
+  );
+  console.log("metaCitizenVerify deployed in:", metaCitizenVerify);
   console.log(
     "========================================================================================="
   );
@@ -277,12 +333,22 @@ async function main() {
   console.log(
     "========================================================================================="
   );
+  const orderManagerVerify = await upgrades.erc1967.getImplementationAddress(
+    orderManager.address
+  );
+  console.log("OrderManager verify deployed in:", orderManagerVerify);
+  console.log(
+    "========================================================================================="
+  );
   // Preparation
-  await mtvsManager.setPause(false);
-  await mkpManager.setPause(false);
-  await admin.setPermittedPaymentToken(process.env.ZERO_ADDRESS, true);
-  await admin.setPermittedPaymentToken(mtvs.address, true);
-  await admin.setPermittedPaymentToken(usd.address, true);
+  await admin.setAdmin(mtvsManager.address, true);
+  console.log("setAdmin done !");
+  await mkpManager.setMetaversusManager(mtvsManager.address);
+  console.log("setMetaversusManager done !");
+  await mkpManager.setOrderManager(orderManager.address);
+  console.log("setOrderManager done !");
+  await collectionFactory.setMetaversusManager(mtvsManager.address);
+  console.log("setMetaversusManager done !");
 
   const contractAddresses = {
     admin: admin.address,
@@ -300,7 +366,9 @@ async function main() {
     staking: staking.address,
     poolFactory: poolFactory.address,
     collectionFactory: collectionFactory.address,
-    metaDrop: metaDrop.address
+    metaDrop: metaDrop.address,
+    orderManager: orderManager.address,
+    metaCitizen: metaCitizen.address
   };
   console.log("contract Address:", contractAddresses);
   await fs.writeFileSync("contracts.json", JSON.stringify(contractAddresses));
@@ -318,7 +386,9 @@ async function main() {
     staking: staking.address,
     poolFactory: poolFactoryVerify,
     collectionFactory: collectionFactoryVerify,
-    metaDrop: metaDropVerify
+    metaDrop: metaDropVerify,
+    orderManager: orderManagerVerify,
+    metaCitizen: metaCitizenVerify
   };
 
   await fs.writeFileSync(

@@ -9,7 +9,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import "../interfaces/IMarketplaceManager.sol";
-import "../interfaces/IPriceConsumerV3.sol";
 import "../interfaces/IPancakeRouter.sol";
 import "../interfaces/IStakingPool.sol";
 import "../Validatable.sol";
@@ -198,10 +197,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
         require(block.timestamp > startTime, "Not time for stake");
         require(getAmountOutWith(_amount) >= 5e20, "Must stake more than 500$");
         require(startTime + poolDuration > block.timestamp, "Staking pool has expired");
-        require(
-            IMarketplaceManager(mkpManager).wasBuyer(_msgSender()),
-            "Must buy a MTVS NFT"
-        );
+        require(IMarketplaceManager(mkpManager).wasBuyer(_msgSender()), "Must buy a MTVS NFT");
         // calculate pending rewards of staked amount before
         UserInfo storage user = users[_msgSender()];
         if (user.totalAmount > 0) {

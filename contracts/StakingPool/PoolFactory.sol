@@ -28,7 +28,7 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
 
     event PoolDeployed(address pool, address deployer);
 
-    function initialize(IStakingPool _template, IAdmin _admin) public initializer validStakingPool(_template) {
+    function initialize(IStakingPool _template, IAdmin _admin) public initializer {
         __Validatable_init(_admin);
         __ERC165_init();
 
