@@ -25,43 +25,22 @@ describe("Marketplace interact with Order", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            owner.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
-        metaCitizen = await upgrades.deployProxy(MetaCitizen, [
-            token.address,
-            MINT_FEE,
-            admin.address,
-        ]);
+        metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, admin.address]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
-        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            "NFT Metaversus",
-            "nMTVS",
-            250,
-            admin.address,
-        ]);
+        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, admin.address]);
 
         TokenMintERC1155 = await ethers.getContractFactory("TokenMintERC1155");
         tokenMintERC1155 = await upgrades.deployProxy(TokenMintERC1155, [250, admin.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
-        nftTest = await upgrades.deployProxy(NftTest, [
-            "NFT test",
-            "NFT",
-            token.address,
-            250,
-            PRICE,
-            admin.address,
-        ]);
+        nftTest = await upgrades.deployProxy(NftTest, ["NFT test", "NFT", token.address, 250, PRICE, admin.address]);
 
         TemplateERC721 = await ethers.getContractFactory("TokenERC721");
         templateERC721 = await TemplateERC721.deploy();
@@ -112,6 +91,7 @@ describe("Marketplace interact with Order", () => {
         await mkpManager.setOrderManager(orderManager.address);
         await orderManager.setPause(false);
 
+        await metaCitizen.setPause(false);
         await metaCitizen.mint(user2.address);
     });
     describe("Buy/Mint a NFT ", async () => {
@@ -214,7 +194,7 @@ describe("Marketplace interact with Order", () => {
             await nftTest.connect(user1).approve(mkpManager.address, 1);
             await orderManager
                 .connect(user1)
-                .sell(nftTest.address, 1, 1, ONE_ETHER, startTime + 10, endTime, token.address, rootHash);
+                .sell(nftTest.address, 1, 1, ONE_ETHER, startTime + 10, endTime, AddressZero, rootHash);
         });
     });
 
@@ -229,7 +209,6 @@ describe("Marketplace interact with Order", () => {
                     .connect(user2)
                     .makeMarketItemOrder(
                         marketItemId,
-                        AddressZero,
                         bidPrice,
                         endTime,
                         merkleTree.getHexProof(generateLeaf(user2.address)),
@@ -237,8 +216,9 @@ describe("Marketplace interact with Order", () => {
                     )
             ).to.changeEtherBalance(user2, bidPrice.mul(-1));
 
-            const offerInfo = await orderManager.marketItemOrderOfOwners(marketItemId, user2.address);
-            expect(offerInfo.bidPrice).to.equal(bidPrice);
+            const currentWalletOrderId = await orderManager.getCurrentMarketItemOrderId();
+            const [marketItemOrder, orderInfo] = await orderManager.getOrderByMarketItemOrderId(currentWalletOrderId);
+            expect(orderInfo.bidPrice).to.equal(bidPrice);
         });
         it("ReOffer in market item", async () => {
             const marketItemId = await mkpManager.getCurrentMarketItem();
@@ -250,7 +230,6 @@ describe("Marketplace interact with Order", () => {
                     .connect(user2)
                     .makeMarketItemOrder(
                         marketItemId,
-                        AddressZero,
                         bidPrice,
                         endTime,
                         merkleTree.getHexProof(generateLeaf(user2.address)),
@@ -258,8 +237,9 @@ describe("Marketplace interact with Order", () => {
                     )
             ).to.changeEtherBalance(user2, balanceWillChange.mul(-1));
 
-            const offerInfo = await orderManager.marketItemOrderOfOwners(marketItemId, user2.address);
-            expect(offerInfo.bidPrice).to.equal(bidPrice);
+            const currentWalletOrderId = await orderManager.getCurrentMarketItemOrderId();
+            const [marketItemOrder, orderInfo] = await orderManager.getOrderByMarketItemOrderId(currentWalletOrderId);
+            expect(orderInfo.bidPrice).to.equal(bidPrice);
         });
     });
 
