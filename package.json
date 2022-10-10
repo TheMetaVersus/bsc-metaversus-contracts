@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "main": "hardhat.config.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy-testnet": "npx hardhat run scripts/deploy.js --network matic",
-    "coverage": "npx hardhat coverage --testfiles 'test/*.js'"
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "coverage": "npx hardhat coverage --testfiles 'test/*.js'",
+    "deploy-testnet": "npx hardhat run scripts/deploy.js --network testnet"
   },
   "dependencies": {
     "@chainlink/contracts": "0.4.1",
