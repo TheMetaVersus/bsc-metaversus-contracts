@@ -437,8 +437,8 @@ describe("Metaversus Manager:", () => {
             await collectionFactory.connect(user2).create(0, "NFT", "NFT", user1.address, 250);
             await collectionFactory.connect(user2).create(1, "NFT1155", "NFT1155", user1.address, 250);
 
-            collection_1 = await collectionFactory.getCollectionInfo(1);
-            collection_2 = await collectionFactory.getCollectionInfo(2);
+            collection_1 = await collectionFactory.collectionIdToCollectionInfos(1);
+            collection_2 = await collectionFactory.collectionIdToCollectionInfos(2);
 
             nft_721 = await TokenERC721.attach(collection_1.collectionAddress);
             nft_1155 = await TokenERC1155.attach(collection_2.collectionAddress);
