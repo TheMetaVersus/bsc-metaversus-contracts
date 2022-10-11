@@ -123,8 +123,6 @@ describe("Marketplace interact with Order", () => {
             ).to.changeTokenBalance(token, user2, ONE_ETHER.mul(-1));
         });
         it("ReOffer in wallet", async () => {
-            let order = await orderManager.getOrderByWalletOrderId(1);
-
             const current = await getCurrentTime();
             await token.connect(user2).approve(orderManager.address, ONE_ETHER.mul(10));
             await expect(() =>
@@ -215,7 +213,8 @@ describe("Marketplace interact with Order", () => {
             ).to.changeEtherBalance(user2, bidPrice.mul(-1));
 
             const currentWalletOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const [marketItemOrder, orderInfo] = await orderManager.getOrderByMarketItemOrderId(currentWalletOrderId);
+            const marketItemOrderInfo = await orderManager.marketItemOrders(currentWalletOrderId);
+            const orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
             expect(orderInfo.bidPrice).to.equal(bidPrice);
         });
         it("ReOffer in market item", async () => {
@@ -236,7 +235,8 @@ describe("Marketplace interact with Order", () => {
             ).to.changeEtherBalance(user2, balanceWillChange.mul(-1));
 
             const currentWalletOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const [marketItemOrder, orderInfo] = await orderManager.getOrderByMarketItemOrderId(currentWalletOrderId);
+            const marketItemOrderInfo = await orderManager.marketItemOrders(currentWalletOrderId);
+            const orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
             expect(orderInfo.bidPrice).to.equal(bidPrice);
         });
     });

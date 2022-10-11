@@ -275,9 +275,9 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setCollectionFactory(collectionFactory.address);
 
             await collectionFactory.connect(user1).create(0, "NFT", "NFT", user1.address, 250);
-            collection1 = await collectionFactory.getCollectionInfo(1);
+            collection1 = await collectionFactory.collectionIdToCollectionInfos(1);
             await collectionFactory.connect(user2).create(0, "NFT", "NFT", user2.address, 250);
-            collection2 = await collectionFactory.getCollectionInfo(2);
+            collection2 = await collectionFactory.collectionIdToCollectionInfos(2);
         });
 
         it("Only owner can set root hash", async () => {
@@ -414,9 +414,9 @@ describe("Marketplace Manager:", () => {
             await mkpManager.setCollectionFactory(collectionFactory.address);
 
             await collectionFactory.connect(user1).create(0, "NFT", "NFT", user1.address, 250);
-            collection1 = await collectionFactory.getCollectionInfo(1);
+            collection1 = await collectionFactory.collectionIdToCollectionInfos(1);
             await collectionFactory.connect(user2).create(0, "NFT", "NFT", user2.address, 250);
-            collection2 = await collectionFactory.getCollectionInfo(2);
+            collection2 = await collectionFactory.collectionIdToCollectionInfos(2);
         });
 
         it("should check royalty: ", async () => {

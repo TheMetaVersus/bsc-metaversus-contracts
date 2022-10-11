@@ -28,7 +28,7 @@ struct MarketItem {
     uint256 tokenId;                                // Token Id of NFT contract
     uint256 amount;                                 // Amount if token is ERC1155
     uint256 price;                                  // Price of this token
-    NFTHelper.Type nftType;                                // Type of this NFT
+    NFTHelper.Type nftType;                         // Type of this NFT
     address seller;                                 // The person who sell this NFT
     address buyer;                                  // The person who offer to this NFT
     MarketItemStatus status;                        // Status of this NFT at Marketplace
@@ -39,25 +39,26 @@ struct MarketItem {
 
 //  prettier-ignore
 struct WalletOrder {
-    address owner;                                  // The person who want to buy the Item at this Order
     address to;                                     // Seller
     address nftAddress;                             // NFT Contract Address of this asset
     uint256 tokenId;                                // Token Id of NFT contract
+    uint256 orderId;                                // id order
 }
 
 //  prettier-ignore
 struct MarketItemOrder {
-    address owner;                                  // The person who want to buy the Item at this Order
     uint256 marketItemId;                           // Id of MarketItem
+    uint256 orderId;                                // id order
 }
 
 //  prettier-ignore
 struct OrderInfo {
     uint256 id;                                     // id order
-    address owner;                                  // owner address
     uint256 amount;                                 // Amount to transfer
-    IERC20Upgradeable paymentToken;                 // Token to transfer
     uint256 bidPrice;                               // Bid price
     uint256 expiredTime;                            // Expired time
+    address owner;                                  // owner address
+    IERC20Upgradeable paymentToken;                 // Token to transfer
     OrderStatus status;                             // Status of order
+    bool isWallet;                                  // Check wallet
 }

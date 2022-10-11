@@ -200,10 +200,6 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
         return _ownerToCollectionAddress[_user].contains(_nft);
     }
 
-    function getCollectionInfo(uint256 _id) external view returns (CollectionInfo memory) {
-        return collectionIdToCollectionInfos[_id];
-    }
-
     function getCollectionByUser(address _user) external view returns (address[] memory) {
         return _ownerToCollectionAddress[_user].values();
     }

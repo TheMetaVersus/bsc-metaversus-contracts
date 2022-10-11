@@ -206,12 +206,12 @@ describe("CollectionFactory", () => {
             const collectionByUser = await collectionFactory.getCollectionByUser(owner.address);
             expect(collectionByUser.length).to.equal(2);
 
-            let collectionInfo = await collectionFactory.getCollectionInfo(1);
+            let collectionInfo = await collectionFactory.collectionIdToCollectionInfos(1);
             expect(collectionInfo.typeNft).to.equal(0);
             expect(collectionInfo.collectionAddress).to.equal(collectionByUser[0]);
             expect(collectionInfo.owner).to.equal(owner.address);
 
-            collectionInfo = await collectionFactory.getCollectionInfo(2);
+            collectionInfo = await collectionFactory.collectionIdToCollectionInfos(2);
             expect(collectionInfo.typeNft).to.equal(1);
             expect(collectionInfo.collectionAddress).to.equal(collectionByUser[1]);
             expect(collectionInfo.owner).to.equal(owner.address);
