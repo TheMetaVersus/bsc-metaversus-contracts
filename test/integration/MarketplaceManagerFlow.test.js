@@ -738,6 +738,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
             expect(user2Diff[token.address].delta).to.equal(INFO.user2.bid_price.mul(-1));
             expect(user3Diff[token.address].delta).to.equal(INFO.user3.bid_price.mul(-1));
             expect(user4Diff[token.address].delta).to.equal(INFO.user4.bid_price.mul(-1));
+
             expect(treasuryDiff[token.address].delta).to.equal(
                 INFO.user4.bid_price
                     .mul(975)

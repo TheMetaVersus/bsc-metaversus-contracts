@@ -12,7 +12,8 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 import "../interfaces/IMarketplaceManager.sol";
 import "../lib/NFTHelper.sol";
-import "../TransferableToken.sol";
+import "../lib/OrderHelper.sol";
+import "../Validatable.sol";
 
 /**
  *  @title  Dev Order Contract
@@ -22,7 +23,7 @@ import "../TransferableToken.sol";
  *  @notice This smart contract is the part of marketplace for exhange multiple non-fungiable token with standard ERC721 and ERC1155
  *          all action which user could sell, unsell, buy them.
  */
-contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Upgradeable, IOrder {
+contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IOrder {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
@@ -37,41 +38,9 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
     CountersUpgradeable.Counter private orderIds;
 
     /**
-     *  @notice Mapping from MarketItemId to to Order
-     *  @dev OrderID -> Order
-     */
-    mapping(uint256 => WalletOrder) public walletOrders;
-
-    /**
-     *  @notice Mapping from WalletId to OrderId
-     */
-    mapping(uint256 => uint256) public walletIdToOrderId;
-
-    /**
-     *  @notice Mapping from MarketItemId to to Order
-     *  @dev OrderID -> MarketItemOrder
-     */
-    mapping(uint256 => MarketItemOrder) public marketItemOrders;
-
-    /**
-     *  @notice MarketItemId -> OrderId
-     */
-    mapping(uint256 => uint256) public marketItemIdToOrderId;
-
-    /**
-     *  @notice OrderId -> OrderInfo
-     */
-    mapping(uint256 => OrderInfo) public orders;
-
-    /**
-     *  @notice Mapping from NFT address => token ID => To => Owner ==> OrderId
-     */
-    mapping(address => mapping(uint256 => mapping(address => mapping(address => uint256)))) public walletOrderOfOwners;
-
-    /**
      *  @notice Mapping from marketItemId => Owner ==> OrderId
      */
-    mapping(uint256 => mapping(address => uint256)) public marketItemOrderOfOwners;
+    OrderHelper.DBOrderMap DBOrderMap;
 
     event SoldAvailableItem(uint256 indexed marketItemId, uint256 price, uint256 startTime, uint256 endTime);
     event CanceledSell(uint256 indexed marketItemId);
@@ -84,7 +53,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         address buyer,
         MarketItemStatus status
     );
-    event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
+    // event RoyaltiesPaid(uint256 indexed tokenId, uint256 indexed value);
     event AcceptedOrder(bool isWallet, uint256 indexed orderId, uint256 indexed mappingId);
     event MakeOrder(
         uint256 indexed orderId,
@@ -96,9 +65,9 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         address paymentToken,
         uint256 bidPrice,
         uint256 expiredTime,
-        OrderStatus status
+        OrderHelper.OrderStatus status
     );
-    event UpdateOrder(address owner, uint256 orderId, uint256 amount, uint256 bidPrice, uint256 expiredTime);
+    // event UpdateOrder(address owner, uint256 orderId, uint256 amount, uint256 bidPrice, uint256 expiredTime);
     event CanceledOrder(bool isWallet, uint256 indexed orderId);
 
     modifier validMarketItemId(uint256 _id) {
@@ -110,7 +79,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *  @notice Initialize new logic contract.
      */
     function initialize(IMarketplaceManager _marketplace, IAdmin _admin) public initializer {
-        __TransferableToken_init(_admin);
+        __Validatable_init(_admin);
         __ReentrancyGuard_init();
         __ERC165_init();
 
@@ -143,7 +112,9 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         require(_time > block.timestamp, "Invalid order time");
         require(_to != _msgSender(), "User can not offer");
         // Check exist make Offer
-        OrderInfo storage existOrder = orders[walletOrderOfOwners[_nftAddress][_tokenId][_to][_msgSender()]];
+        OrderHelper.OrderInfo storage existOrder = DBOrderMap.orders[
+            DBOrderMap.walletIdToOrderId[DBOrderMap.walletOrderOfOwners[_nftAddress][_tokenId][_to][_msgSender()]]
+        ];
 
         require(NFTHelper.isERC721(_nftAddress) || NFTHelper.isERC1155(_nftAddress), "Invalid nft address");
 
@@ -155,35 +126,38 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         }
 
         // check for update
-        if (existOrder.bidPrice != 0 && existOrder.status == OrderStatus.PENDING) {
+        if (existOrder.bidPrice != 0 && existOrder.status == OrderHelper.OrderStatus.PENDING) {
             require(_paymentToken == existOrder.paymentToken, "Can not update payment token");
-            _updateOrder(existOrder, _bidPrice, _amount, _time);
+
+            OrderHelper._updateOrder(existOrder, _bidPrice, _amount, _time, _msgSender(), address(this));
         } else {
             walletOrderIds.increment();
             orderIds.increment();
             // Create Order
-            WalletOrder memory walletOrder = WalletOrder({
+            OrderHelper.WalletOrder memory walletOrder = OrderHelper.WalletOrder({
                 owner: _msgSender(),
                 to: _to,
                 nftAddress: _nftAddress,
                 tokenId: _tokenId
             });
-            OrderInfo memory orderInfo = OrderInfo({
+            OrderHelper.OrderInfo memory orderInfo = OrderHelper.OrderInfo({
                 id: orderIds.current(),
                 owner: _msgSender(),
                 amount: _amount,
                 paymentToken: _paymentToken,
                 bidPrice: _bidPrice,
                 expiredTime: _time,
-                status: OrderStatus.PENDING
+                status: OrderHelper.OrderStatus.PENDING
             });
-            walletOrderOfOwners[_nftAddress][_tokenId][_to][_msgSender()] = orderIds.current();
-            walletOrders[walletOrderIds.current()] = walletOrder;
 
-            walletIdToOrderId[walletOrderIds.current()] = orderIds.current();
-            orders[orderIds.current()] = orderInfo;
-
-            _transferToken(_paymentToken, _bidPrice, walletOrder.owner, address(this));
+            OrderHelper.makeWalletOrder(
+                walletOrderIds.current(),
+                orderIds.current(),
+                DBOrderMap,
+                orderInfo,
+                walletOrder
+            );
+            OrderHelper._transferToken(_paymentToken, _bidPrice, walletOrder.owner, address(this));
 
             // Emit Event
             emit MakeOrder(
@@ -225,37 +199,41 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             );
         }
 
-        OrderInfo storage existOrder = orders[marketItemOrderOfOwners[_marketItemId][_msgSender()]];
+        OrderHelper.OrderInfo storage existOrder = DBOrderMap.orders[
+            DBOrderMap.marketItemIdToOrderId[DBOrderMap.marketItemOrderOfOwners[_marketItemId][_msgSender()]]
+        ];
 
-        if (existOrder.bidPrice != 0 && existOrder.status == OrderStatus.PENDING) {
-            _updateOrder(existOrder, _bidPrice, marketItem.amount, _time);
+        if (existOrder.bidPrice != 0 && existOrder.status == OrderHelper.OrderStatus.PENDING) {
+            OrderHelper._updateOrder(existOrder, _bidPrice, marketItem.amount, _time, _msgSender(), address(this));
         } else {
             orderIds.increment();
             // Create Order
-            MarketItemOrder memory marketItemOrder = MarketItemOrder({
+            OrderHelper.MarketItemOrder memory marketItemOrder = OrderHelper.MarketItemOrder({
                 owner: _msgSender(),
                 marketItemId: _marketItemId
             });
 
-            OrderInfo memory orderInfo = OrderInfo({
+            OrderHelper.OrderInfo memory orderInfo = OrderHelper.OrderInfo({
                 id: orderIds.current(),
                 owner: _msgSender(),
                 amount: marketItem.amount,
                 paymentToken: marketItem.paymentToken,
                 bidPrice: _bidPrice,
                 expiredTime: _time,
-                status: OrderStatus.PENDING
+                status: OrderHelper.OrderStatus.PENDING
             });
 
             marketItemOrderIds.increment();
 
-            marketItemOrderOfOwners[_marketItemId][_msgSender()] = orderIds.current();
-            marketItemOrders[marketItemOrderIds.current()] = marketItemOrder;
+            OrderHelper.makeMarketItemOrder(
+                marketItemOrderIds.current(),
+                orderIds.current(),
+                DBOrderMap,
+                orderInfo,
+                marketItemOrder
+            );
 
-            marketItemIdToOrderId[marketItemOrderIds.current()] = orderIds.current();
-            orders[orderIds.current()] = orderInfo;
-
-            _transferToken(marketItem.paymentToken, _bidPrice, marketItemOrder.owner, address(this));
+            OrderHelper._transferToken(marketItem.paymentToken, _bidPrice, marketItemOrder.owner, address(this));
 
             // Emit Event
             emit MakeOrder(
@@ -285,12 +263,12 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         address _tokenTransfer;
         address _seller;
 
-        OrderInfo storage orderInfo = orders[marketItemIdToOrderId[_orderId]];
+        OrderHelper.OrderInfo storage orderInfo = DBOrderMap.orders[DBOrderMap.marketItemIdToOrderId[_orderId]];
         if (_isWallet) {
             require(_orderId <= walletOrderIds.current() && _orderId > 0, "Wallet order ID is not exist");
 
-            WalletOrder storage walletOrder = walletOrders[_orderId];
-            orderInfo = orders[walletIdToOrderId[_orderId]];
+            OrderHelper.WalletOrder storage walletOrder = DBOrderMap.walletOrders[_orderId];
+            orderInfo = DBOrderMap.orders[DBOrderMap.walletIdToOrderId[_orderId]];
 
             require(walletOrder.to == _msgSender(), "Not the seller");
 
@@ -304,7 +282,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
 
             // Get Market Item
             MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(
-                marketItemOrders[_orderId].marketItemId
+                DBOrderMap.marketItemOrders[_orderId].marketItemId
             );
             require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
             require(marketItem.seller == _msgSender(), "Not the seller");
@@ -312,7 +290,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             // Update Market Item
             marketItem.status = MarketItemStatus.SOLD;
             marketItem.buyer = orderInfo.owner;
-            marketplace.setMarketItemIdToMarketItem(marketItemOrders[_orderId].marketItemId, marketItem);
+            marketplace.setMarketItemIdToMarketItem(DBOrderMap.marketItemOrders[_orderId].marketItemId, marketItem);
 
             _nftContractAddress = marketItem.nftContractAddress;
             _tokenId = marketItem.tokenId;
@@ -321,11 +299,11 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
             _seller = marketItem.seller;
         }
 
-        require(orderInfo.status == OrderStatus.PENDING, "Order is not available");
+        require(orderInfo.status == OrderHelper.OrderStatus.PENDING, "Order is not available");
         require(orderInfo.expiredTime >= block.timestamp, "Order is expired");
 
         // Update Order
-        orderInfo.status = OrderStatus.ACCEPTED;
+        orderInfo.status = OrderHelper.OrderStatus.ACCEPTED;
         marketplace.setIsBuyer(orderInfo.owner);
 
         _calAndTransfer(
@@ -350,22 +328,22 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
      *  Emit {cancelOrder}
      */
     function cancelOrder(bool _isWallet, uint256 _orderId) external nonReentrant whenNotPaused {
-        OrderInfo storage orderInfo = orders[marketItemIdToOrderId[_orderId]];
+        OrderHelper.OrderInfo storage orderInfo = DBOrderMap.orders[DBOrderMap.marketItemIdToOrderId[_orderId]];
         if (_isWallet) {
             require(_orderId <= walletOrderIds.current() && _orderId > 0, "Wallet order ID is not exist");
-            orderInfo = orders[walletIdToOrderId[_orderId]];
+            orderInfo = DBOrderMap.orders[DBOrderMap.walletIdToOrderId[_orderId]];
         } else {
             require(_orderId <= marketItemOrderIds.current() && _orderId > 0, "Market item order ID is not exist");
         }
 
         require(orderInfo.owner == _msgSender(), "Not the owner of offer");
-        require(orderInfo.status == OrderStatus.PENDING, "Order is not available");
+        require(orderInfo.status == OrderHelper.OrderStatus.PENDING, "Order is not available");
 
         // Update order information
-        orderInfo.status = OrderStatus.CANCELED;
+        orderInfo.status = OrderHelper.OrderStatus.CANCELED;
 
         // Payback token to owner
-        _transferToken(orderInfo.paymentToken, orderInfo.bidPrice, address(this), orderInfo.owner);
+        OrderHelper._transferToken(orderInfo.paymentToken, orderInfo.bidPrice, address(this), orderInfo.owner);
 
         emit CanceledOrder(_isWallet, _orderId);
     }
@@ -498,7 +476,7 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         marketplace.setMarketItemIdToMarketItem(marketItemId, marketItem);
         marketplace.setIsBuyer(_msgSender());
         // Transfer token to contract
-        _transferToken(marketItem.paymentToken, marketItem.price, _msgSender(), address(this));
+        OrderHelper._transferToken(marketItem.paymentToken, marketItem.price, _msgSender(), address(this));
 
         _calAndTransfer(
             false,
@@ -523,41 +501,6 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         );
     }
 
-    /**
-     *  @notice Transfers royalties to the rightsowner if applicable and return the remaining amount
-     *  @param nftContractAddress  address contract of nft
-     *  @param tokenId  token id of nft
-     *  @param grossSaleValue  price of nft that is listed
-     *  @param paymentToken  token for payment
-     */
-    function _deduceRoyalties(
-        address nftContractAddress,
-        uint256 tokenId,
-        uint256 grossSaleValue,
-        IERC20Upgradeable paymentToken
-    ) private returns (uint256 netSaleAmount) {
-        // Get amount of royalties to pays and recipient
-        if (marketplace.isRoyalty(nftContractAddress)) {
-            (address royaltiesReceiver, uint256 royaltiesAmount) = marketplace.getRoyaltyInfo(
-                nftContractAddress,
-                tokenId,
-                grossSaleValue
-            );
-
-            // Deduce royalties from sale value
-            uint256 netSaleValue = grossSaleValue - royaltiesAmount;
-            // Transfer royalties to rightholder if not zero
-            if (royaltiesAmount > 0) {
-                _transferToken(paymentToken, royaltiesAmount, address(this), royaltiesReceiver);
-                // Broadcast royalties payment
-                emit RoyaltiesPaid(tokenId, royaltiesAmount);
-            }
-
-            return netSaleValue;
-        }
-        return grossSaleValue;
-    }
-
     function _calAndTransfer(
         bool _isWallet,
         uint256 _bidPrice,
@@ -574,11 +517,11 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         uint256 netSaleValue = _bidPrice - _listingFee;
 
         // Pay royalties from the amount actually received
-        netSaleValue = _deduceRoyalties(_nftContractAddress, _tokenId, netSaleValue, _paymentToken);
+        netSaleValue = OrderHelper._deduceRoyalties(_nftContractAddress, _tokenId, netSaleValue, _paymentToken);
 
         // Transfer Token from Buyer to Seller
-        _transferToken(_paymentToken, netSaleValue, address(this), _seller);
-        _transferToken(_paymentToken, _listingFee, address(this), admin.treasury());
+        OrderHelper._transferToken(_paymentToken, netSaleValue, address(this), _seller);
+        OrderHelper._transferToken(_paymentToken, _listingFee, address(this), admin.treasury());
 
         // Transfer NFT from Seller to Buyer
         if (_isWallet) {
@@ -586,33 +529,6 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         } else {
             marketplace.extTransferNFTCall(_nftContractAddress, _tokenId, _amount, _tokenTransfer, _buyer);
         }
-    }
-
-    function _updateOrder(
-        OrderInfo storage existOrder,
-        uint256 _bidPrice,
-        uint256 _amount,
-        uint256 _time
-    ) private {
-        bool isExcess = _bidPrice < existOrder.bidPrice;
-        uint256 excessAmount = isExcess ? existOrder.bidPrice - _bidPrice : _bidPrice - existOrder.bidPrice;
-
-        // Update
-        existOrder.bidPrice = _bidPrice;
-        existOrder.amount = _amount;
-        existOrder.expiredTime = _time;
-
-        // Transfer
-        if (excessAmount > 0) {
-            if (!isExcess) {
-                _transferToken(existOrder.paymentToken, excessAmount, _msgSender(), address(this));
-            } else {
-                _transferToken(existOrder.paymentToken, excessAmount, address(this), _msgSender());
-            }
-        }
-
-        // Emit Event
-        emit UpdateOrder(_msgSender(), existOrder.id, existOrder.amount, existOrder.bidPrice, existOrder.expiredTime);
     }
 
     /**
@@ -633,19 +549,23 @@ contract OrderManager is TransferableToken, ReentrancyGuardUpgradeable, ERC165Up
         return interfaceId == type(IOrder).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    function getOrderByWalletOrderId(uint256 waletOrderId) public view returns (WalletOrder memory, OrderInfo memory) {
-        WalletOrder memory walletOrder = walletOrders[waletOrderId];
-        OrderInfo memory orderInfo = orders[walletIdToOrderId[waletOrderId]];
+    function getOrderByWalletOrderId(uint256 waletOrderId)
+        public
+        view
+        returns (OrderHelper.WalletOrder memory, OrderHelper.OrderInfo memory)
+    {
+        OrderHelper.WalletOrder memory walletOrder = DBOrderMap.walletOrders[waletOrderId];
+        OrderHelper.OrderInfo memory orderInfo = DBOrderMap.orders[DBOrderMap.walletIdToOrderId[waletOrderId]];
         return (walletOrder, orderInfo);
     }
 
     function getOrderByMarketItemOrderId(uint256 marketItemOrderId)
         public
         view
-        returns (MarketItemOrder memory, OrderInfo memory)
+        returns (OrderHelper.MarketItemOrder memory, OrderHelper.OrderInfo memory)
     {
-        MarketItemOrder memory marketItemOrder = marketItemOrders[marketItemOrderId];
-        OrderInfo memory orderInfo = orders[marketItemIdToOrderId[marketItemOrderId]];
+        OrderHelper.MarketItemOrder memory marketItemOrder = DBOrderMap.marketItemOrders[marketItemOrderId];
+        OrderHelper.OrderInfo memory orderInfo = DBOrderMap.orders[DBOrderMap.marketItemIdToOrderId[marketItemOrderId]];
         return (marketItemOrder, orderInfo);
     }
 

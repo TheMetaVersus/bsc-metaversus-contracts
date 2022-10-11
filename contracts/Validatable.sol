@@ -17,6 +17,7 @@ import "./interfaces/IMetaCitizen.sol";
 import "./interfaces/IMetaversusManager.sol";
 import "./interfaces/Collection/ITokenERC721.sol";
 import "./interfaces/Collection/ITokenERC1155.sol";
+import "./lib/ErrorHelper.sol";
 
 contract Validatable is PausableUpgradeable {
     /**
@@ -62,99 +63,87 @@ contract Validatable is PausableUpgradeable {
 
     /*------------------Validate Contracts------------------*/
 
-    modifier validAdmin(IAdmin _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IAdmin).interfaceId),
-            "Invalid Admin contract"
-        );
-        _;
-    }
-
-    modifier validTokenMintERC721(ITokenMintERC721 _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenMintERC721).interfaceId),
-            "Invalid TokenMintERC721 contract"
-        );
-        _;
-    }
-
-    modifier validTokenMintERC1155(ITokenMintERC1155 _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenMintERC1155).interfaceId),
-            "Invalid TokenMintERC1155 contract"
-        );
-        _;
-    }
-
-    modifier validTreasury(ITreasury _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITreasury).interfaceId),
-            "Invalid Treasury contract"
-        );
-        _;
-    }
-
-    modifier validMarketplaceManager(IMarketplaceManager _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IMarketplaceManager).interfaceId),
-            "Invalid MarketplaceManager contract"
-        );
-        _;
-    }
-
-    modifier validCollectionFactory(ICollectionFactory _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ICollectionFactory).interfaceId),
-            "Invalid CollectionFactory contract"
-        );
-        _;
-    }
-
-    modifier validStakingPool(IStakingPool _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IStakingPool).interfaceId),
-            "Invalid StakingPool contract"
-        );
-        _;
-    }
-
     modifier validOrder(IOrder _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IOrder).interfaceId),
-            "Invalid Order contract"
-        );
-        _;
-    }
-
-    modifier validMetaCitizen(IOrder _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IMetaCitizen).interfaceId),
-            "Invalid MetaCitizen contract"
-        );
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IOrder).interfaceId)) {
+            revert ErrorHelper.InValidOrderContract(address(_account));
+        }
         _;
     }
 
     modifier validMetaversusManager(IMetaversusManager _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IMetaversusManager).interfaceId),
-            "Invalid MetaversusManager contract"
-        );
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IMetaversusManager).interfaceId)) {
+            revert ErrorHelper.InValidMetaversusManagerContract(address(_account));
+        }
         _;
     }
 
     modifier validTokenCollectionERC721(ITokenERC721 _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenERC721).interfaceId),
-            "Invalid TokenCollectionERC721 contract"
-        );
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenERC721).interfaceId)) {
+            revert ErrorHelper.InValidTokenCollectionERC721Contract(address(_account));
+        }
         _;
     }
 
     modifier validTokenCollectionERC1155(ITokenERC1155 _account) {
-        require(
-            ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenERC1155).interfaceId),
-            "Invalid TokenCollectionERC1155 contract"
-        );
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenERC1155).interfaceId)) {
+            revert ErrorHelper.InValidTokenCollectionERC1155Contract(address(_account));
+        }
+        _;
+    }
+    modifier validAdmin(IAdmin _account) {
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IAdmin).interfaceId)) {
+            revert ErrorHelper.InValidAdminContract(address(_account));
+        }
+        _;
+    }
+
+    modifier validTokenMintERC721(ITokenMintERC721 _account) {
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenMintERC721).interfaceId)) {
+            revert ErrorHelper.InValidTokenMintERC721Contract(address(_account));
+        }
+        _;
+    }
+
+    modifier validTokenMintERC1155(ITokenMintERC1155 _account) {
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITokenMintERC1155).interfaceId)) {
+            revert ErrorHelper.InValidTokenMintERC1155Contract(address(_account));
+        }
+
+        _;
+    }
+
+    modifier validTreasury(ITreasury _account) {
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ITreasury).interfaceId)) {
+            revert ErrorHelper.InValidTreasuryContract(address(_account));
+        }
+
+        _;
+    }
+    modifier validMarketplaceManager(IMarketplaceManager _account) {
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IMarketplaceManager).interfaceId)) {
+            revert ErrorHelper.InValidMarketplaceManagerContract(address(_account));
+        }
+        _;
+    }
+
+    modifier validCollectionFactory(ICollectionFactory _account) {
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(ICollectionFactory).interfaceId)) {
+            revert ErrorHelper.InValidCollectionFactoryContract(address(_account));
+        }
+        _;
+    }
+
+    modifier validStakingPool(IStakingPool _account) {
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IStakingPool).interfaceId)) {
+            revert ErrorHelper.InValidStakingPoolContract(address(_account));
+        }
+        _;
+    }
+
+    modifier validMetaCitizen(IOrder _account) {
+        if (!ERC165CheckerUpgradeable.supportsInterface(address(_account), type(IMetaCitizen).interfaceId)) {
+            revert ErrorHelper.InValidMetaCitizenContract(address(_account));
+        }
         _;
     }
 

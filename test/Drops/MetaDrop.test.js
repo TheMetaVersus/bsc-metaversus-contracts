@@ -9,7 +9,7 @@ const TOKEN_0_1 = parseEther("0.1");
 const ONE_DAY = 3600 * 24;
 const DEFAULT_SERVICE_NUMERATOR = 100000;
 
-describe("MetaDrop", () => {
+describe.only("MetaDrop", () => {
     beforeEach(async () => {
         const accounts = await ethers.getSigners();
         owner = accounts[0];
@@ -44,7 +44,15 @@ describe("MetaDrop", () => {
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, TOKEN_0_1, admin.address]);
 
-        MetaDrop = await ethers.getContractFactory("MetaDrop");
+        const Lib = await ethers.getContractFactory("OrderHelper");
+        const lib = await Lib.deploy();
+        await lib.deployed();
+
+        MetaDrop = await ethers.getContractFactory("MetaDrop", {
+            libraries: {
+                OrderHelper: lib.address,
+            },
+        });
         metaDrop = await upgrades.deployProxy(MetaDrop, [
             admin.address,
             DEFAULT_SERVICE_NUMERATOR, // 10%
@@ -58,7 +66,6 @@ describe("MetaDrop", () => {
         await token.connect(user2).approve(metaDrop.address, MaxUint256);
         await token.connect(user3).approve(metaDrop.address, MaxUint256);
 
-        // await metaCitizen.setPause(false);
         await metaCitizen.mint(user1.address);
         await metaCitizen.mint(user2.address);
         await metaCitizen.mint(user3.address);
@@ -80,14 +87,13 @@ describe("MetaDrop", () => {
     });
 
     describe("Deployment", async () => {
-        it("Should revert when admin contract is invalid", async () => {
+        it.only("Should revert when admin contract is invalid", async () => {
             await expect(upgrades.deployProxy(MetaDrop, [AddressZero, SERVICE_FEE_DENOMINATOR])).to.be.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${admin.address}")`
             );
-
             await expect(
                 upgrades.deployProxy(MetaDrop, [treasury.address, SERVICE_FEE_DENOMINATOR])
-            ).to.be.revertedWith("Invalid Admin contract");
+            ).to.be.revertedWith(`InValidAdminContract("${admin.address}")`);
         });
 
         it("Should throw error Service fee will exceed mint fee", async () => {

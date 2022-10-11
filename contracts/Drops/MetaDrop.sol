@@ -8,7 +8,8 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "./MetaDropStructs.sol";
-import "../TransferableToken.sol";
+import "../Validatable.sol";
+import "../lib/OrderHelper.sol";
 
 /**
  *  @title  MetaVersus NFT Drop
@@ -19,7 +20,7 @@ import "../TransferableToken.sol";
  *          can mint token with paying a fee. In case the tokens are not sold entirely, anyone can buy
  *          the remaining in public sale round with the higher price.
  */
-contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
+contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -70,7 +71,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
      *  @notice Initialize new logic contract.
      */
     function initialize(IAdmin _mvtsAdmin, uint256 _serviceFeeNumerator) public initializer validAdmin(_mvtsAdmin) {
-        __TransferableToken_init(_mvtsAdmin);
+        __Validatable_init(_mvtsAdmin);
         __ReentrancyGuard_init();
 
         mvtsAdmin = _mvtsAdmin;
@@ -246,7 +247,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
     ) private {
         IERC20Upgradeable paymentToken = IERC20Upgradeable(_drop.paymentToken);
 
-        if (isNativeToken(paymentToken)) {
+        if (OrderHelper.isNativeToken(paymentToken)) {
             require(msg.value == _mintFee, "Not enough fee");
         }
 
@@ -276,8 +277,8 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
         address _to,
         uint256 _amount
     ) private {
-        if (isNativeToken(_token)) {
-            transferNativeToken(_to, _amount);
+        if (OrderHelper.isNativeToken(_token)) {
+            OrderHelper.transferNativeToken(_to, _amount);
         } else {
             require(msg.value == 0, "Can not pay both token");
             _token.safeTransferFrom(_from, _to, _amount);
