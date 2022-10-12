@@ -270,9 +270,9 @@ describe("OrderManager:", () => {
                 .connect(user1)
                 .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            const orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            const currentOrderId = await orderManager.getCurrentOrderId();
+            const orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const walletOrderInfo = await orderManager.getWalletOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user1.address);
             expect(orderInfo.paymentToken).to.equal(token.address);
@@ -289,9 +289,8 @@ describe("OrderManager:", () => {
                 .connect(user1)
                 .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            const currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
 
@@ -307,7 +306,7 @@ describe("OrderManager:", () => {
                     endTime
                 );
 
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE.add(ETHER_100));
         });
 
@@ -316,9 +315,8 @@ describe("OrderManager:", () => {
                 .connect(user1)
                 .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            const currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
 
@@ -336,7 +334,7 @@ describe("OrderManager:", () => {
                     )
             ).to.changeTokenBalance(token, user1, ETHER_10);
 
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE.sub(ETHER_10));
         });
 
@@ -354,14 +352,14 @@ describe("OrderManager:", () => {
 
             expect(eth_after.sub(eth_before)).to.equal(BID_PRICE);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            const orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            const currentOrderId = await orderManager.getCurrentOrderId();
+            const orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const walletOrderInfo = await orderManager.getWalletOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user1.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
-             
+
             expect(walletOrderInfo.orderId).to.equal(orderInfo.id);
             expect(walletOrderInfo.to).to.equal(user2.address);
             expect(walletOrderInfo.nftAddress).to.equal(tokenMintERC721.address);
@@ -378,9 +376,8 @@ describe("OrderManager:", () => {
                     })
             ).to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
 
@@ -398,8 +395,8 @@ describe("OrderManager:", () => {
                         { value: ONE_ETHER }
                     )
             ).to.changeEtherBalances([user1], [ONE_ETHER.mul(-1)]);
-
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE.add(ONE_ETHER));
         });
 
@@ -412,9 +409,8 @@ describe("OrderManager:", () => {
                     })
             ).to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
             await expect(() =>
@@ -431,7 +427,8 @@ describe("OrderManager:", () => {
                     )
             ).to.changeEtherBalance(user1, ONE_ETHER);
 
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE.sub(ONE_ETHER));
         });
     });
@@ -561,9 +558,11 @@ describe("OrderManager:", () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
 
-            const currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            const orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+
+            let marketOrderId = await orderManager.getCurrentMarketItemOrderId();
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(token.address);
@@ -574,7 +573,8 @@ describe("OrderManager:", () => {
 
             await orderManager.connect(user2).cancelOrder(currentOrderId);
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
-            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(currentOrderId.add(1));
+
+            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(marketOrderId.add(1));
         });
 
         it("Should be ok when update buy offer more than amount", async () => {
@@ -602,9 +602,9 @@ describe("OrderManager:", () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
 
-            const currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(token.address);
@@ -617,7 +617,7 @@ describe("OrderManager:", () => {
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, BUY_BID_PRICE.add(ETHER_100), endTime, proof);
 
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BUY_BID_PRICE.add(ETHER_100));
         });
 
@@ -646,9 +646,9 @@ describe("OrderManager:", () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
 
-            const currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(token.address);
@@ -661,7 +661,7 @@ describe("OrderManager:", () => {
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, BUY_BID_PRICE.sub(ETHER_10), endTime, proof);
 
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BUY_BID_PRICE.sub(ETHER_10));
         });
 
@@ -702,9 +702,10 @@ describe("OrderManager:", () => {
             const balance_after = await ethers.provider.getBalance(orderManager.address);
             expect(balance_after.sub(balance_before)).to.equal(BUY_BID_PRICE);
 
-            let currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+            let marketOrderId = await orderManager.getCurrentMarketItemOrderId();
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -715,8 +716,8 @@ describe("OrderManager:", () => {
 
             await orderManager.connect(user2).cancelOrder(marketItemOrderInfo.orderId);
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -729,11 +730,11 @@ describe("OrderManager:", () => {
             await orderManager
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE });
-            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(currentOrderId.add(1));
+            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(marketOrderId.add(1));
 
-            currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -743,8 +744,9 @@ describe("OrderManager:", () => {
             expect(marketItemOrderInfo.orderId).to.equal(orderInfo.id);
             expect(marketItemOrderInfo.marketItemId).to.equal(marketItemId);
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId.sub(1));
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId.sub(1));
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId.sub(1));
             expect(orderInfo.status).to.equal(OrderStatus.CANCELED);
         });
 
@@ -776,10 +778,9 @@ describe("OrderManager:", () => {
                     .connect(user2)
                     .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE })
             ).to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
-
-            let currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -796,8 +797,8 @@ describe("OrderManager:", () => {
                     })
             ).to.changeEtherBalance(user2, ETHER_100.mul(-1));
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -836,9 +837,9 @@ describe("OrderManager:", () => {
                     .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE })
             ).to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
 
-            let currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -857,8 +858,8 @@ describe("OrderManager:", () => {
             const balance_after = await ethers.provider.getBalance(orderManager.address);
             expect(balance_before.sub(balance_after)).to.equal(ETHER_10);
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.bidPrice).to.equal(BUY_BID_PRICE.sub(ETHER_10));
@@ -897,9 +898,7 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when Invalid order id", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("Invalid order");
         });
 
         it("should be fail when Order is not available", async () => {
@@ -915,9 +914,13 @@ describe("OrderManager:", () => {
         it("Should be ok", async () => {
             await nftTest.connect(user1).approve(orderManager.address, 1);
 
-            const currentWalletOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentWalletOrderId);
-            const orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            // const currentOrderId = await orderManager.getCurrentOrderId();
+            // const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
+            // const orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const walletOrderInfo = await orderManager.getWalletOrderByOrderId(currentOrderId);
+
             const listingFee = await mkpManager.getListingFee(orderInfo.bidPrice);
 
             // pay listing fee
@@ -988,14 +991,10 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("Invalid order");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).acceptOrder(orderId.add(1))).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).acceptOrder(orderId.add(1))).to.revertedWith("Invalid order");
         });
 
         it("should be fail when not the seller", async () => {
@@ -1005,9 +1004,7 @@ describe("OrderManager:", () => {
         it("should be fail when Market Item is not available", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user1).cancelSell(marketItemId);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith(
-                "Market Item is not available"
-            );
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Market Item is not available");
         });
 
         it("should be fail when Order is not available", async () => {
@@ -1021,9 +1018,9 @@ describe("OrderManager:", () => {
         });
 
         it("Should be ok", async () => {
-            let currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentMarketItemOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             let listingFee = await mkpManager.getListingFee(orderInfo.bidPrice);
 
@@ -1182,14 +1179,10 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith("Invalid order");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith("Invalid order");
         });
 
         it("should be fail when Invalid bidder", async () => {
@@ -1208,19 +1201,16 @@ describe("OrderManager:", () => {
                 BID_PRICE
             );
 
-            let walletOrderInfo = await orderManager.walletOrders(1);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            let orderInfo = await orderManager.getOrderByOrderId(1);
+            let walletOrderInfo = await orderManager.getWalletOrderByOrderId(1);
 
             expect(walletOrderInfo.orderId).to.equal(orderInfo.id);
             expect(orderInfo.status).to.equal(OrderStatus.CANCELED);
 
-            await expect(() => orderManager.connect(user3).cancelOrder(2)).to.changeEtherBalance(
-                user3,
-                BID_PRICE
-            );
+            await expect(() => orderManager.connect(user3).cancelOrder(2)).to.changeEtherBalance(user3, BID_PRICE);
 
-            walletOrderInfo = await orderManager.walletOrders(2);
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(2);
+            walletOrderInfo = await orderManager.getWalletOrderByOrderId(2);
 
             expect(walletOrderInfo.orderId).to.equal(orderInfo.id);
             expect(orderInfo.status).to.equal(OrderStatus.CANCELED);
@@ -1271,25 +1261,22 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith("Invalid order");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith("Invalid order");
         });
 
         it("Should be ok", async () => {
-            const currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            await expect(() => orderManager.connect(user2).cancelOrder(currentOrderId)).to.changeTokenBalance(
+                token,
+                user2,
+                BUY_BID_PRICE
+            );
 
-            await expect(() =>
-                orderManager.connect(user2).cancelOrder(currentMarketItemOrderId)
-            ).to.changeTokenBalance(token, user2, BUY_BID_PRICE);
-
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentMarketItemOrderId);
-            const orderAfter = await orderManager.orders(marketItemOrderInfo.orderId);
+            let orderAfter = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderAfter.paymentToken).to.equal(token.address);
             expect(orderAfter.bidPrice).to.equal(BUY_BID_PRICE);
@@ -1315,18 +1302,20 @@ describe("OrderManager:", () => {
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE });
 
-            let currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
+            let currentOrderId = await orderManager.getCurrentOrderId();
 
-            await expect(() =>
-                orderManager.connect(user2).cancelOrder(currentMarketItemOrderId)
-            ).to.changeEtherBalance(user2, BUY_BID_PRICE);
+            await expect(() => orderManager.connect(user2).cancelOrder(currentOrderId)).to.changeEtherBalance(
+                user2,
+                BUY_BID_PRICE
+            );
 
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentMarketItemOrderId);
-            let orderAfter = await orderManager.orders(marketItemOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            let orderAfter = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderAfter.paymentToken).to.equal(AddressZero);
             expect(orderAfter.bidPrice).to.equal(BUY_BID_PRICE);
-            expect(marketItemOrderInfo.marketItemId).to.equal(currentMarketItemOrderId);
+            expect(marketItemOrderInfo.marketItemId).to.equal(currentOrderId);
 
             await tokenMintERC1155.mint(user1.address, 100, "");
             await tokenMintERC1155.connect(user1).setApprovalForAll(mkpManager.address, true);
@@ -1346,18 +1335,20 @@ describe("OrderManager:", () => {
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, ONE_ETHER.mul(10), endTime, proof, { value: ONE_ETHER.mul(10) });
 
-            currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
+            currentOrderId = await orderManager.getCurrentOrderId();
 
-            await expect(() =>
-                orderManager.connect(user2).cancelOrder(currentMarketItemOrderId)
-            ).to.changeEtherBalance(user2, ONE_ETHER.mul(10));
+            await expect(() => orderManager.connect(user2).cancelOrder(currentOrderId)).to.changeEtherBalance(
+                user2,
+                ONE_ETHER.mul(10)
+            );
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentMarketItemOrderId);
-            orderAfter = await orderManager.orders(marketItemOrderInfo.orderId);
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+
+            orderAfter = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderAfter.paymentToken).to.equal(AddressZero);
             expect(orderAfter.bidPrice).to.equal(ONE_ETHER.mul(10));
-            expect(marketItemOrderInfo.marketItemId).to.equal(currentMarketItemOrderId);
+            expect(marketItemOrderInfo.marketItemId).to.equal(currentOrderId);
         });
     });
 
