@@ -68,10 +68,7 @@ contract MetaCitizen is
         __ReentrancyGuard_init();
         __ERC721_init("MetaversusWorld Citizen", "MWC");
 
-        require(
-            address(_paymentToken) != address(0) && admin.isPermittedPaymentToken(_paymentToken),
-            "Invalid payment token"
-        );
+        ErrorHelper._checkAmountOfStake(_admin, _paymentToken);
 
         paymentToken = _paymentToken;
         mintFee = _mintFee;
@@ -100,7 +97,7 @@ contract MetaCitizen is
      *  @param  _newToken new payment token need to replace
      */
     function setPaymentToken(IERC20Upgradeable _newToken) external onlyAdmin {
-        require(address(_newToken) != address(0) && admin.isPermittedPaymentToken(_newToken), "Invalid payment token");
+        ErrorHelper._checkAmountOfStake(admin, _newToken);
         address oldToken = address(paymentToken);
         paymentToken = IERC20Upgradeable(_newToken);
         emit SetPaymentToken(oldToken, address(_newToken));
@@ -125,8 +122,7 @@ contract MetaCitizen is
      *  @dev    Anyone can call this function.
      */
     function buy() external nonReentrant whenNotPaused {
-        require(balanceOf(_msgSender()) == 0, "Already have one");
-
+        ErrorHelper._checkAlreadyOwn(balanceOf(_msgSender()));
         _tokenCounter.increment();
         uint256 tokenId = _tokenCounter.current();
 
@@ -145,8 +141,7 @@ contract MetaCitizen is
      *  @param  _to address that be minted to
      */
     function mint(address _to) external onlyAdmin notZeroAddress(_to) whenNotPaused {
-        require(balanceOf(_to) == 0, "Already have one");
-
+        ErrorHelper._checkAlreadyOwn(balanceOf(_to));
         _tokenCounter.increment();
         uint256 tokenId = _tokenCounter.current();
 
@@ -159,7 +154,9 @@ contract MetaCitizen is
      * @dev See {IERC721Metadata-tokenURI}.
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "URI query for nonexistent token");
+        if (!_exists(tokenId)) {
+            revert ErrorHelper.URIQueryNonExistToken();
+        }
         return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, ".json")) : ".json";
     }
 
@@ -193,7 +190,9 @@ contract MetaCitizen is
     ) internal override {
         super._beforeTokenTransfer(from, to, tokenId);
 
-        require((from == address(0) || to == address(0)) && from != to, "Can not be transfered");
+        if (!((from == address(0) || to == address(0)) && from != to)) {
+            revert ErrorHelper.CanNotBeTransfered();
+        }
     }
 
     /**

@@ -110,7 +110,9 @@ contract MarketPlaceManager is
     event SetCollectionFactory(ICollectionFactory indexed oldValue, ICollectionFactory indexed newValue);
 
     modifier validId(uint256 _id) {
-        require(_id <= _marketItemIds.current() && _id > 0, "ERROR: market ID is not exist !");
+        if (!(_id <= _marketItemIds.current() && _id > 0)) {
+            revert ErrorHelper.InvalidMarketItemId();
+        }
         _;
     }
 
@@ -125,16 +127,17 @@ contract MarketPlaceManager is
     }
 
     modifier onlyOrder() {
-        require(_msgSender() == address(orderManager), "Caller is not an order manager");
+        if (_msgSender() != address(orderManager)) {
+            revert ErrorHelper.CallerIsNotOrderManager();
+        }
         _;
     }
 
     modifier onlyMetaversusOrOrder() {
         // solhint-disable-next-line reason-string
-        require(
-            _msgSender() == address(metaversusManager) || _msgSender() == address(orderManager),
-            "Caller is not MTVS manager or Order"
-        );
+        if (_msgSender() != address(metaversusManager) && _msgSender() != address(orderManager)) {
+            revert ErrorHelper.CallerIsNotOrderManagerOrMTVSManager();
+        }
         _;
     }
 
@@ -207,9 +210,10 @@ contract MarketPlaceManager is
         IERC20Upgradeable _paymentToken,
         bytes calldata _rootHash
     ) external onlyMetaversusOrOrder {
-        require(admin.isPermittedPaymentToken(_paymentToken), "Payment token is not supported");
+        ErrorHelper._checkPermittedPaymentToken(address(admin), _paymentToken);
+
         NFTHelper.Type nftType = NFTHelper.getType(_nftAddress);
-        require(block.timestamp <= _startTime && _startTime < _endTime, "Invalid time");
+        ErrorHelper._checkValidTimeForCreate(_startTime, _endTime);
 
         _marketItemIds.increment();
 
@@ -246,8 +250,7 @@ contract MarketPlaceManager is
     }
 
     function setNewRootHash(address nftAddress, bytes calldata newRoot) external nonReentrant {
-        require(collectionFactory.checkCollectionOfUser(_msgSender(), nftAddress), "User is not create collection");
-
+        ErrorHelper._checkUserCreateCollection(collectionFactory, nftAddress);
         nftAddressToRootHash[nftAddress] = bytes32(newRoot);
 
         emit SetNewRootHash(nftAddress, newRoot);
@@ -406,8 +409,7 @@ contract MarketPlaceManager is
         uint256 _marketItemId,
         bytes32[] memory _proof,
         address _account
-    ) external view returns (bool) {
-        require(_marketItemId > 0, "Invalid market item ID");
+    ) external view validId(_marketItemId) returns (bool) {
         bytes32 leaf = keccak256(abi.encodePacked(_account));
         bytes32 root = nftAddressToRootHash[marketItemIdToMarketItem[_marketItemId].nftContractAddress];
         return MerkleProofUpgradeable.verify(_proof, bytes32(root), leaf);

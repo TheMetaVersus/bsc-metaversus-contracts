@@ -50,8 +50,7 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
         uint256 currentId = _poolCounter.current();
         bytes32 salt = bytes32(currentId);
         IStakingPool pool = IStakingPool(ClonesUpgradeable.cloneDeterministic(address(template), salt));
-        require(address(pool) != address(0), "ERROR: Non Exist Pool, Please check your transfer");
-
+        ErrorHelper._checkValidClone(address(pool));
         // store
         PoolInfo memory newInfo = PoolInfo(salt, address(pool));
         poolIdToPoolInfos[currentId] = newInfo;

@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "./ErrorHelper.sol";
 
 library TransferHelper {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -18,7 +19,9 @@ library TransferHelper {
     ) internal {
         if (_to == address(this)) {
             if (address(_paymentToken) == address(0)) {
-                require(msg.value == _amount, "Failed to send into contract");
+                if (msg.value != _amount) {
+                    revert ErrorHelper.FailToSendIntoContract();
+                }
             } else {
                 IERC20Upgradeable(_paymentToken).safeTransferFrom(_from, _to, _amount);
             }
@@ -37,7 +40,9 @@ library TransferHelper {
     function _transferNativeToken(address _to, uint256 _amount) internal {
         // solhint-disable-next-line indent
         (bool success, ) = _to.call{ value: _amount }("");
-        require(success, "SafeTransferNative: transfer failed");
+        if (!success) {
+            revert ErrorHelper.TransferNativeFail();
+        }
     }
 
     /**

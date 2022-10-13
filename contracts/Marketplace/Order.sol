@@ -15,6 +15,7 @@ import "../lib/NFTHelper.sol";
 import "../lib/TransferHelper.sol";
 import "../lib/OrderHelper.sol";
 import "../Validatable.sol";
+import "../lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Order Contract
@@ -70,7 +71,16 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
     );
     event CanceledOrder(uint256 indexed orderId);
     modifier validMarketItemId(uint256 _id) {
-        require(_id <= marketplace.getCurrentMarketItem() && _id > 0, "Market ID is not exist");
+        if (!(_id <= marketplace.getCurrentMarketItem() && _id > 0)) {
+            revert ErrorHelper.InvalidMarketItemId();
+        }
+        _;
+    }
+
+    modifier validOrderId(uint256 _id) {
+        if (!(_id <= orderIds.current() && _id > 0)) {
+            revert ErrorHelper.InvalidOrderId();
+        }
         _;
     }
 
@@ -108,25 +118,24 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         validWallet(_to)
         notZero(_amount)
     {
-        require(_time > block.timestamp, "Invalid order time");
-        require(_to != _msgSender(), "User can not offer");
+        ErrorHelper._checkValidOrderTime(_time);
+        ErrorHelper._checkUserCanOffer(_to);
+        ErrorHelper._checkValidNFTAddress(_nftAddress);
+
+        if (NFTHelper.isERC721(_nftAddress)) {
+            ErrorHelper._checkValidOwnerOf721(_nftAddress, _tokenId, _to);
+            ErrorHelper._checkValidAmountOf721(_amount);
+        } else if (NFTHelper.isERC1155(_nftAddress)) {
+            ErrorHelper._checkValidOwnerOf1155(_nftAddress, _tokenId, _to, _amount);
+        }
+
         // Check exist make Offer
         OrderHelper.OrderInfo storage existOrder = DBOrderMap.orders[
             DBOrderMap.walletOrderOfOwners[_nftAddress][_tokenId][_to][_msgSender()]
         ];
-
-        require(NFTHelper.isERC721(_nftAddress) || NFTHelper.isERC1155(_nftAddress), "Invalid nft address");
-
-        if (NFTHelper.isERC721(_nftAddress)) {
-            require(IERC721Upgradeable(_nftAddress).ownerOf(_tokenId) == _to, "Invalid token id");
-            require(_amount == 1, "Invalid amount");
-        } else if (NFTHelper.isERC1155(_nftAddress)) {
-            require(IERC1155Upgradeable(_nftAddress).balanceOf(_to, _tokenId) >= _amount, "Invalid token id");
-        }
-
         // check for update
         if (existOrder.bidPrice != 0 && existOrder.status == OrderHelper.OrderStatus.PENDING) {
-            require(_paymentToken == existOrder.paymentToken, "Can not update payment token");
+            ErrorHelper._checkCanUpdatePaymentToken(address(_paymentToken), address(existOrder.paymentToken));
             OrderHelper._updateOrder(existOrder, _bidPrice, _amount, _time);
         } else {
             walletOrderIds.increment();
@@ -186,17 +195,15 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 _time,
         bytes32[] memory _proof
     ) external payable nonReentrant whenNotPaused validMarketItemId(_marketItemId) notZero(_bidPrice) {
-        require(_time > block.timestamp, "Invalid order time");
+        ErrorHelper._checkValidOrderTime(_time);
         // Check Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(_marketItemId);
-        require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
-        require(marketItem.startTime <= block.timestamp && block.timestamp <= marketItem.endTime, "Not the order time");
-        require(marketItem.seller != _msgSender(), "User can not offer");
+        ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
+        ErrorHelper._checkInOrderTime(marketItem.startTime, marketItem.endTime);
+        ErrorHelper._checkUserCanOffer(marketItem.seller, _msgSender());
+
         if (marketplace.isPrivate(_marketItemId)) {
-            require(
-                admin.isOwnedMetaCitizen(_msgSender()) && marketplace.verify(_marketItemId, _proof, _msgSender()),
-                "Require own MetaCitizen NFT"
-            );
+            ErrorHelper._checkInWhiteListAndOwnNFT(address(admin), address(marketplace), _marketItemId, _proof);
         }
 
         OrderHelper.OrderInfo storage existOrder = DBOrderMap.orders[
@@ -257,9 +264,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *
      * * Emit {acceptOrder}
      */
-    function acceptOrder(uint256 _orderId) external nonReentrant whenNotPaused {
-        require(_orderId <= orderIds.current() && _orderId > 0, "Invalid order");
-
+    function acceptOrder(uint256 _orderId) external nonReentrant whenNotPaused validOrderId(_orderId) {
         address _nftContractAddress;
         uint256 _tokenId;
         uint256 _amount;
@@ -272,8 +277,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                 DBOrderMap.orderIdToItemId[orderInfo.id]
             ];
 
-            require(walletOrder.to == _msgSender(), "Not the seller");
-
+            ErrorHelper._checkIsSeller(walletOrder.to);
             _nftContractAddress = walletOrder.nftAddress;
             _tokenId = walletOrder.tokenId;
             _amount = orderInfo.amount;
@@ -284,9 +288,9 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(
                 DBOrderMap.marketItemOrders[DBOrderMap.orderIdToItemId[orderInfo.id]].marketItemId
             );
-            require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
-            require(marketItem.seller == _msgSender(), "Not the seller");
 
+            ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
+            ErrorHelper._checkIsSeller(marketItem.seller);
             // Update Market Item
             marketItem.status = MarketItemStatus.SOLD;
             marketItem.buyer = orderInfo.owner;
@@ -302,9 +306,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             _seller = marketItem.seller;
         }
 
-        require(orderInfo.status == OrderHelper.OrderStatus.PENDING, "Order is not available");
-        require(orderInfo.expiredTime >= block.timestamp, "Order is expired");
-
+        ErrorHelper._checkInOrderTime(orderInfo.expiredTime);
+        ErrorHelper._checkAvailableOrder(uint256(orderInfo.status), uint256(OrderHelper.OrderStatus.PENDING));
         // Update Order
         orderInfo.status = OrderHelper.OrderStatus.ACCEPTED;
         marketplace.setIsBuyer(orderInfo.owner);
@@ -330,14 +333,12 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *
      *  Emit {cancelOrder}
      */
-    function cancelOrder(uint256 _orderId) external nonReentrant whenNotPaused {
-        require(_orderId <= orderIds.current() && _orderId > 0, "Invalid order");
+    function cancelOrder(uint256 _orderId) external nonReentrant whenNotPaused validOrderId(_orderId) {
         // OrderHelper._cancelOffer(DBOrderMap, _orderId, _msgSender());
         OrderHelper.OrderInfo storage orderInfo = DBOrderMap.orders[_orderId];
 
-        require(orderInfo.owner == _msgSender(), "Not the owner of offer");
-        require(orderInfo.status == OrderHelper.OrderStatus.PENDING, "Order is not available");
-
+        ErrorHelper._checkOwnerOfOrder(orderInfo.owner);
+        ErrorHelper._checkAvailableOrder(uint256(orderInfo.status), uint256(OrderHelper.OrderStatus.PENDING));
         // Update order information
         orderInfo.status = OrderHelper.OrderStatus.CANCELED;
 
@@ -359,10 +360,11 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 endTime
     ) external nonReentrant whenNotPaused validMarketItemId(marketItemId) notZero(price) {
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemId);
-        require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
-        require(marketItem.seller == _msgSender(), "You are not the seller");
-        require(marketItem.endTime < block.timestamp, "Not expired yet");
-        require(endTime > block.timestamp, "Invalid end time");
+
+        ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
+        ErrorHelper._checkIsSeller(marketItem.seller);
+        ErrorHelper._checkExpired(marketItem.endTime);
+        ErrorHelper._checkValidEndTime(endTime);
 
         marketItem.price = price;
         marketItem.status = MarketItemStatus.LISTING;
@@ -388,11 +390,10 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         IERC20Upgradeable _paymentToken,
         bytes calldata _rootHash
     ) external nonReentrant whenNotPaused validPaymentToken(_paymentToken) notZero(_price) notZero(_amount) {
-        require(NFTHelper.isTokenExist(_nftAddress, _tokenId), "Token is not existed");
-
+        ErrorHelper._checkExistToken(_nftAddress, _tokenId);
         NFTHelper.Type nftType = NFTHelper.getType(_nftAddress);
         if (nftType == NFTHelper.Type.ERC721) {
-            require(_amount == 1, "Invalid amount");
+            ErrorHelper._checkValidAmountOf721(_amount);
         }
 
         // transfer nft to contract for selling
@@ -421,9 +422,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      */
     function cancelSell(uint256 marketItemId) external nonReentrant whenNotPaused validMarketItemId(marketItemId) {
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemId);
-        require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
-        require(marketItem.seller == _msgSender(), "You are not the seller");
-
+        ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
+        ErrorHelper._checkIsSeller(marketItem.seller);
         // Update Market Item
         marketItem.status = MarketItemStatus.CANCELED;
         marketplace.setMarketItemIdToMarketItem(marketItemId, marketItem);
@@ -455,18 +455,12 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         validMarketItemId(marketItemId)
     {
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemId);
-        require(marketItem.status == MarketItemStatus.LISTING, "Market Item is not available");
-        require(_msgSender() != marketItem.seller, "Can not buy your own NFT");
-        require(
-            marketItem.startTime <= block.timestamp && block.timestamp <= marketItem.endTime,
-            "Market Item is not selling"
-        );
+        ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
+        ErrorHelper._checkOwnerOfMarketItem(marketItem.seller);
+        ErrorHelper._checkMarketItemInSelling(marketItem.startTime, marketItem.endTime);
         // Only check when market item is in private collection
         if (marketplace.isPrivate(marketItemId)) {
-            require(
-                marketplace.verify(marketItemId, proof, _msgSender()) && admin.isOwnedMetaCitizen(_msgSender()),
-                "Sender is not in whitelist or not own meta citizen NFT"
-            );
+            ErrorHelper._checkInWhiteListAndOwnNFT(address(admin), address(marketplace), marketItemId, proof);
         }
 
         // update new buyer for martket item

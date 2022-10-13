@@ -11,6 +11,7 @@ import "../interfaces/IMarketplaceManager.sol";
 import "../interfaces/IPancakeRouter.sol";
 import "../interfaces/IStakingPool.sol";
 import "../Validatable.sol";
+import "../lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Staking Pool Contract
@@ -162,9 +163,9 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @notice Request withdraw before unstake activity
      */
     function requestUnstake() external nonReentrant whenNotPaused returns (uint256) {
-        require(startTime + poolDuration < block.timestamp && startTime != 0, "Not allow to unstake now");
+        ErrorHelper._checkUnstakeTime(startTime, poolDuration);
         UserInfo storage user = users[_msgSender()];
-        require(!user.lazyUnstake.isRequested, "Already requested");
+        ErrorHelper._checkIsRequested(user.lazyUnstake.isRequested);
         user.lazyUnstake.isRequested = true;
         user.lazyUnstake.unlockedTime = block.timestamp + pendingTime;
 
@@ -176,9 +177,9 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @notice Request claim before unstake activity
      */
     function requestClaim() external nonReentrant whenNotPaused returns (uint256) {
-        require((startTime + poolDuration > block.timestamp) && startTime != 0, "Not allow to claim now");
+        ErrorHelper._checkClaimTime(startTime, poolDuration);
         UserInfo storage user = users[_msgSender()];
-        require(!user.lazyClaim.isRequested, "Already requested");
+        ErrorHelper._checkIsRequested(user.lazyClaim.isRequested);
 
         user.lazyClaim.isRequested = true;
         user.lazyClaim.unlockedTime = block.timestamp + pendingTime;
@@ -193,10 +194,11 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @dev    Only user has NFT can call this function.
      */
     function stake(uint256 _amount) external notZero(_amount) nonReentrant whenNotPaused {
-        require(block.timestamp > startTime, "Not time for stake");
-        require(getAmountOutWith(_amount) >= 5e20, "Must stake more than 500$");
-        require(startTime + poolDuration > block.timestamp, "Staking pool has expired");
-        require(IMarketplaceManager(mkpManager).wasBuyer(_msgSender()), "Must buy a MTVS NFT");
+        ErrorHelper._checkTimeForStake(startTime, poolDuration);
+        ErrorHelper._checkAmountOfStake(getAmountOutWith(_amount));
+        if (!IMarketplaceManager(mkpManager).wasBuyer(_msgSender())) {
+            revert ErrorHelper.MustBuyNFTInMarketplaceFirst();
+        }
         // calculate pending rewards of staked amount before
         UserInfo storage user = users[_msgSender()];
         if (user.totalAmount > 0) {
@@ -222,9 +224,8 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      */
     function claim() external nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
-        require(startTime + poolDuration >= block.timestamp, "Staking pool has expired");
-        require(user.lazyClaim.isRequested, "Must request claim first");
-
+        ErrorHelper._checkClaimTime(startTime, poolDuration);
+        ErrorHelper._checkIsRequested(user.lazyClaim.isRequested);
         // update status of request
         user.lazyClaim.isRequested = false;
         if (user.totalAmount > 0) {
@@ -248,13 +249,10 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      */
     function unstake(uint256 _amount) external notZero(_amount) nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
-        require(startTime + poolDuration <= block.timestamp, "Staking pool has not expired yet");
-        require(
-            user.lazyUnstake.isRequested && user.lazyUnstake.unlockedTime <= block.timestamp,
-            "Must request unstake first"
-        );
-        require(user.totalAmount >= _amount, "Exceeds staked amount");
 
+        ErrorHelper._checkUnstakeTime(startTime, poolDuration);
+        ErrorHelper._checkMustRequested(user.lazyUnstake.isRequested, user.lazyUnstake.unlockedTime);
+        ErrorHelper._checkExceed(user.totalAmount, _amount);
         // Auto claim
         uint256 pending = pendingRewards(_msgSender());
 
@@ -317,7 +315,9 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
      *  @notice Set acceptable Lost of staking pool.
      */
     function setAcceptableLost(uint256 lost) external onlyAdmin {
-        require(lost <= 100, "ERROR: Over limit !");
+        if (lost > 100) {
+            revert ErrorHelper.OverLimit();
+        }
         acceptableLost = lost;
         emit SetAcceptableLost(acceptableLost);
     }

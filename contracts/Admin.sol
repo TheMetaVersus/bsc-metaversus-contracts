@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 
 import "./interfaces/IAdmin.sol";
 import "./interfaces/IMetaCitizen.sol";
+import "./lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Admin Contract
@@ -50,13 +51,15 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
     event SetPermittedNFT(address _nftAddress, bool allow);
     event SetTreasury(address indexed oldTreasury, address indexed newTreasury);
     event RegisterTreasury(address indexed account);
-    event RegisterMetaCitizen (address indexed account);
+    event RegisterMetaCitizen(address indexed account);
 
     /**
      *  @notice Initialize new logic contract.
      */
     function initialize(address _owner) public initializer {
-        require(_owner != address(0) && !AddressUpgradeable.isContract(_owner), "Invalid wallet");
+        if (!(_owner != address(0) && !AddressUpgradeable.isContract(_owner))) {
+            revert ErrorHelper.InvalidWallet(_owner);
+        }
 
         __Ownable_init();
         __ERC165_init();
@@ -70,7 +73,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      *  @dev    Register can only be called once
      */
     function registerTreasury() external {
-        require(treasury == address(0), "Treasury has been registered");
+        ErrorHelper._checkRegister(treasury);
         treasury = _msgSender();
         emit RegisterTreasury(treasury);
     }
@@ -81,7 +84,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      *  @dev    Register can only be called once
      */
     function registerMetaCitizen() external {
-        require(metaCitizen == address(0), "MetaCitizen has been registered");
+        ErrorHelper._checkRegister(metaCitizen);
         metaCitizen = _msgSender();
         emit RegisterMetaCitizen(metaCitizen);
     }
@@ -95,8 +98,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      *  @param  _allow     Status of allowance (true is admin | false is banned).
      */
     function setAdmin(address _account, bool _allow) external onlyOwner {
-        require(_account != address(0), "Invalid admin address");
-
+        ErrorHelper._checkValidAddress(_account);
         admins[_account] = _allow;
         emit SetAdmin(_account, _allow);
     }
@@ -109,7 +111,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      *  @param  _citizen    Address of Meta Citizen contract
      */
     function setMetaCitizen(address _citizen) external onlyOwner {
-        require(_citizen != address(0), "Invalid Meta Citizen address");
+        ErrorHelper._checkValidAddress(_citizen);
 
         address oldMetaCitizen = metaCitizen;
         metaCitizen = _citizen;
@@ -124,8 +126,7 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      *  @param  _treasury  Address of Treasury contract.
      */
     function setTreasury(address _treasury) external onlyOwner {
-        require(_treasury != address(0), "Invalid Treasury address");
-
+        ErrorHelper._checkValidAddress(_treasury);
         address oldTreasury = treasury;
         treasury = _treasury;
 
@@ -141,7 +142,9 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      *  @param  _allow          Status of allowance (true is permitted | false is banned).
      */
     function setPermittedPaymentToken(IERC20Upgradeable _paymentToken, bool _allow) external {
-        require(isAdmin(_msgSender()), "Caller is not an owner or admin");
+        if (!isAdmin(_msgSender())) {
+            revert ErrorHelper.CallerIsNotOwnerOrAdmin();
+        }
 
         if (_allow) {
             _permitedPaymentToken.add(address(_paymentToken));
@@ -161,8 +164,9 @@ contract Admin is OwnableUpgradeable, ERC165Upgradeable, IAdmin {
      *  @param  _allow        Status of allowance (true is permitted | false is banned).
      */
     function setPermittedNFT(address _nftAddress, bool _allow) external {
-        require(isAdmin(_msgSender()), "Caller is not an owner or admin");
-
+        if (!isAdmin(_msgSender())) {
+            revert ErrorHelper.CallerIsNotOwnerOrAdmin();
+        }
         if (_allow) {
             _permitedNFTs.add(_nftAddress);
         } else if (isPermittedNFT(_nftAddress)) {

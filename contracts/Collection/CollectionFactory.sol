@@ -80,18 +80,16 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
             maxCollectionOfUsers[_msgSender()] = maxCollection;
         }
 
-        require(
-            _ownerToCollectionAddress[_msgSender()].length() < maxCollectionOfUsers[_msgSender()],
-            "Exceeding the maxCollection"
+        ErrorHelper._checkExceedMaxCollection(
+            _ownerToCollectionAddress[_msgSender()].length(),
+            maxCollectionOfUsers[_msgSender()]
         );
-
         _collectionCounter.increment();
         uint256 _currentId = _collectionCounter.current();
         bytes32 salt = bytes32(_currentId);
         address _template = _typeNft == NFTHelper.Type.ERC721 ? address(templateERC721) : address(templateERC1155);
         ICollection _collection = ICollection(ClonesUpgradeable.cloneDeterministic(address(_template), salt));
-        require(address(_collection) != address(0), "Clone collection failed");
-
+        ErrorHelper._checkCloneCollection(address(_collection));
         // store
         CollectionInfo memory newInfo = CollectionInfo(_typeNft, salt, address(_collection), admin.owner());
         collectionIdToCollectionInfos[_currentId] = newInfo;
@@ -113,7 +111,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
      *  @param  _newValue that set maxCollection value
      */
     function setMaxCollection(uint256 _newValue) external onlyAdmin {
-        require(_newValue > 0, "Invalid maxCollection");
+        ErrorHelper._checkMaxCollection(_newValue);
         uint256 _oldValue = maxCollection;
         maxCollection = _newValue;
         emit SetMaxCollection(_oldValue, maxCollection);
@@ -124,7 +122,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
      *  @param  _newValue that set maxTotalSupply value
      */
     function setMaxTotalSuply(uint256 _newValue) external onlyAdmin {
-        require(_newValue > 0, "Invalid maxTotalSupply");
+        ErrorHelper._checkMaxTotalSupply(_newValue);
         uint256 _oldValue = maxTotalSupply;
         maxTotalSupply = _newValue;
         emit SetMaxTotalSuply(_oldValue, maxTotalSupply);
@@ -135,7 +133,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
      *  @param  _newValue that set max collection of user value
      */
     function setMaxCollectionOfUser(address _user, uint256 _newValue) external onlyAdmin notZeroAddress(_user) {
-        require(_newValue > 0, "Invalid maxCollectionOfUser");
+        ErrorHelper._checkMaxCollectionOfUser(_newValue);
         uint256 _oldValue = maxCollectionOfUsers[_user];
         maxCollectionOfUsers[_user] = _newValue;
         emit SetMaxCollectionOfUser(_oldValue, _newValue);
@@ -146,8 +144,12 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
      *  @param  _templateERC721 that set erc721 address
      *  @param  _templateERC1155 that set erc1155 address
      */
-    function setTemplateAddress(address _templateERC721, address _templateERC1155) external onlyAdmin {
-        require(_templateERC721 != address(0) && _templateERC1155 != address(0), "Invalid address");
+    function setTemplateAddress(address _templateERC721, address _templateERC1155)
+        external
+        notZeroAddress(_templateERC721)
+        notZeroAddress(_templateERC1155)
+        onlyAdmin
+    {
         templateERC721 = ICollection(_templateERC721);
         templateERC1155 = ICollection(_templateERC1155);
 
@@ -176,8 +178,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
      *  @notice Set metaversus manager dddress
      *  @param  _newAddress that set erc721 address
      */
-    function setMetaversusManager(address _newAddress) external onlyAdmin {
-        require(_newAddress != address(0), "Invalid address");
+    function setMetaversusManager(address _newAddress) external notZeroAddress(_newAddress) onlyAdmin {
         address _oldAddress = metaversusManager;
         metaversusManager = _newAddress;
 
@@ -188,8 +189,7 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
      *  @notice Set metaDrop dddress
      *  @param  _newAddress that set metaDrop address
      */
-    function setMetaDrop(address _newAddress) external onlyAdmin {
-        require(_newAddress != address(0), "Invalid address");
+    function setMetaDrop(address _newAddress) external notZeroAddress(_newAddress) onlyAdmin {
         address _oldAddress = metaDrop;
         metaDrop = _newAddress;
 

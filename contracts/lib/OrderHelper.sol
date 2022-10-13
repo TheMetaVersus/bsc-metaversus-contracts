@@ -104,9 +104,8 @@ library OrderHelper {
     ) internal {
         OrderInfo storage orderInfo = data.orders[orderId];
 
-        require(orderInfo.owner == caller, "Not the owner of offer");
-        require(orderInfo.status == OrderStatus.PENDING, "Order is not available");
-
+        ErrorHelper._checkOwner(orderInfo.owner, caller);
+        ErrorHelper._checkAvailableOrder(uint256(orderInfo.status), uint256(OrderStatus.PENDING));
         // Update order information
         orderInfo.status = OrderStatus.CANCELED;
 

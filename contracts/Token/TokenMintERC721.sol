@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC721.sol";
 import "../Validatable.sol";
+import "../lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -81,8 +82,7 @@ contract TokenMintERC721 is
      *  @dev    Max mint 100 tokens
      */
     function mintBatch(address receiver, string[] memory newUris) external onlyAdmin notZeroAddress(receiver) {
-        require(newUris.length <= 100, "Exceeded amount of tokens");
-
+        ErrorHelper._checkExceed(100, newUris.length);
         uint256[] memory tokenIds = new uint256[](newUris.length);
         for (uint256 i = 0; i < newUris.length; ++i) {
             _tokenCounter.increment();
@@ -131,7 +131,9 @@ contract TokenMintERC721 is
      *  @dev    All caller can call this function.
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "URI query for nonexistent token");
+        if (!_exists(tokenId)) {
+            revert ErrorHelper.URIQueryNonExistToken();
+        }
         return uris[tokenId];
     }
 

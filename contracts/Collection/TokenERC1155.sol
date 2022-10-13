@@ -11,6 +11,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "../interfaces/Collection/ITokenERC1155.sol";
 import "../interfaces/Collection/ICollection.sol";
 import "../Adminable.sol";
+import "../lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -79,7 +80,9 @@ contract TokenERC1155 is
     }
 
     modifier onlyFactory() {
-        require(_msgSender() == factory, "Caller is not the factory");
+        if (_msgSender() != factory) {
+            revert ErrorHelper.CallerIsNotFactory();
+        }
         _;
     }
 
@@ -102,9 +105,7 @@ contract TokenERC1155 is
     ) external onlyAdmin notZeroAddress(_receiver) notZeroAmount(_amount) {
         _tokenCounter.increment();
         uint256 _tokenId = _tokenCounter.current();
-
-        require(_tokenId <= maxTotalSupply, "Exceeding the totalSupply");
-
+        ErrorHelper._checkExceedTotalSupply(_tokenId, maxTotalSupply);
         uris[_tokenId] = _newuri;
 
         _mint(_receiver, _tokenId, _amount, "");
@@ -117,16 +118,17 @@ contract TokenERC1155 is
         uint256[] memory _amounts,
         string[] memory _uri
     ) external onlyAdmin notZeroAddress(_receiver) {
-        require(_amounts.length > 0 && _amounts.length <= maxBatch, "Must mint fewer in each batch");
-        require(_amounts.length == _uri.length, "Invalid input");
+        ErrorHelper._checkEachBatch(_amounts.length, maxBatch);
+        if (_amounts.length != _uri.length) {
+            revert ErrorHelper.InvalidArrayInput();
+        }
 
         uint256 _tokenId = _tokenCounter.current();
-        require(_tokenId + _amounts.length <= maxTotalSupply, "Exceeding the totalSupply");
 
+        ErrorHelper._checkExceedTotalSupply(_tokenId + _amounts.length, maxTotalSupply);
         uint256[] memory _tokenIds = new uint256[](_amounts.length);
         for (uint256 i; i < _amounts.length; i++) {
-            require(_amounts[i] > 0, "Invalid amount");
-
+            ErrorHelper._checkValidAmount(_amounts[i]);
             _tokenCounter.increment();
             _tokenId = _tokenCounter.current();
             uris[_tokenId] = _uri[i];
@@ -142,7 +144,7 @@ contract TokenERC1155 is
      *  @param  _maxBatch that set maxBatch value
      */
     function setMaxBatch(uint256 _maxBatch) external onlyAdmin {
-        require(_maxBatch > 0, "Invalid maxBatch");
+        ErrorHelper._checkMaxBatch(_maxBatch);
         uint256 oldMaxBatch = maxBatch;
         maxBatch = _maxBatch;
         emit SetMaxBatch(oldMaxBatch, _maxBatch);

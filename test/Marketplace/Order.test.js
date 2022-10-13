@@ -28,7 +28,7 @@ const MARKET_ITEM_STATUS = {
     CANCELED: 2,
 };
 
-describe("OrderManager:", () => {
+describe.only("OrderManager:", () => {
     beforeEach(async () => {
         [owner, user1, user2, user3] = await ethers.getSigners();
 
@@ -109,13 +109,13 @@ describe("OrderManager:", () => {
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(upgrades.deployProxy(OrderManager, [mkpManager.address, AddressZero])).to.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${AddressZero}")`
             );
             await expect(upgrades.deployProxy(OrderManager, [mkpManager.address, user1.address])).to.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${user1.address}")`
             );
             await expect(upgrades.deployProxy(OrderManager, [mkpManager.address, treasury.address])).to.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${treasury.address}")`
             );
         });
 
@@ -148,7 +148,7 @@ describe("OrderManager:", () => {
         it("should be fail when invalid payment token", async () => {
             await expect(
                 orderManager.makeWalletOrder(treasury.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("Payment token is not supported");
+            ).to.revertedWith(`PaymentTokenIsNotSupported()`);
         });
 
         it("should be fail when insufficient allowance", async () => {
@@ -168,29 +168,29 @@ describe("OrderManager:", () => {
         it("should be fail when invalid bid price", async () => {
             await expect(
                 orderManager.makeWalletOrder(token.address, 0, user1.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("Invalid amount");
+            ).to.revertedWith("InvalidAmount()");
         });
 
         it("should be fail when invalid amount", async () => {
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 0, endTime)
-            ).to.revertedWith("Invalid amount");
+            ).to.revertedWith("InvalidAmount()");
         });
 
         it("should be fail when invalid wallets", async () => {
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, AddressZero, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("Invalid wallets");
+            ).to.revertedWith(`InvalidWallet("${AddressZero}")`);
 
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, nftTest.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("Invalid wallets");
+            ).to.revertedWith(`InvalidWallet("${AddressZero}")`);
         });
 
         it("should be fail when invalid time", async () => {
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, 0)
-            ).to.revertedWith("Invalid order time");
+            ).to.revertedWith("InvalidOrderTime()");
         });
 
         it("should be fail when offer my self", async () => {
@@ -198,7 +198,7 @@ describe("OrderManager:", () => {
                 orderManager
                     .connect(user1)
                     .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("User can not offer");
+            ).to.revertedWith("UserCanNotOffer()");
         });
 
         it("should be fail when update payment token", async () => {
@@ -218,7 +218,7 @@ describe("OrderManager:", () => {
                         1,
                         endTime
                     )
-            ).to.revertedWith("Can not update payment token");
+            ).to.revertedWith("CanNotUpdatePaymentToken()");
         });
 
         it("should be fail when invalid nft address", async () => {
@@ -226,13 +226,13 @@ describe("OrderManager:", () => {
                 orderManager
                     .connect(user1)
                     .makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, AddressZero, 1, 1, endTime)
-            ).to.revertedWith("Invalid nft address");
+            ).to.revertedWith(`InvalidNftAddress("${AddressZero}")`);
 
             await expect(
                 orderManager
                     .connect(user1)
                     .makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, token.address, 1, 1, endTime)
-            ).to.revertedWith("Invalid nft address");
+            ).to.revertedWith(`InvalidNftAddress("${token.address}")`);
         });
 
         it("should be fail when invalid token id", async () => {
@@ -248,7 +248,7 @@ describe("OrderManager:", () => {
                         1,
                         endTime
                     )
-            ).to.revertedWith("Invalid token id");
+            ).to.revertedWith(`InvalidOwner("${user3.address}")`);
 
             await expect(
                 orderManager
@@ -262,7 +262,7 @@ describe("OrderManager:", () => {
                         1,
                         endTime
                     )
-            ).to.revertedWith("Invalid token id");
+            ).to.revertedWith("InvalidAmount()");
         });
 
         it("Should be ok when create new offer", async () => {
@@ -456,13 +456,13 @@ describe("OrderManager:", () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId.add(1), BUY_BID_PRICE, endTime, [])
-            ).to.revertedWith("Market ID is not exist");
+            ).to.revertedWith("InvalidMarketItemId()");
         });
 
         it("should revert when invalid price", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(orderManager.connect(user2).makeMarketItemOrder(marketItemId, 0, endTime, [])).to.revertedWith(
-                "Invalid amount"
+                "InvalidAmount()"
             );
         });
 
@@ -470,7 +470,7 @@ describe("OrderManager:", () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, 0, [])
-            ).to.revertedWith("Invalid order time");
+            ).to.revertedWith("InvalidOrderTime()");
         });
 
         it("should revert when Market Item is not available", async () => {
@@ -480,7 +480,7 @@ describe("OrderManager:", () => {
 
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, [])
-            ).to.revertedWith("Market Item is not available");
+            ).to.revertedWith("MarketItemIsNotAvailable()");
         });
 
         it("should revert when Not the order time", async () => {
@@ -492,7 +492,7 @@ describe("OrderManager:", () => {
 
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, [])
-            ).to.revertedWith("Not the order time");
+            ).to.revertedWith("NotInTheOrderTime()");
         });
 
         it("should be revert when offer my self", async () => {

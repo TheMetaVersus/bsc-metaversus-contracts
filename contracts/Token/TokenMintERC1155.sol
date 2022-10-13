@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 
 import "../interfaces/ITokenMintERC1155.sol";
 import "../Validatable.sol";
+import "../lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -45,10 +46,7 @@ contract TokenMintERC1155 is
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(
-        uint96 _feeNumerator,
-        IAdmin _admin
-    ) public initializer {
+    function initialize(uint96 _feeNumerator, IAdmin _admin) public initializer {
         __Validatable_init(_admin);
         __ERC1155_init("");
 
@@ -93,14 +91,13 @@ contract TokenMintERC1155 is
         uint256[] memory amounts,
         string[] memory newUris
     ) external onlyAdmin notZeroAddress(receiver) {
-        require(newUris.length == amounts.length, "Invalid length");
-        require(newUris.length <= 100, "Exceeded amount of tokens");
-
+        ErrorHelper._checkEqualLength(newUris.length, amounts.length);
+        ErrorHelper._checkExceed(100, newUris.length);
         uint256[] memory tokenIds = new uint256[](newUris.length);
         for (uint256 i = 0; i < newUris.length; ++i) {
             uint256 amount = amounts[i];
-            require(amount > 0, "Invalid amount");
 
+            ErrorHelper._checkValidAmount(amount);
             _tokenCounter.increment();
             uint256 tokenId = _tokenCounter.current();
 

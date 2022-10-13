@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../interfaces/IMTVS.sol";
+import "../lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Fungible token
@@ -17,7 +18,6 @@ import "../interfaces/IMTVS.sol";
  *          The contract here by is implemented to initial.
  */
 contract MTVS is ERC20Upgradeable, ERC165Upgradeable, IMTVS {
-
     /**
      *  @notice Initialize new logic contract.
      */
@@ -29,9 +29,8 @@ contract MTVS is ERC20Upgradeable, ERC165Upgradeable, IMTVS {
     ) public initializer {
         __ERC20_init(_name, _symbol);
 
-        require(_treasury != address(0), "Invalid address");
-        require(_totalSupply > 0, "Invalid amount");
-
+        ErrorHelper._checkValidAddress(_treasury);
+        ErrorHelper._checkValidAmount(_totalSupply);
         _mint(_treasury, _totalSupply);
     }
 
@@ -41,7 +40,7 @@ contract MTVS is ERC20Upgradeable, ERC165Upgradeable, IMTVS {
      *  @dev   All caller can call this function.
      */
     function burn(uint256 amount) external {
-        require(amount > 0, "Invalid amount");
+        ErrorHelper._checkValidAmount(amount);
         _burn(_msgSender(), amount);
     }
 

@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "../lib/NFTHelper.sol";
 import "../Validatable.sol";
 import "../interfaces/IMetaversusManager.sol";
+import "../lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Metaversus Contract
@@ -194,11 +195,9 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         IERC20Upgradeable payment,
         bytes calldata rootHash
     ) external nonReentrant notZero(amount) notZero(price) whenNotPaused {
-        require(collectionFactory.checkCollectionOfUser(_msgSender(), nftAddress), "User is not create collection");
-
+        ErrorHelper._checkUserCreateCollection(collectionFactory, nftAddress);
+        ErrorHelper._checkValidNFTAddress(nftAddress);
         NFTHelper.Type typeNft = NFTHelper.getType(nftAddress);
-        require(typeNft != NFTHelper.Type.NONE, "ERROR: Invalid NFT address");
-
         if (typeNft == NFTHelper.Type.ERC721) {
             _create721(isSellOnMarket, typeNft, nftAddress, amount, uri, price, startTime, endTime, payment, rootHash);
         } else if (typeNft == NFTHelper.Type.ERC1155) {
@@ -241,7 +240,14 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
             );
         }
 
-        emit Created(typeNft, nftAddress, currentId, _msgSender(), isSellOnMarket ? address(marketplace) : _msgSender(), amount);
+        emit Created(
+            typeNft,
+            nftAddress,
+            currentId,
+            _msgSender(),
+            isSellOnMarket ? address(marketplace) : _msgSender(),
+            amount
+        );
     }
 
     /**
@@ -279,7 +285,14 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
             );
         }
 
-        emit Created(typeNft, nftAddress, currentId, _msgSender(), isSellOnMarket ? address(marketplace) : _msgSender(), amount);
+        emit Created(
+            typeNft,
+            nftAddress,
+            currentId,
+            _msgSender(),
+            isSellOnMarket ? address(marketplace) : _msgSender(),
+            amount
+        );
     }
 
     /**
