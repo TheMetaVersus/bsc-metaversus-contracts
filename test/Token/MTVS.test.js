@@ -12,35 +12,20 @@ describe("MTVS Token:", () => {
         user3 = accounts[3];
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            user1.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, user1.address]);
     });
 
     describe("Deployment:", async () => {
         it("Should revert when invalid address", async () => {
             await expect(
-                upgrades.deployProxy(Token, [
-                    "Metaversus Token",
-                    "MTVS",
-                    TOTAL_SUPPLY,
-                    AddressZero,
-                ])
-            ).to.revertedWith("Invalid address");
+                upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, AddressZero])
+            ).to.revertedWith("InvalidAddress()");
         });
 
         it("Should revert when invalid amount", async () => {
-            await expect(
-                upgrades.deployProxy(Token, [
-                    "Metaversus Token",
-                    "MTVS",
-                    0,
-                    user1.address,
-                ])
-            ).to.revertedWith("Invalid amount");
+            await expect(upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", 0, user1.address])).to.revertedWith(
+                "InvalidAmount()"
+            );
         });
 
         it("Check name, symbol and default state: ", async () => {
@@ -57,11 +42,11 @@ describe("MTVS Token:", () => {
 
     describe("burn function:", async () => {
         it("should revert when amount equal to zero: ", async () => {
-            await expect(token.burn(0)).to.be.revertedWith("Invalid amount");
+            await expect(token.burn(0)).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should burn success: ", async () => {
-            await expect(() => token.connect(user1).burn(50)).to.changeTokenBalance(token, user1, -50) ;
+            await expect(() => token.connect(user1).burn(50)).to.changeTokenBalance(token, user1, -50);
         });
     });
 });

@@ -318,13 +318,6 @@ contract MarketPlaceManager is
     }
 
     /**
-     *  @notice Check standard
-     */
-    function checkStandard(address _contract) public returns (NFTHelper.Type) {
-        return NFTHelper.getType(_contract);
-    }
-
-    /**
      * @dev Returns true if this contract implements the interface defined by
      * `interfaceId`. See the corresponding
      * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]

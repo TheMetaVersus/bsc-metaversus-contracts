@@ -82,18 +82,16 @@ describe("MetaDrop", () => {
     describe("Deployment", async () => {
         it("Should revert when admin contract is invalid", async () => {
             await expect(upgrades.deployProxy(MetaDrop, [AddressZero, SERVICE_FEE_DENOMINATOR])).to.be.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${AddressZero}")`
             );
 
-            await expect(
-                upgrades.deployProxy(MetaDrop, [treasury.address, SERVICE_FEE_DENOMINATOR])
-            ).to.be.revertedWith("Invalid Admin contract");
+            await expect(upgrades.deployProxy(MetaDrop, [treasury.address, SERVICE_FEE_DENOMINATOR])).to.be.reverted;
         });
 
         it("Should throw error Service fee will exceed mint fee", async () => {
             await expect(
                 upgrades.deployProxy(MetaDrop, [admin.address, SERVICE_FEE_DENOMINATOR.add(1)])
-            ).to.be.revertedWith("Service fee will exceed mint fee");
+            ).to.be.revertedWith("ServiceFeeExceedMintFee()");
         });
 
         it("Set initial state successful", async () => {
@@ -106,7 +104,7 @@ describe("MetaDrop", () => {
     describe("setServiceFeeNumerator", async () => {
         it("Should throw error Service fee will exceed mint fee", async () => {
             await expect(metaDrop.setServiceFeeNumerator(SERVICE_FEE_DENOMINATOR.add(1))).to.be.revertedWith(
-                "Service fee will exceed mint fee"
+                "ServiceFeeExceedMintFee()"
             );
         });
 
@@ -145,49 +143,47 @@ describe("MetaDrop", () => {
         it("Should throw error Invalid TokenCollectionERC721 contract", async () => {
             drop.nft = AddressZero;
             await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith(
-                "Invalid TokenCollectionERC721 contract"
+                `InValidTokenCollectionERC721Contract("${AddressZero}")`
             );
 
             drop.nft = metaCitizen.address;
-            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith(
-                "Invalid TokenCollectionERC721 contract"
-            );
+            await expect(metaDrop.connect(user1).create(drop)).to.be.reverted;
         });
 
         it("Should throw error Invalid root", async () => {
             drop.root = formatBytes32String("");
 
-            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid root");
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("InvalidRoot()");
         });
 
         it("Should throw error Invalid funding receiver", async () => {
             drop.fundingReceiver = AddressZero;
 
-            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid funding receiver");
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("InvalidFundingReceiver()");
         });
 
         it("Should throw error Invalid start time", async () => {
             drop.startTime = getCurrentTime();
 
-            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid start time");
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("InvalidTimeForCreate()");
         });
 
         it("Should throw error Invalid end time", async () => {
             drop.endTime = dropStartTime;
 
-            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid end time");
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("InvalidTimeForCreate()");
         });
 
         it("Should throw error Invalid minting supply", async () => {
             drop.maxSupply = 0;
 
-            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Invalid minting supply");
+            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("InvalidMintingSupply()");
         });
 
         it("Should throw error Payment token is not supported", async () => {
             drop.paymentToken = tokenERC721.address;
 
-            await expect(metaDrop.connect(user1).create(drop)).to.be.revertedWith("Payment token is not supported");
+            await expect(metaDrop.connect(user1).create(drop)).to.be.reverted;
         });
 
         it("Should create drop successful", async () => {
@@ -233,57 +229,53 @@ describe("MetaDrop", () => {
         });
 
         it("Should throw error Invalid drop", async () => {
-            await expect(metaDrop.connect(user1).update("0", drop)).to.be.revertedWith("Invalid drop");
+            await expect(metaDrop.connect(user1).update("0", drop)).to.be.revertedWith("InvalidDropId()");
 
-            await expect(metaDrop.connect(user1).update(dropId.add(1), drop)).to.be.revertedWith("Invalid drop");
+            await expect(metaDrop.connect(user1).update(dropId.add(1), drop)).to.be.revertedWith("InvalidDropId()");
         });
 
         it("Should throw error Invalid TokenCollectionERC721 contract", async () => {
             drop.nft = AddressZero;
             await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
-                "Invalid TokenCollectionERC721 contract"
+                `InValidTokenCollectionERC721Contract("${AddressZero}")`
             );
 
             drop.nft = metaCitizen.address;
-            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
-                "Invalid TokenCollectionERC721 contract"
-            );
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.reverted;
         });
 
         it("Should throw error Caller is not drop owner", async () => {
-            await expect(metaDrop.connect(user2).update(dropId, drop)).to.be.revertedWith("Caller is not drop owner");
+            await expect(metaDrop.connect(user2).update(dropId, drop)).to.be.revertedWith("InvalidOwnerForUpdate()");
         });
 
         it("Should throw error Invalid funding receiver", async () => {
             drop.fundingReceiver = AddressZero;
 
-            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Invalid funding receiver");
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("InvalidFundingReceiver()");
         });
 
         it("Should throw error Invalid start time", async () => {
             drop.startTime = 0;
 
-            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Invalid start time");
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("InvalidTimeForCreate()");
         });
 
         it("Should throw error Invalid end time", async () => {
             drop.endTime = dropStartTime;
 
-            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Invalid end time");
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("InvalidTimeForCreate()");
         });
 
         it("Should throw error Invalid minting supply", async () => {
             drop.maxSupply = 0;
 
-            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("Invalid minting supply");
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith("InvalidMintingSupply()");
         });
 
         it("Should throw error Payment token is not supported", async () => {
             drop.paymentToken = tokenERC721.address;
 
-            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.revertedWith(
-                "Payment token is not supported"
-            );
+            await expect(metaDrop.connect(user1).update(dropId, drop)).to.be.reverted;
         });
 
         it("Should throw error when system pause", async () => {
@@ -343,12 +335,12 @@ describe("MetaDrop", () => {
         });
 
         it("Should throw error Invalid drop", async () => {
-            await expect(metaDrop.connect(user1).cancel("0")).to.be.revertedWith("Invalid drop");
-            await expect(metaDrop.connect(user1).cancel(dropId.add(1))).to.be.revertedWith("Invalid drop");
+            await expect(metaDrop.connect(user1).cancel("0")).to.be.revertedWith("InvalidDropId()");
+            await expect(metaDrop.connect(user1).cancel(dropId.add(1))).to.be.revertedWith("InvalidDropId()");
         });
 
         it("Should throw error Caller is not drop owner", async () => {
-            await expect(metaDrop.connect(user2).cancel(dropId)).to.be.revertedWith("Caller is not drop owner");
+            await expect(metaDrop.connect(user2).cancel(dropId)).to.be.revertedWith("InvalidOwnerForUpdate()");
         });
 
         it("Should throw error when system pause", async () => {
@@ -382,26 +374,26 @@ describe("MetaDrop", () => {
         });
 
         it("Should throw error Invalid drop", async () => {
-            await expect(metaDrop.connect(user1).mint("0", proof_user1, 5)).to.be.revertedWith("Invalid drop");
-            await expect(metaDrop.connect(user1).mint("2", proof_user1, 5)).to.be.revertedWith("Invalid drop");
+            await expect(metaDrop.connect(user1).mint("0", proof_user1, 5)).to.be.revertedWith("InvalidDropId()");
+            await expect(metaDrop.connect(user1).mint("2", proof_user1, 5)).to.be.revertedWith("InvalidDropId()");
         });
 
         it("Should throw error when not hold MTV Citizen", async () => {
             await expect(metaDrop.connect(user4).mint(dropId, proof_user4, 5)).to.be.revertedWith(
-                "Not permitted to mint now"
+                "NotPermitToMintNow()"
             );
         });
 
         it("Should throw error when drop is not active", async () => {
             // Drop is not started yet
             await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
-                "Not permitted to mint now"
+                "NotPermitToMintNow()"
             );
 
             // Drop has ended
             await setTime(dropEndTime);
             await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
-                "Not permitted to mint now"
+                "NotPermitToMintNow()"
             );
         });
 
@@ -409,7 +401,7 @@ describe("MetaDrop", () => {
             await setTime(dropStartTime);
             await metaDrop.cancel(dropId);
             await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 5)).to.be.revertedWith(
-                "Not permitted to mint now"
+                "NotPermitToMintNow()"
             );
         });
 
@@ -420,7 +412,7 @@ describe("MetaDrop", () => {
 
             await expect(
                 metaDrop.connect(user_notWhitelisted).mint(dropId, proof_user_notWhitelisted, 5)
-            ).to.be.revertedWith("Not permitted to mint now");
+            ).to.be.revertedWith("NotPermitToMintNow()");
         });
 
         it("Should throw error Can not mint tokens anymore", async () => {
@@ -433,14 +425,14 @@ describe("MetaDrop", () => {
             await metaDrop.connect(user1).mint(dropId, proof_user1, drop.mintableLimit);
 
             await expect(metaDrop.connect(user1).mint(dropId, proof_user1, 1)).to.be.revertedWith(
-                "Can not mint tokens anymore"
+                "CanNotMintAnyMore()"
             );
 
             // Mint more tokens than total of available tokens
             await metaDrop.connect(user2).mint(dropId, proof_user2, drop.mintableLimit);
 
             await expect(metaDrop.connect(user3).mint(dropId, proof_user3, "1")).to.be.revertedWith(
-                "Can not mint tokens anymore"
+                "CanNotMintAnyMore()"
             );
         });
 
@@ -462,7 +454,7 @@ describe("MetaDrop", () => {
 
             await expect(
                 metaDrop.connect(user1).mint(dropId, proof_user1, drop.mintableLimit, { value: TOKEN_0_1 })
-            ).to.be.revertedWith("Can not pay both token");
+            ).to.be.revertedWith("otPayBothToken()");
         });
 
         it("Should throw error when system pause", async () => {
@@ -507,13 +499,13 @@ describe("MetaDrop", () => {
                 metaDrop
                     .connect(user1)
                     .mint(dropId, proof_user1, drop.mintableLimit, { value: expectedMintedFee.sub(1) })
-            ).to.be.revertedWith("Not enough fee");
+            ).to.be.revertedWith("TransferNativeFail()");
 
             await expect(
                 metaDrop
                     .connect(user1)
                     .mint(dropId, proof_user1, drop.mintableLimit, { value: expectedMintedFee.add(1) })
-            ).to.be.revertedWith("Not enough fee");
+            ).to.be.revertedWith("NotEnoughFee()");
         });
     });
 

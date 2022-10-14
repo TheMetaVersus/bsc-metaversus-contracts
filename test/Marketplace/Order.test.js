@@ -28,7 +28,7 @@ const MARKET_ITEM_STATUS = {
     CANCELED: 2,
 };
 
-describe.only("OrderManager:", () => {
+describe("OrderManager:", () => {
     beforeEach(async () => {
         [owner, user1, user2, user3] = await ethers.getSigners();
 

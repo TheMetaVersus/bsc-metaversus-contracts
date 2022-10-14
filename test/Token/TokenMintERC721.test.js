@@ -19,12 +19,7 @@ describe("TokenMintERC721", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
-        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, [
-            "NFT Metaversus",
-            "nMTVS",
-            250,
-            admin.address,
-        ]);
+        tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
@@ -34,20 +29,13 @@ describe("TokenMintERC721", () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(
                 upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, AddressZero])
-            ).to.revertedWith("Invalid Admin contract");
+            ).to.revertedWith(`InValidAdminContract("${AddressZero}")`);
 
-            await expect(
-                upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, user1.address])
-            ).to.revertedWith("Invalid Admin contract");
+            await expect(upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, user1.address])).to
+                .reverted;
 
-            await expect(
-                upgrades.deployProxy(TokenMintERC721, [
-                    "NFT Metaversus",
-                    "nMTVS",
-                    250,
-                    treasury.address,
-                ])
-            ).to.revertedWith("Invalid Admin contract");
+            await expect(upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, treasury.address])).to
+                .reverted;
         });
 
         it("Check name, symbol and default state", async () => {
@@ -73,9 +61,7 @@ describe("TokenMintERC721", () => {
 
     describe("tokenURI function", async () => {
         it("should revert when invalid tokenID params", async () => {
-            await expect(tokenMintERC721.tokenURI(2)).to.be.revertedWith(
-                "URI query for nonexistent token"
-            );
+            await expect(tokenMintERC721.tokenURI(2)).to.be.revertedWith("URIQueryNonExistToken()");
         });
     });
 
@@ -95,12 +81,12 @@ describe("TokenMintERC721", () => {
     describe("mint function", async () => {
         it("should revert when caller is not an owner or admin", async () => {
             await expect(tokenMintERC721.connect(user1).mint(mkpManager.address, "this_uri")).to.be.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("should revert when receiver address equal to zero address", async () => {
-            await expect(tokenMintERC721.mint(AddressZero, "this_uri")).to.be.revertedWith("Invalid address");
+            await expect(tokenMintERC721.mint(AddressZero, "this_uri")).to.be.revertedWith("InvalidAddress()");
         });
         it("should mint success", async () => {
             await tokenMintERC721.mint(mkpManager.address, "this_uri");
@@ -115,17 +101,17 @@ describe("TokenMintERC721", () => {
     describe("mintBatch", async () => {
         it("should revert when caller is not an owner or admin", async () => {
             await expect(tokenMintERC721.connect(user1).mintBatch(mkpManager.address, BATCH_URIS)).to.be.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("should revert when receiver address equal to zero addres", async () => {
-            await expect(tokenMintERC721.mintBatch(AddressZero, BATCH_URIS)).to.be.revertedWith("Invalid address");
+            await expect(tokenMintERC721.mintBatch(AddressZero, BATCH_URIS)).to.be.revertedWith("InvalidAddress()");
         });
 
         it("should revert when amount of tokens is exceeded", async () => {
             await expect(tokenMintERC721.mintBatch(mkpManager.address, Array(101).fill("this_uri"))).to.be.revertedWith(
-                "Exceeded amount of tokens"
+                "ExceedAmount()"
             );
         });
 

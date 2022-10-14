@@ -87,11 +87,11 @@ describe("Marketplace Manager:", () => {
 
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(upgrades.deployProxy(MkpManager, [ADDRESS_ZERO])).to.revertedWith("Invalid Admin contract");
-            await expect(upgrades.deployProxy(MkpManager, [user1.address])).to.revertedWith("Invalid Admin contract");
-            await expect(upgrades.deployProxy(MkpManager, [treasury.address])).to.revertedWith(
-                "Invalid Admin contract"
+            await expect(upgrades.deployProxy(MkpManager, [ADDRESS_ZERO])).to.revertedWith(
+                `InValidAdminContract("${ADDRESS_ZERO}")`
             );
+            await expect(upgrades.deployProxy(MkpManager, [user1.address])).to.reverted;
+            await expect(upgrades.deployProxy(MkpManager, [treasury.address])).to.reverted;
         });
     });
 
@@ -102,20 +102,16 @@ describe("Marketplace Manager:", () => {
 
         it("Only admin can call this function", async () => {
             await expect(mkpManager.connect(user1).setMetaversusManager(mtvsManager.address)).to.revertedWith(
-                "Caller is not an owner or admin"
+                "allerIsNotOwnerOrAdmin()"
             );
         });
 
         it("should revert when Invalid MetaversusManager contract", async () => {
             await expect(mkpManager.setMetaversusManager(ADDRESS_ZERO)).to.revertedWith(
-                "Invalid MetaversusManager contract"
+                `InValidMetaversusManagerContract("${ADDRESS_ZERO}")`
             );
-            await expect(mkpManager.setMetaversusManager(user1.address)).to.revertedWith(
-                "Invalid MetaversusManager contract"
-            );
-            await expect(mkpManager.setMetaversusManager(mkpManager.address)).to.revertedWith(
-                "Invalid MetaversusManager contract"
-            );
+            await expect(mkpManager.setMetaversusManager(user1.address)).to.reverted;
+            await expect(mkpManager.setMetaversusManager(mkpManager.address)).to.reverted;
         });
 
         it("should set MetaversusManager success: ", async () => {
@@ -133,14 +129,16 @@ describe("Marketplace Manager:", () => {
 
         it("Only admin can call this function", async () => {
             await expect(mkpManager.connect(user1).setOrderManager(orderManager.address)).to.revertedWith(
-                "Caller is not an owner or admin"
+                "allerIsNotOwnerOrAdmin()"
             );
         });
 
         it("should revert when Invalid Order contract", async () => {
-            await expect(mkpManager.setOrderManager(ADDRESS_ZERO)).to.revertedWith("Invalid Order contract");
-            await expect(mkpManager.setOrderManager(user1.address)).to.revertedWith("Invalid Order contract");
-            await expect(mkpManager.setOrderManager(mkpManager.address)).to.revertedWith("Invalid Order contract");
+            await expect(mkpManager.setOrderManager(ADDRESS_ZERO)).to.revertedWith(
+                `InValidOrderContract("${ADDRESS_ZERO}")`
+            );
+            await expect(mkpManager.setOrderManager(user1.address)).to.reverted;
+            await expect(mkpManager.setOrderManager(mkpManager.address)).to.reverted;
         });
 
         it("should set MetaversusManager success: ", async () => {
@@ -157,7 +155,7 @@ describe("Marketplace Manager:", () => {
                 mkpManager
                     .connect(user1)
                     .extTransferNFTCall(tokenERC721.address, 1, 1, mkpManager.address, user1.address)
-            ).to.revertedWith("Caller is not an order manager");
+            ).to.revertedWith("CallerIsNotOrderManager()");
         });
     });
 
@@ -181,7 +179,7 @@ describe("Marketplace Manager:", () => {
                         token.address,
                         rootHash
                     )
-            ).to.revertedWith("Caller is not MTVS manager or Order");
+            ).to.revertedWith("CallerIsNotOrderManagerOrMTVSManager()");
         });
 
         it("should revert when Invalid time", async () => {
@@ -192,7 +190,7 @@ describe("Marketplace Manager:", () => {
                 mtvsManager
                     .connect(user2)
                     .createNFT(true, 0, 1, "this_uri", ONE_ETHER, 0, endTime, token.address, merkleTree.getHexRoot())
-            ).to.be.revertedWith("Invalid time");
+            ).to.be.revertedWith("InvalidTimeForCreate()");
 
             await expect(
                 mtvsManager
@@ -208,7 +206,7 @@ describe("Marketplace Manager:", () => {
                         token.address,
                         merkleTree.getHexRoot()
                     )
-            ).to.be.revertedWith("Invalid time");
+            ).to.be.revertedWith("InvalidTimeForCreate()");
         });
 
         it("should revert when Payment token is not supported", async () => {
@@ -229,7 +227,7 @@ describe("Marketplace Manager:", () => {
                         tokenERC721.address,
                         merkleTree.getHexRoot()
                     )
-            ).to.be.revertedWith("Payment token is not supported");
+            ).to.be.revertedWith("PaymentTokenIsNotSupported()");
         });
 
         it("should be ok", async () => {
@@ -283,7 +281,7 @@ describe("Marketplace Manager:", () => {
         it("Only owner can set root hash", async () => {
             await expect(
                 mkpManager.connect(user2).setNewRootHash(collection1.collectionAddress, newRootHash)
-            ).to.revertedWith("User is not create collection");
+            ).to.revertedWith(`UserDidNotCreateCollection()`);
         });
 
         it("should be ok: ", async () => {
@@ -400,15 +398,6 @@ describe("Marketplace Manager:", () => {
         });
     });
 
-    describe("checkStandard function:", async () => {
-        it("should return type of NFT: ", async () => {
-            const data_721 = await mkpManager.checkStandard(tokenMintERC721.address);
-            expect(data_721).to.equal(0);
-            const data_1155 = await mkpManager.checkStandard(tokenMintERC1155.address);
-            expect(data_1155).to.equal(1);
-        });
-    });
-
     describe("isRoyalty function:", async () => {
         beforeEach(async () => {
             await mkpManager.setCollectionFactory(collectionFactory.address);
@@ -476,7 +465,7 @@ describe("Marketplace Manager:", () => {
             marketItem.price = 0;
             await expect(
                 mkpManager.connect(user1).setMarketItemIdToMarketItem(marketItemId, marketItem)
-            ).to.revertedWith("Caller is not an order manager");
+            ).to.revertedWith("CallerIsNotOrderManager()");
         });
     });
 });

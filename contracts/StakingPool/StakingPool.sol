@@ -225,7 +225,7 @@ contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeab
     function claim() external nonReentrant whenNotPaused {
         UserInfo storage user = users[_msgSender()];
         ErrorHelper._checkClaimTime(startTime, poolDuration);
-        ErrorHelper._checkIsRequested(user.lazyClaim.isRequested);
+        ErrorHelper._checkAcceptRequested(user.lazyClaim.isRequested);
         // update status of request
         user.lazyClaim.isRequested = false;
         if (user.totalAmount > 0) {

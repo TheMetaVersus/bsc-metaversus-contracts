@@ -33,28 +33,24 @@ describe("MetaCitizen", () => {
     describe("Deployment", async () => {
         it("Should revert when payment token contract is invalid", async () => {
             await expect(upgrades.deployProxy(MetaCitizen, [AddressZero, MINT_FEE, admin.address])).to.be.revertedWith(
-                "Invalid payment token"
+                "InvalidPaymentToken()"
             );
 
-            await expect(
-                upgrades.deployProxy(MetaCitizen, [treasury.address, MINT_FEE, admin.address])
-            ).to.be.revertedWith("Invalid payment token");
+            await expect(upgrades.deployProxy(MetaCitizen, [treasury.address, MINT_FEE, admin.address])).to.be.reverted;
         });
 
         it("Should revert when mint fee is zero", async () => {
             await expect(upgrades.deployProxy(MetaCitizen, [token.address, "0", admin.address])).to.be.revertedWith(
-                "Invalid amount"
+                "InvalidAmount()"
             );
         });
 
         it("Should revert when admin contract is invalid", async () => {
             await expect(upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, AddressZero])).to.be.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${AddressZero}")`
             );
 
-            await expect(
-                upgrades.deployProxy(MetaCitizen, [treasury.address, MINT_FEE, token.address])
-            ).to.be.revertedWith("Invalid Admin contract");
+            await expect(upgrades.deployProxy(MetaCitizen, [treasury.address, MINT_FEE, token.address])).to.be.reverted;
         });
 
         it("Check name, symbol and default state", async () => {
@@ -81,14 +77,14 @@ describe("MetaCitizen", () => {
     describe("setPaymentToken", async () => {
         it("should revert when caller is not an owner or admin", async () => {
             await expect(metaCitizen.connect(user1).setPaymentToken(user2.address)).to.be.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("should revert when payment token is not permitted", async () => {
-            await expect(metaCitizen.setPaymentToken(AddressZero)).to.be.revertedWith("Invalid payment token");
+            await expect(metaCitizen.setPaymentToken(AddressZero)).to.be.revertedWith("InvalidPaymentToken()");
 
-            await expect(metaCitizen.setPaymentToken(treasury.address)).to.be.revertedWith("Invalid payment token");
+            await expect(metaCitizen.setPaymentToken(treasury.address)).to.be.revertedWith("InvalidPaymentToken()");
         });
 
         it("should set payment token successful", async () => {
@@ -99,13 +95,11 @@ describe("MetaCitizen", () => {
 
     describe("setMintFee", async () => {
         it("should revert when Ownable: caller is not an owner or admin", async () => {
-            await expect(metaCitizen.connect(user1).setMintFee(1000)).to.be.revertedWith(
-                "aller is not an owner or admin"
-            );
+            await expect(metaCitizen.connect(user1).setMintFee(1000)).to.be.revertedWith("CallerIsNotOwnerOrAdmin()");
         });
 
         it("should revert when price equal to zero", async () => {
-            await expect(metaCitizen.setMintFee(0)).to.be.revertedWith("Invalid amount");
+            await expect(metaCitizen.setMintFee(0)).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should set minting fee successful", async () => {
@@ -125,7 +119,7 @@ describe("MetaCitizen", () => {
 
         it("should revert when user already have one", async () => {
             await metaCitizen.connect(user1).buy();
-            await expect(metaCitizen.connect(user1).buy()).to.be.revertedWith("Already have one");
+            await expect(metaCitizen.connect(user1).buy()).to.be.revertedWith("AlreadyHaveOne()");
         });
 
         it("should revert Can not be transfered", async () => {
@@ -133,7 +127,7 @@ describe("MetaCitizen", () => {
 
             await metaCitizen.connect(user1).approve(user2.address, 1);
             await expect(metaCitizen.connect(user2).transferFrom(user1.address, user3.address, 1)).to.be.revertedWith(
-                "Can not be transfered"
+                "CanNotBeTransfered()"
             );
         });
 
@@ -158,18 +152,18 @@ describe("MetaCitizen", () => {
         });
 
         it("should revert when receiver is zero address", async () => {
-            await expect(metaCitizen.mint(AddressZero)).to.be.revertedWith("Invalid address");
+            await expect(metaCitizen.mint(AddressZero)).to.be.revertedWith("InvalidAddress()");
         });
 
         it("should revert when caller is not owner or admin", async () => {
             await expect(metaCitizen.connect(user1).mint(user1.address)).to.be.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("should revert when user already have one", async () => {
             await metaCitizen.mint(user1.address);
-            await expect(metaCitizen.mint(user1.address)).to.be.revertedWith("Already have one");
+            await expect(metaCitizen.mint(user1.address)).to.be.revertedWith("AlreadyHaveOne()");
         });
 
         it("should mint successful", async () => {
@@ -197,7 +191,7 @@ describe("MetaCitizen", () => {
 
             await metaCitizen.connect(user1).approve(user2.address, 1);
             await expect(metaCitizen.connect(user2).transferFrom(user1.address, user3.address, 1)).to.be.revertedWith(
-                "Can not be transfered"
+                "CanNotBeTransfered()"
             );
         });
     });

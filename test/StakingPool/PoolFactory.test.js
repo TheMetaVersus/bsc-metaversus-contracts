@@ -111,14 +111,10 @@ describe("Pool Factory:", () => {
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(upgrades.deployProxy(PoolFactory, [staking.address, AddressZero])).to.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${AddressZero}")`
             );
-            await expect(upgrades.deployProxy(PoolFactory, [staking.address, user1.address])).to.revertedWith(
-                "Invalid Admin contract"
-            );
-            await expect(upgrades.deployProxy(PoolFactory, [staking.address, treasury.address])).to.revertedWith(
-                "Invalid Admin contract"
-            );
+            await expect(upgrades.deployProxy(PoolFactory, [staking.address, user1.address])).to.reverted;
+            await expect(upgrades.deployProxy(PoolFactory, [staking.address, treasury.address])).to.reverted;
         });
 
         it("Should be ok", async () => {
@@ -160,7 +156,7 @@ describe("Pool Factory:", () => {
                         USD_TOKEN,
                         AGGREGATOR.address
                     )
-            ).to.revertedWith("Caller is not an owner or admin");
+            ).to.revertedWith("CallerIsNotOwnerOrAdmin()");
         });
 
         it("should be ok: ", async () => {

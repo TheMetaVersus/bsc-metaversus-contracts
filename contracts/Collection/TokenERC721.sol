@@ -90,7 +90,7 @@ contract TokenERC721 is
      *  @dev    Only owner or admin can call this function.
      */
     function mint(address _receiver, string memory _uri) external onlyAdmin notZeroAddress(_receiver) {
-        ErrorHelper._checkExceedTotalSupply(totalSupply(), maxTotalSupply);
+        ErrorHelper._checkExceedMintTotalSupply(totalSupply(), maxTotalSupply);
         _tokenCounter.increment();
         uint256 _tokenId = _tokenCounter.current();
         uris[_tokenId] = _uri;

@@ -77,7 +77,7 @@ describe("NftTest:", () => {
     });
     describe("setPrice function:", async () => {
         it("should revert when zero amount: ", async () => {
-            await expect(nftTest.setPrice(0)).to.be.revertedWith("Invalid amount");
+            await expect(nftTest.setPrice(0)).to.be.revertedWith("InvalidAmount()");
         });
         it("should setPrice: ", async () => {
             await nftTest.setPrice(100);

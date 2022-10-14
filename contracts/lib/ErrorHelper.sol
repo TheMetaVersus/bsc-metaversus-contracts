@@ -63,10 +63,10 @@ library ErrorHelper {
     error MarketItemIsNotSelling();
     error EitherNotInWhitelistOrNotOwnMetaCitizenNFT();
     // Metaversus manager Error
-    error UserDidNotCreateCollection(address _nftAddress);
+    error UserDidNotCreateCollection();
     error InvalidNFTAddress(address _invalidAddress);
     // MarketPlace manager Error
-    error InvalidTimeForCreate(uint256 _start, uint256 _end);
+    error InvalidTimeForCreate();
     error CallerIsNotOrderManager();
     error CallerIsNotOrderManagerOrMTVSManager();
     // MetaDrop Error
@@ -131,9 +131,9 @@ library ErrorHelper {
     }
 
     function _checkValidNFTAddress(address _nftAddress) internal {
-        // if (_nftAddress == address(0)) {
-        //     revert ErrorHelper.InvalidNftAddress(_nftAddress);
-        // }
+        if (_nftAddress == address(0)) {
+            revert ErrorHelper.InvalidNftAddress(_nftAddress);
+        }
         if (!NFTHelper.isERC721(_nftAddress) && !NFTHelper.isERC1155(_nftAddress)) {
             revert ErrorHelper.InvalidNftAddress(_nftAddress);
         }
@@ -262,14 +262,14 @@ library ErrorHelper {
 
     function _checkValidTimeForCreate(uint256 _startTime, uint256 _endTime) internal view {
         if (!(block.timestamp <= _startTime && _startTime < _endTime)) {
-            revert ErrorHelper.InvalidTimeForCreate(_startTime, _endTime);
+            revert ErrorHelper.InvalidTimeForCreate();
         }
     }
 
     // Metaversus Manager Function
     function _checkUserCreateCollection(ICollectionFactory _collectionFactory, address _nftAddress) internal view {
         if (!(_collectionFactory.checkCollectionOfUser(msg.sender, _nftAddress))) {
-            revert ErrorHelper.UserDidNotCreateCollection(_nftAddress);
+            revert ErrorHelper.UserDidNotCreateCollection();
         }
     }
 
@@ -282,7 +282,7 @@ library ErrorHelper {
 
     function _checkValidRoot(bytes32 _root) internal pure {
         if (_root == 0) {
-            revert ErrorHelper.ServiceFeeExceedMintFee();
+            revert ErrorHelper.InvalidRoot();
         }
     }
 
@@ -353,7 +353,7 @@ library ErrorHelper {
     }
 
     function _checkExceedMaxCollection(uint256 _maxOwner, uint256 _maxOfUser) internal pure {
-        if (_maxOwner > _maxOfUser) {
+        if (_maxOwner >= _maxOfUser) {
             revert ErrorHelper.ExceedMaxCollection();
         }
     }
@@ -367,6 +367,12 @@ library ErrorHelper {
 
     function _checkExceedTotalSupply(uint256 _total, uint256 _supply) internal pure {
         if (_total > _supply) {
+            revert ErrorHelper.ExceedTotalSupply();
+        }
+    }
+
+    function _checkExceedMintTotalSupply(uint256 _total, uint256 _supply) internal pure {
+        if (_total >= _supply) {
             revert ErrorHelper.ExceedTotalSupply();
         }
     }
@@ -393,7 +399,7 @@ library ErrorHelper {
 
     // Staking Pool Function
     function _checkClaimTime(uint256 _start, uint256 duration) internal view {
-        if (!((_start + duration > block.timestamp) && _start != 0)) {
+        if (!(_start + duration > block.timestamp)) {
             revert ErrorHelper.NotAllowToClaim();
         }
     }
@@ -418,6 +424,12 @@ library ErrorHelper {
 
     function _checkMustRequested(bool _isRequest, uint256 _unlockedTime) internal view {
         if (!(_isRequest && _unlockedTime <= block.timestamp)) {
+            revert ErrorHelper.MustRequestFirst();
+        }
+    }
+
+    function _checkAcceptRequested(bool _isRequest) internal pure {
+        if (!_isRequest) {
             revert ErrorHelper.MustRequestFirst();
         }
     }
