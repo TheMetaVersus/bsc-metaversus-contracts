@@ -230,7 +230,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
             marketplace.extCreateMarketInfo(
                 nftAddress,
                 currentId,
-                amount,
+                1,
                 price,
                 _msgSender(),
                 startTime,

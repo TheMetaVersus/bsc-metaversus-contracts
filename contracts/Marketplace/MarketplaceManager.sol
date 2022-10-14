@@ -213,6 +213,9 @@ contract MarketPlaceManager is
         ErrorHelper._checkPermittedPaymentToken(address(admin), _paymentToken);
 
         NFTHelper.Type nftType = NFTHelper.getType(_nftAddress);
+        if (nftType == NFTHelper.Type.ERC721) {
+            ErrorHelper._checkValidAmountOf721(_amount);
+        }
         ErrorHelper._checkValidTimeForCreate(_startTime, _endTime);
 
         _marketItemIds.increment();
@@ -317,7 +320,7 @@ contract MarketPlaceManager is
     /**
      *  @notice Check standard
      */
-    function checkStandard(address _contract) public view returns (NFTHelper.Type) {
+    function checkStandard(address _contract) public returns (NFTHelper.Type) {
         return NFTHelper.getType(_contract);
     }
 

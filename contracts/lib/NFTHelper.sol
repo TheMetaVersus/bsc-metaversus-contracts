@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165CheckerUpg
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
+import "hardhat/console.sol";
 
 library NFTHelper {
     enum Type {
@@ -16,15 +17,23 @@ library NFTHelper {
     /**
      *  @notice Check ERC721 contract without error when not support function supportsInterface
      */
-    function isERC721(address _account) internal view returns (bool) {
-        return ERC165CheckerUpgradeable.supportsInterface(_account, type(IERC721Upgradeable).interfaceId);
+    function isERC721(address _account) internal returns (bool) {
+        (bool success, ) = _account.call(
+            abi.encodeWithSignature("supportsInterface(bytes4)", type(IERC721Upgradeable).interfaceId)
+        );
+
+        return success && IERC721Upgradeable(_account).supportsInterface(type(IERC721Upgradeable).interfaceId);
     }
 
     /**
      *  @notice Check ERC1155 contract without error when not support function supportsInterface
      */
-    function isERC1155(address _account) internal view returns (bool) {
-        return ERC165CheckerUpgradeable.supportsInterface(_account, type(IERC1155Upgradeable).interfaceId);
+    function isERC1155(address _account) internal returns (bool) {
+        (bool success, ) = _account.call(
+            abi.encodeWithSignature("supportsInterface(bytes4)", type(IERC1155Upgradeable).interfaceId)
+        );
+
+        return success && IERC1155Upgradeable(_account).supportsInterface(type(IERC1155Upgradeable).interfaceId);
     }
 
     /**
@@ -37,7 +46,7 @@ library NFTHelper {
     /**
      *  @notice Check standard of nft contract address
      */
-    function getType(address _account) internal view returns (Type) {
+    function getType(address _account) internal returns (Type) {
         if (isERC721(_account)) return Type.ERC721;
         if (isERC1155(_account)) return Type.ERC1155;
 
@@ -64,12 +73,13 @@ library NFTHelper {
     /**
      *  @notice Transfer nft call
      */
-    function isTokenExist(address _nftContractAddress, uint256 _tokenId) internal view returns (bool) {
+    function isTokenExist(address _nftContractAddress, uint256 _tokenId) internal returns (bool) {
         NFTHelper.Type nftType = getType(_nftContractAddress);
         if (nftType == NFTHelper.Type.ERC721) {
+            console.log("721");
             return IERC721Upgradeable(_nftContractAddress).ownerOf(_tokenId) != address(0);
         }
-
+        console.log("1155", nftType == NFTHelper.Type.ERC1155);
         return nftType == NFTHelper.Type.ERC1155;
     }
 }

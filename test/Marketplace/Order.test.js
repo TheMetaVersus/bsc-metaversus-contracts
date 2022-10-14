@@ -184,7 +184,7 @@ describe.only("OrderManager:", () => {
 
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, nftTest.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith(`InvalidWallet("${AddressZero}")`);
+            ).to.revertedWith(`InvalidWallet("${nftTest.address}")`);
         });
 
         it("should be fail when invalid time", async () => {
@@ -504,7 +504,7 @@ describe.only("OrderManager:", () => {
 
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, time, [])
-            ).to.revertedWith("User can not offer");
+            ).to.be.revertedWith("UserCanNotOffer()");
         });
 
         it("should be revert when is not owned MetaCItizen", async () => {
@@ -528,7 +528,7 @@ describe.only("OrderManager:", () => {
                 orderManager
                     .connect(user2)
                     .makeMarketItemOrder(2, BUY_BID_PRICE, endTime, merkleTree.getHexProof(generateLeaf(user2.address)))
-            ).to.revertedWith("Require own MetaCitizen NFT");
+            ).to.revertedWith("EitherNotInWhitelistOrNotOwnMetaCitizenNFT(");
         });
 
         it("Should be ok when create buy offer", async () => {
@@ -580,43 +580,32 @@ describe.only("OrderManager:", () => {
         it("Should be ok when update buy offer more than amount", async () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
-
             await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
-
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
             await metaCitizen.mint(user2.address);
-
             merkleTree = await generateMerkleTree([user1.address, user2.address]);
-
             rootHash = merkleTree.getHexRoot();
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
-
             await orderManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash);
-
             await skipTime(100);
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
-
             let currentOrderId = await orderManager.getCurrentOrderId();
             let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             const marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
-
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(token.address);
             expect(orderInfo.bidPrice).to.equal(BUY_BID_PRICE);
-
             expect(marketItemOrderInfo.orderId).to.equal(orderInfo.id);
             expect(marketItemOrderInfo.marketItemId).to.equal(marketItemId);
-
             await orderManager
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, BUY_BID_PRICE.add(ETHER_100), endTime, proof);
-
             orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BUY_BID_PRICE.add(ETHER_100));
         });
@@ -894,29 +883,27 @@ describe.only("OrderManager:", () => {
         });
 
         it("should be fail when Invalid seller of asset", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith("Not the seller");
+            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith(
+                `NotTheSeller("${user3.address}", "${user1.address}")`
+            );
         });
 
         it("should be fail when Invalid order id", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("Invalid order");
+            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("InvalidOrderId()");
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Order is not available");
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsNotAvailable()");
         });
 
         it("should be fail when Overtime", async () => {
             await skipTime(ONE_WEEK);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Order is expired");
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsExpired()");
         });
 
         it("Should be ok", async () => {
             await nftTest.connect(user1).approve(orderManager.address, 1);
-
-            // const currentOrderId = await orderManager.getCurrentOrderId();
-            // const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            // const orderInfo = await orderManager.orders(walletOrderInfo.orderId);
             let currentOrderId = await orderManager.getCurrentOrderId();
             let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             const walletOrderInfo = await orderManager.getWalletOrderByOrderId(currentOrderId);
@@ -991,30 +978,32 @@ describe.only("OrderManager:", () => {
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("Invalid order");
+            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("InvalidOrderId()");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).acceptOrder(orderId.add(1))).to.revertedWith("Invalid order");
+            await expect(orderManager.connect(user3).acceptOrder(orderId.add(1))).to.revertedWith("InvalidOrderId()");
         });
 
         it("should be fail when not the seller", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith("Not the seller");
+            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith(
+                `NotTheSeller("${user3.address}", "${user1.address}")`
+            );
         });
 
         it("should be fail when Market Item is not available", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user1).cancelSell(marketItemId);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Market Item is not available");
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("MarketItemIsNotAvailable()");
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Order is not available");
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsNotAvailable()");
         });
 
         it("should be fail when Overtime", async () => {
             await skipTime(ONE_WEEK);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Order is expired");
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsExpired()");
         });
 
         it("Should be ok", async () => {
@@ -1078,34 +1067,34 @@ describe.only("OrderManager:", () => {
         it("should revert when nft contract is not permitted: ", async () => {
             await expect(
                 orderManager.sell(AddressZero, 0, 100, 100, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Token is not existed");
+            ).to.be.revertedWith(`InvalidAddress()`);
 
             await expect(
                 orderManager.sell(token.address, 0, 100, 100, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Token is not existed");
+            ).to.be.revertedWith(`TokenIsNotExisted("${token.address}", 0)`);
         });
 
         it("should revert when amount equal to zero: ", async () => {
             await expect(
                 orderManager.sell(tokenMintERC721.address, 0, 0, 100, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Invalid amount");
+            ).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should revert when gross sale value equal to zero: ", async () => {
             await expect(
                 orderManager.sell(tokenMintERC721.address, 0, 100, 0, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Invalid amount");
+            ).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should revert when Invalid amount: ", async () => {
             await tokenMintERC721.mint(owner.address, "");
             await expect(
                 orderManager.sell(tokenMintERC721.address, 1, 2, ONE_ETHER, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Invalid amount");
+            ).to.be.revertedWith("InvalidAmount()");
 
             await expect(
                 orderManager.sell(tokenMintERC721.address, 1, 0, ONE_ETHER, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Invalid amount");
+            ).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should sell success and check private collection: ", async () => {
@@ -1179,19 +1168,21 @@ describe.only("OrderManager:", () => {
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith("Invalid order");
+            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith("InvalidOrderId()");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith("Invalid order");
+            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith("InvalidOrderId()");
         });
 
         it("should be fail when Invalid bidder", async () => {
-            await expect(orderManager.connect(user1).cancelOrder(1)).to.revertedWith("Not the owner of offer");
+            await expect(orderManager.connect(user1).cancelOrder(1)).to.revertedWith(
+                `NotTheOwnerOfOrder("${user1.address}", "${user2.address}")`
+            );
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user2).cancelOrder(1)).to.revertedWith("Order is not available");
+            await expect(orderManager.connect(user2).cancelOrder(1)).to.revertedWith("OrderIsNotAvailable()");
         });
 
         it("Should be ok", async () => {
@@ -1252,19 +1243,21 @@ describe.only("OrderManager:", () => {
         });
 
         it("should be fail when Invalid bidder", async () => {
-            await expect(orderManager.connect(user1).cancelOrder(1)).to.revertedWith("Not the owner of offer");
+            await expect(orderManager.connect(user1).cancelOrder(1)).to.revertedWith(
+                `NotTheOwnerOfOrder("${user1.address}", "${user2.address}")`
+            );
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user2).cancelOrder(1)).to.revertedWith("Order is not available");
+            await expect(orderManager.connect(user2).cancelOrder(1)).to.revertedWith("OrderIsNotAvailable()");
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith("Invalid order");
+            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith("InvalidOrderId()");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith("Invalid order");
+            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith("InvalidOrderId()");
         });
 
         it("Should be ok", async () => {
@@ -1389,7 +1382,7 @@ describe.only("OrderManager:", () => {
                 orderManager
                     .connect(user1)
                     .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("Not expired yet");
+            ).to.revertedWith("OrderIsExpired()");
         });
 
         it("should be fail when sender is not owner this NFT", async () => {
@@ -1398,7 +1391,7 @@ describe.only("OrderManager:", () => {
                 orderManager
                     .connect(user2)
                     .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("You are not the seller");
+            ).to.revertedWith(`NotTheSeller("${user2.address}", "${user1.address}")`);
         });
 
         it("should be fail when Market Item is not available", async () => {
@@ -1409,31 +1402,31 @@ describe.only("OrderManager:", () => {
                 orderManager
                     .connect(user2)
                     .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("Market Item is not available");
+            ).to.revertedWith("MarketItemIsNotAvailable()");
         });
 
         it("should be fail when Market ID is not exist", async () => {
             await expect(
                 orderManager.connect(user2).sellAvailableInMarketplace(0, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("Market ID is not exist");
+            ).to.revertedWith("InvalidMarketItemId()");
 
             await expect(
                 orderManager.connect(user2).sellAvailableInMarketplace(100, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("Market ID is not exist");
+            ).to.revertedWith("InvalidMarketItemId()");
         });
 
         it("should be fail when Invalid amount", async () => {
             await skipTime(ONE_WEEK);
             await expect(
                 orderManager.connect(user2).sellAvailableInMarketplace(marketItemId, 0, startTime, endTime)
-            ).to.revertedWith("Invalid amount");
+            ).to.revertedWith("InvalidAmount()");
         });
 
         it("should be fail when Invalid end time", async () => {
             await skipTime(ONE_WEEK);
             await expect(
                 orderManager.connect(user1).sellAvailableInMarketplace(marketItemId, ONE_ETHER, startTime, endTime)
-            ).to.revertedWith("Invalid end time");
+            ).to.revertedWith(`InvalidEndTime()`);
         });
 
         it("should be ok", async () => {
@@ -1528,24 +1521,27 @@ describe.only("OrderManager:", () => {
         });
 
         it("should be fail when not the seller !", async () => {
+            // console.log("user1", user1.address);
+            // console.log("user2", user2.address);
+            // console.log("user3", user3.address);
             await expect(orderManager.connect(user2).cancelSell(marketItemId)).to.revertedWith(
-                "You are not the seller"
+                `NotTheSeller("${user2.address}", "${user1.address}")`
             );
         });
 
         it("should be fail when Market Item is not available", async () => {
             await orderManager.connect(user1).cancelSell(marketItemId);
             await expect(orderManager.connect(user1).cancelSell(marketItemId)).to.revertedWith(
-                "Market Item is not available"
+                "MarketItemIsNotAvailable()"
             );
         });
 
         it("should be fail when Market ID is not exist", async () => {
             await expect(orderManager.connect(user1).cancelSell(marketItemId + 1)).to.revertedWith(
-                "Market ID is not exist"
+                "InvalidMarketItemId()"
             );
 
-            await expect(orderManager.connect(user1).cancelSell(0)).to.revertedWith("Market ID is not exist");
+            await expect(orderManager.connect(user1).cancelSell(0)).to.revertedWith("InvalidMarketItemId()");
         });
 
         it("should be ok", async () => {
@@ -1628,25 +1624,23 @@ describe.only("OrderManager:", () => {
 
         it("should be fail when Market ID is not exist", async () => {
             await expect(orderManager.connect(user1).buy(marketItemId + 1, [])).to.revertedWith(
-                "Market ID is not exist"
+                "InvalidMarketItemId()"
             );
 
-            await expect(orderManager.connect(user1).buy(0, [])).to.revertedWith("Market ID is not exist");
+            await expect(orderManager.connect(user1).buy(0, [])).to.revertedWith("InvalidMarketItemId()");
         });
 
         it("should be fail when Market Item is not available", async () => {
             await orderManager.connect(user1).cancelSell(marketItemId);
             await expect(orderManager.connect(user1).buy(marketItemId, [])).to.revertedWith(
-                "Market Item is not available"
+                "MarketItemIsNotAvailable()"
             );
         });
 
         it("should be fail when not allow to buy yourself !", async () => {
             const leaf = keccak256(user1.address);
             const proof = merkleTree.getHexProof(leaf);
-            await expect(orderManager.connect(user1).buy(marketItemId, proof)).to.revertedWith(
-                "Can not buy your own NFT"
-            );
+            await expect(orderManager.connect(user1).buy(marketItemId, proof)).to.revertedWith("CanNotBuyYourNFT()");
         });
 
         it("should be fail when NFT is not selling !", async () => {
@@ -1654,7 +1648,7 @@ describe.only("OrderManager:", () => {
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
             await expect(orderManager.connect(user2).buy(marketItemId, proof)).to.revertedWith(
-                "Market Item is not selling"
+                "MarketItemIsNotSelling()"
             );
         });
 
@@ -1663,7 +1657,7 @@ describe.only("OrderManager:", () => {
             const leaf = keccak256(user3.address);
             const proof = merkleTree.getHexProof(leaf);
             await expect(orderManager.connect(user2).buy(marketItemId, proof)).to.revertedWith(
-                "Sender is not in whitelist or not own meta citizen NFT"
+                "EitherNotInWhitelistOrNotOwnMetaCitizenNFT()"
             );
         });
 

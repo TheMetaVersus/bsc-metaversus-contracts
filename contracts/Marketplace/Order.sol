@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-
+import "hardhat/console.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../lib/NFTHelper.sol";
 import "../lib/TransferHelper.sol";
@@ -200,7 +200,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(_marketItemId);
         ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
         ErrorHelper._checkInOrderTime(marketItem.startTime, marketItem.endTime);
-        ErrorHelper._checkUserCanOffer(marketItem.seller, _msgSender());
+        ErrorHelper._checkUserCanOffer(marketItem.seller);
 
         if (marketplace.isPrivate(_marketItemId)) {
             ErrorHelper._checkInWhiteListAndOwnNFT(address(admin), address(marketplace), _marketItemId, _proof);
@@ -389,16 +389,23 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 _endTime,
         IERC20Upgradeable _paymentToken,
         bytes calldata _rootHash
-    ) external nonReentrant whenNotPaused validPaymentToken(_paymentToken) notZero(_price) notZero(_amount) {
+    )
+        external
+        nonReentrant
+        whenNotPaused
+        notZeroAddress(_nftAddress)
+        validPaymentToken(_paymentToken)
+        notZero(_price)
+        notZero(_amount)
+    {
+        // ErrorHelper._checkValidNFTAddress(_nftAddress);
         ErrorHelper._checkExistToken(_nftAddress, _tokenId);
-        NFTHelper.Type nftType = NFTHelper.getType(_nftAddress);
-        if (nftType == NFTHelper.Type.ERC721) {
+
+        if (NFTHelper.getType(_nftAddress) == NFTHelper.Type.ERC721) {
             ErrorHelper._checkValidAmountOf721(_amount);
         }
-
         // transfer nft to contract for selling
         marketplace.extTransferNFTCall(_nftAddress, _tokenId, _amount, _msgSender(), address(marketplace));
-
         // create market item to store data selling
         marketplace.extCreateMarketInfo(
             _nftAddress,

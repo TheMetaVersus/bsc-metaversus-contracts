@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-
+import "hardhat/console.sol";
 import "../lib/NFTHelper.sol";
 import "../interfaces/IAdmin.sol";
 import "../interfaces/ITokenMintERC721.sol";
@@ -57,7 +57,7 @@ library ErrorHelper {
     error OrderIsNotAvailable();
     error OrderIsExpired();
     error NotExpiredYet();
-    error InvalidEndTime(uint256 _endTime);
+    error InvalidEndTime();
     error TokenIsNotExisted(address _contract, uint256 tokenId);
     error CanNotBuyYourNFT();
     error MarketItemIsNotSelling();
@@ -130,8 +130,11 @@ library ErrorHelper {
         }
     }
 
-    function _checkValidNFTAddress(address _nftAddress) internal view {
-        if (!(NFTHelper.isERC721(_nftAddress) || NFTHelper.isERC1155(_nftAddress))) {
+    function _checkValidNFTAddress(address _nftAddress) internal {
+        // if (_nftAddress == address(0)) {
+        //     revert ErrorHelper.InvalidNftAddress(_nftAddress);
+        // }
+        if (!NFTHelper.isERC721(_nftAddress) && !NFTHelper.isERC1155(_nftAddress)) {
             revert ErrorHelper.InvalidNftAddress(_nftAddress);
         }
     }
@@ -181,12 +184,6 @@ library ErrorHelper {
         }
     }
 
-    function _checkUserCanOffer(address _to, address _expected) internal pure {
-        if (_to != _expected) {
-            revert ErrorHelper.UserCanNotOffer();
-        }
-    }
-
     function _checkInWhiteListAndOwnNFT(
         address _admin,
         address _marketplace,
@@ -197,7 +194,7 @@ library ErrorHelper {
             !(IAdmin(_admin).isOwnedMetaCitizen(msg.sender) &&
                 IMarketplaceManager(_marketplace).verify(_marketItemId, _proof, msg.sender))
         ) {
-            revert ErrorHelper.UserCanNotOffer();
+            revert ErrorHelper.EitherNotInWhitelistOrNotOwnMetaCitizenNFT();
         }
     }
 
@@ -233,11 +230,12 @@ library ErrorHelper {
 
     function _checkValidEndTime(uint256 _time) internal view {
         if (_time <= block.timestamp) {
-            revert ErrorHelper.InvalidEndTime(_time);
+            revert ErrorHelper.InvalidEndTime();
         }
     }
 
-    function _checkExistToken(address _token, uint256 _tokenId) internal view {
+    function _checkExistToken(address _token, uint256 _tokenId) internal {
+        console.log("NFTHelper", !NFTHelper.isTokenExist(_token, _tokenId));
         if (!NFTHelper.isTokenExist(_token, _tokenId)) {
             revert ErrorHelper.TokenIsNotExisted(_token, _tokenId);
         }
