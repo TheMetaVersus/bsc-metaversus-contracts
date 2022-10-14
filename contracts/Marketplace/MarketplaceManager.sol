@@ -110,7 +110,7 @@ contract MarketPlaceManager is
     event SetCollectionFactory(ICollectionFactory indexed oldValue, ICollectionFactory indexed newValue);
 
     modifier validId(uint256 _id) {
-        if (!(_id <= _marketItemIds.current() && _id > 0)) {
+        if (_id == 0 || _id > _marketItemIds.current()) {
             revert ErrorHelper.InvalidMarketItemId();
         }
         _;
@@ -209,9 +209,7 @@ contract MarketPlaceManager is
         uint256 _endTime,
         IERC20Upgradeable _paymentToken,
         bytes calldata _rootHash
-    ) external onlyMetaversusOrOrder {
-        ErrorHelper._checkPermittedPaymentToken(address(admin), _paymentToken);
-
+    ) external onlyMetaversusOrOrder validPaymentToken(_paymentToken) {
         NFTHelper.Type nftType = NFTHelper.getType(_nftAddress);
         if (nftType == NFTHelper.Type.ERC721) {
             ErrorHelper._checkValidAmountOf721(_amount);

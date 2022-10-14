@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "hardhat/console.sol";
+
 import "../lib/NFTHelper.sol";
 import "../interfaces/IAdmin.sol";
 import "../interfaces/ITokenMintERC721.sol";
@@ -235,7 +235,6 @@ library ErrorHelper {
     }
 
     function _checkExistToken(address _token, uint256 _tokenId) internal {
-        console.log("NFTHelper", !NFTHelper.isTokenExist(_token, _tokenId));
         if (!NFTHelper.isTokenExist(_token, _tokenId)) {
             revert ErrorHelper.TokenIsNotExisted(_token, _tokenId);
         }

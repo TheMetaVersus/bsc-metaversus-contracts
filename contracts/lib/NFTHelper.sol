@@ -5,7 +5,6 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165CheckerUpg
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC2981Upgradeable.sol";
-import "hardhat/console.sol";
 
 library NFTHelper {
     enum Type {
@@ -76,10 +75,9 @@ library NFTHelper {
     function isTokenExist(address _nftContractAddress, uint256 _tokenId) internal returns (bool) {
         NFTHelper.Type nftType = getType(_nftContractAddress);
         if (nftType == NFTHelper.Type.ERC721) {
-            console.log("721");
             return IERC721Upgradeable(_nftContractAddress).ownerOf(_tokenId) != address(0);
         }
-        console.log("1155", nftType == NFTHelper.Type.ERC1155);
+
         return nftType == NFTHelper.Type.ERC1155;
     }
 }

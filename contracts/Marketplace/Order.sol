@@ -9,7 +9,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "hardhat/console.sol";
 import "../interfaces/IMarketplaceManager.sol";
 import "../lib/NFTHelper.sol";
 import "../lib/TransferHelper.sol";
