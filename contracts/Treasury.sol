@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 import "./interfaces/ITreasury.sol";
 import "./Validatable.sol";
+import "./lib/TransferHelper.sol";
 
 /**
  *  @title  Dev Treasury Contract
@@ -50,15 +51,7 @@ contract Treasury is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable,
         address _to,
         uint256 _amount
     ) external onlyAdmin validPaymentToken(_paymentToken) notZeroAddress(_to) notZero(_amount) nonReentrant {
-        if (address(_paymentToken) != address(0)) {
-            require(_paymentToken.balanceOf(address(this)) >= _amount, "Not enough ERC-20 token to distribute");
-            _paymentToken.safeTransfer(_to, _amount);
-        } else {
-            require(address(this).balance >= _amount, "Not enough native token to distribute");
-            (bool sent, ) = _to.call{ value: _amount }("");
-
-            require(sent, "Failed to send native");
-        }
+        TransferHelper._transferToken(_paymentToken, _amount, address(this), _to);
 
         emit Distributed(_paymentToken, _to, _amount);
     }

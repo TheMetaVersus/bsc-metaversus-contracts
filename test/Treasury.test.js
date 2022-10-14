@@ -19,12 +19,7 @@ describe("Treasury", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            treasury.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address]);
     });
 
     describe("Deployment:", async () => {
@@ -43,33 +38,33 @@ describe("Treasury", () => {
 
         it("should revert when caller is not an owner or admin", async () => {
             await expect(treasury.connect(user1).distribute(token.address, user1.address, 10)).to.be.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("should revert when payment token is not supported", async () => {
             await expect(treasury.distribute(user1.address, user1.address, 10)).to.be.revertedWith(
-                "Payment token is not supported"
+                "PaymentTokenIsNotSupported()"
             );
         });
 
         it("should revert when receiver address is invalid", async () => {
-            await expect(treasury.distribute(token.address, AddressZero, 10)).to.be.revertedWith("Invalid address");
+            await expect(treasury.distribute(token.address, AddressZero, 10)).to.be.revertedWith("InvalidAddress()");
         });
 
         it("should revert when token amount equal to zero", async () => {
-            await expect(treasury.distribute(token.address, user1.address, 0)).to.be.revertedWith("Invalid amount");
+            await expect(treasury.distribute(token.address, user1.address, 0)).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should revert when not enough ERC-20 token to distribute", async () => {
             await expect(treasury.distribute(token.address, user1.address, TOTAL_SUPPLY.add(1))).to.be.revertedWith(
-                "Not enough ERC-20 token to distribute"
+                "ERC20: transfer amount exceeds balance"
             );
         });
 
         it("should revert when not enough native token to distribute", async () => {
             await expect(treasury.distribute(AddressZero, user1.address, 101)).to.be.revertedWith(
-                "Not enough native token to distribute"
+                "TransferNativeFail()"
             );
         });
 

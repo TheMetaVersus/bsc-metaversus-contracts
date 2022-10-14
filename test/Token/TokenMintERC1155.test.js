@@ -28,14 +28,10 @@ describe("TokenMintERC1155", () => {
     describe("Deployment", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(upgrades.deployProxy(TokenMintERC1155, [250, AddressZero])).to.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${AddressZero}")`
             );
-            await expect(
-                upgrades.deployProxy(TokenMintERC1155, [250, user1.address])
-            ).to.revertedWith("Invalid Admin contract");
-            await expect(
-                upgrades.deployProxy(TokenMintERC1155, [250, treasury.address])
-            ).to.revertedWith("Invalid Admin contract");
+            await expect(upgrades.deployProxy(TokenMintERC1155, [250, user1.address])).to.reverted;
+            await expect(upgrades.deployProxy(TokenMintERC1155, [250, treasury.address])).to.reverted;
         });
 
         it("Check uri", async () => {
@@ -71,14 +67,16 @@ describe("TokenMintERC1155", () => {
     describe("mint function", async () => {
         it("should revert when caller is not owner", async () => {
             await expect(tokenMintERC1155.connect(user1).mint(mkpManager.address, 100, "this_uri")).to.be.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
         it("should revert when receiver address equal to zero address", async () => {
-            await expect(tokenMintERC1155.mint(AddressZero, 100, "this_uri")).to.be.revertedWith("Invalid address");
+            await expect(tokenMintERC1155.mint(AddressZero, 100, "this_uri")).to.be.revertedWith("InvalidAddress()");
         });
         it("should revert when amount equal to zero address", async () => {
-            await expect(tokenMintERC1155.mint(mkpManager.address, 0, "this_uri")).to.be.revertedWith("Invalid amount");
+            await expect(tokenMintERC1155.mint(mkpManager.address, 0, "this_uri")).to.be.revertedWith(
+                "InvalidAmount()"
+            );
         });
         it("should mint success", async () => {
             await tokenMintERC1155.mint(mkpManager.address, 100, "this_uri");
@@ -94,24 +92,24 @@ describe("TokenMintERC1155", () => {
         it("should revert when caller is not an owner or admin", async () => {
             await expect(
                 tokenMintERC1155.connect(user1).mintBatch(mkpManager.address, [101, 102, 103], BATCH_URIS)
-            ).to.be.revertedWith("Caller is not an owner or admin");
+            ).to.be.revertedWith("CallerIsNotOwnerOrAdmin()");
         });
 
         it("should revert when amount length not equal to uris length", async () => {
             await expect(
                 tokenMintERC1155.mintBatch(mkpManager.address, [10, 11, 12, 13], BATCH_URIS)
-            ).to.be.revertedWith("Invalid length");
+            ).to.be.revertedWith("InvalidLength()");
         });
 
         it("should revert when receiver address equal to zero address", async () => {
             await expect(tokenMintERC1155.mintBatch(AddressZero, [10, 11, 12], BATCH_URIS)).to.be.revertedWith(
-                "Invalid address"
+                "InvalidAddress()"
             );
         });
 
         it("should revert when amount equal to zero address", async () => {
             await expect(tokenMintERC1155.mintBatch(mkpManager.address, [0, 100, 100], BATCH_URIS)).to.be.revertedWith(
-                "Invalid amount"
+                "InvalidAmount()"
             );
         });
 

@@ -8,7 +8,8 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "./MetaDropStructs.sol";
-import "../TransferableToken.sol";
+import "../Validatable.sol";
+import "../lib/TransferHelper.sol";
 
 /**
  *  @title  MetaVersus NFT Drop
@@ -19,7 +20,7 @@ import "../TransferableToken.sol";
  *          can mint token with paying a fee. In case the tokens are not sold entirely, anyone can buy
  *          the remaining in public sale round with the higher price.
  */
-contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
+contract MetaDrop is Validatable, ReentrancyGuardUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -62,7 +63,9 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
     event SetServiceFeeNumerator(uint256 indexed oldNumerator, uint256 indexed newNumerator);
 
     modifier validDrop(uint256 _dropId) {
-        require(_dropId > 0 && _dropId <= _dropCounter.current(), "Invalid drop");
+        if (!(_dropId > 0 && _dropId <= _dropCounter.current())) {
+            revert ErrorHelper.InvalidDropId();
+        }
         _;
     }
 
@@ -70,12 +73,12 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
      *  @notice Initialize new logic contract.
      */
     function initialize(IAdmin _mvtsAdmin, uint256 _serviceFeeNumerator) public initializer validAdmin(_mvtsAdmin) {
-        __TransferableToken_init(_mvtsAdmin);
+        __Validatable_init(_mvtsAdmin);
         __ReentrancyGuard_init();
 
         mvtsAdmin = _mvtsAdmin;
 
-        require(_serviceFeeNumerator <= SERVICE_FEE_DENOMINATOR, "Service fee will exceed mint fee");
+        ErrorHelper._checkValidFee(_serviceFeeNumerator, SERVICE_FEE_DENOMINATOR);
         serviceFeeNumerator = _serviceFeeNumerator;
     }
 
@@ -87,7 +90,7 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
      *  @param _newNumerator New service fee numerator
      */
     function setServiceFeeNumerator(uint256 _newNumerator) external onlyAdmin {
-        require(_newNumerator <= SERVICE_FEE_DENOMINATOR, "Service fee will exceed mint fee");
+        ErrorHelper._checkValidFee(_newNumerator, SERVICE_FEE_DENOMINATOR);
 
         uint256 oldNumerator = serviceFeeNumerator;
         serviceFeeNumerator = _newNumerator;
@@ -107,12 +110,10 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
         validTokenCollectionERC721(ITokenERC721(_drop.nft))
         validPaymentToken(IERC20Upgradeable(_drop.paymentToken))
     {
-        require(_drop.root != 0, "Invalid root");
-        require(_drop.fundingReceiver != address(0), "Invalid funding receiver");
-        require(_drop.maxSupply > 0, "Invalid minting supply");
-
-        require(_drop.startTime > block.timestamp, "Invalid start time"); // solhint-disable-line not-rely-on-time
-        require(_drop.endTime > _drop.startTime, "Invalid end time");
+        ErrorHelper._checkValidRoot(_drop.root);
+        ErrorHelper._checkValidReceiver(_drop.fundingReceiver);
+        ErrorHelper._checkValidSupply(_drop.maxSupply);
+        ErrorHelper._checkValidTimeForCreate(_drop.startTime, _drop.endTime);
 
         _dropCounter.increment();
         uint256 dropId = _dropCounter.current();
@@ -153,13 +154,11 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
     {
         DropRecord storage drop = drops[_dropId];
 
-        require(_msgSender() == drop.owner, "Caller is not drop owner");
-        require(_newDrop.root != 0, "Invalid root");
-        require(_newDrop.fundingReceiver != address(0), "Invalid funding receiver");
-        require(_newDrop.maxSupply > 0, "Invalid minting supply");
-
-        require(_newDrop.startTime > 0, "Invalid start time");
-        require(_newDrop.endTime > _newDrop.startTime, "Invalid end time");
+        ErrorHelper._checkDropReceiver(drop.owner);
+        ErrorHelper._checkValidRoot(_newDrop.root);
+        ErrorHelper._checkValidReceiver(_newDrop.fundingReceiver);
+        ErrorHelper._checkValidSupply(_newDrop.maxSupply);
+        ErrorHelper._checkValidTimeForCreate(_newDrop.startTime, _newDrop.endTime);
 
         DropRecord memory oldDrop = drop;
 
@@ -184,9 +183,8 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
      */
     function cancel(uint256 _dropId) external whenNotPaused validDrop(_dropId) {
         DropRecord storage drop = drops[_dropId];
-        require(_msgSender() == drop.owner, "Caller is not drop owner");
-        require(!drop.isCanceled, "Already canceled");
-
+        ErrorHelper._checkDropReceiver(drop.owner);
+        ErrorHelper._checkDropCancel(drop.isCanceled);
         drop.isCanceled = true;
 
         emit CanceledDrop(_dropId);
@@ -209,11 +207,9 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
         uint256 _amount
     ) external payable validDrop(_dropId) nonReentrant whenNotPaused {
         bool canBuy = canBuyToken(_dropId, _msgSender(), _proof);
-        require(canBuy, "Not permitted to mint now");
-
+        ErrorHelper._checkDropPermitMint(canBuy);
         uint256 mintable = mintableAmount(_dropId, _msgSender());
-        require(mintable >= _amount, "Can not mint tokens anymore");
-
+        ErrorHelper._checkDropMintable(_amount, mintable);
         // record minted history
         mintedHistories[_msgSender()][_dropId] += _amount;
 
@@ -246,8 +242,8 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
     ) private {
         IERC20Upgradeable paymentToken = IERC20Upgradeable(_drop.paymentToken);
 
-        if (isNativeToken(paymentToken)) {
-            require(msg.value == _mintFee, "Not enough fee");
+        if (TransferHelper._isNativeToken(paymentToken)) {
+            ErrorHelper._checkEnoughFee(_mintFee);
         }
 
         // Payout service fee for drop service
@@ -276,10 +272,12 @@ contract MetaDrop is TransferableToken, ReentrancyGuardUpgradeable {
         address _to,
         uint256 _amount
     ) private {
-        if (isNativeToken(_token)) {
-            transferNativeToken(_to, _amount);
+        if (TransferHelper._isNativeToken(_token)) {
+            TransferHelper._transferNativeToken(_to, _amount);
         } else {
-            require(msg.value == 0, "Can not pay both token");
+            if (msg.value != 0) {
+                revert ErrorHelper.NotPayBothToken();
+            }
             _token.safeTransferFrom(_from, _to, _amount);
         }
     }

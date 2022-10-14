@@ -39,7 +39,7 @@ describe("CollectionFactory", () => {
                     user1.address,
                     user2.address,
                 ])
-            ).to.revertedWith("Invalid Admin contract");
+            ).to.revertedWith(`InValidAdminContract("${AddressZero}")`);
             await expect(
                 upgrades.deployProxy(CollectionFactory, [
                     tokenERC721.address,
@@ -48,7 +48,7 @@ describe("CollectionFactory", () => {
                     user1.address,
                     user2.address,
                 ])
-            ).to.revertedWith("Invalid Admin contract");
+            ).to.revertedWith(`InValidAdminContract("${user1.address}")`);
         });
 
         it("Check variable", async () => {
@@ -64,12 +64,12 @@ describe("CollectionFactory", () => {
     describe("setMaxCollection", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(collectionFactory.connect(user1).setMaxCollection(50)).to.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("Should revert Invalid maxCollection", async () => {
-            await expect(collectionFactory.setMaxCollection(0)).to.revertedWith("Invalid maxCollection");
+            await expect(collectionFactory.setMaxCollection(0)).to.revertedWith("InvalidMaxCollection()");
         });
 
         it("Should setMaxCollection successfully", async () => {
@@ -82,12 +82,12 @@ describe("CollectionFactory", () => {
     describe("setMaxTotalSuply", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(collectionFactory.connect(user1).setMaxTotalSuply(50)).to.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("Should revert Invalid maxTotalSupply", async () => {
-            await expect(collectionFactory.setMaxTotalSuply(0)).to.revertedWith("Invalid maxTotalSupply");
+            await expect(collectionFactory.setMaxTotalSuply(0)).to.revertedWith("InvalidMaxTotalSupply()");
         });
 
         it("Should setMaxTotalSuply successfully", async () => {
@@ -100,17 +100,17 @@ describe("CollectionFactory", () => {
     describe("setMaxCollectionOfUser", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(collectionFactory.connect(user1).setMaxCollectionOfUser(user1.address, 50)).to.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("Should revert Invalid address", async () => {
-            await expect(collectionFactory.setMaxCollectionOfUser(AddressZero, 0)).to.revertedWith("Invalid address");
+            await expect(collectionFactory.setMaxCollectionOfUser(AddressZero, 0)).to.revertedWith("InvalidAddress()");
         });
 
         it("Should revert Invalid maxCollectionOfUser", async () => {
             await expect(collectionFactory.setMaxCollectionOfUser(user1.address, 0)).to.revertedWith(
-                "Invalid maxCollectionOfUser"
+                "InvalidMaxCollectionOfUser()"
             );
         });
 
@@ -124,12 +124,12 @@ describe("CollectionFactory", () => {
     describe("setMetaversusManager", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(collectionFactory.connect(user1).setMetaversusManager(user1.address)).to.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("Should revert Invalid address", async () => {
-            await expect(collectionFactory.setMetaversusManager(AddressZero)).to.revertedWith("Invalid address");
+            await expect(collectionFactory.setMetaversusManager(AddressZero)).to.revertedWith("InvalidAddress()");
         });
 
         it("Should setMetaversusManager successfully", async () => {
@@ -143,12 +143,12 @@ describe("CollectionFactory", () => {
     describe("setMetaDrop", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(collectionFactory.connect(user1).setMetaDrop(user1.address)).to.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()'"
             );
         });
 
         it("Should revert Invalid address", async () => {
-            await expect(collectionFactory.setMetaDrop(AddressZero)).to.revertedWith("Invalid address");
+            await expect(collectionFactory.setMetaDrop(AddressZero)).to.revertedWith("InvalidAddress()");
         });
 
         it("Should setMetaDrop successfully", async () => {
@@ -163,15 +163,15 @@ describe("CollectionFactory", () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(
                 collectionFactory.connect(user1).setTemplateAddress(user1.address, user1.address)
-            ).to.revertedWith("Caller is not an owner or admin");
+            ).to.revertedWith("CallerIsNotOwnerOrAdmin()");
         });
 
         it("Should revert Invalid address", async () => {
             await expect(collectionFactory.setTemplateAddress(AddressZero, user1.address)).to.revertedWith(
-                "Invalid address"
+                "InvalidAddress()"
             );
             await expect(collectionFactory.setTemplateAddress(user1.address, AddressZero)).to.revertedWith(
-                "Invalid address"
+                "InvalidAddress()"
             );
         });
 
@@ -191,7 +191,7 @@ describe("CollectionFactory", () => {
             await collectionFactory.create(0, "NFT", "NFT", user1.address, 250);
 
             await expect(collectionFactory.create(1, "NFT1155", "NFT1155", user1.address, 250)).to.be.revertedWith(
-                "Exceeding the maxCollection"
+                "ExceedMaxCollection()"
             );
         });
 

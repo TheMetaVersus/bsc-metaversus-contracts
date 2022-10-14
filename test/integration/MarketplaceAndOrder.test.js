@@ -212,9 +212,9 @@ describe("Marketplace interact with Order", () => {
                     )
             ).to.changeEtherBalance(user2, bidPrice.mul(-1));
 
-            const currentWalletOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentWalletOrderId);
-            const orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            const currentWalletOrderId = await orderManager.getCurrentOrderId();
+            const orderInfo = await orderManager.getOrderByOrderId(currentWalletOrderId);
+
             expect(orderInfo.bidPrice).to.equal(bidPrice);
         });
         it("ReOffer in market item", async () => {
@@ -234,9 +234,9 @@ describe("Marketplace interact with Order", () => {
                     )
             ).to.changeEtherBalance(user2, balanceWillChange.mul(-1));
 
-            const currentWalletOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentWalletOrderId);
-            const orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            const currentWalletOrderId = await orderManager.getCurrentOrderId();
+            const orderInfo = await orderManager.getOrderByOrderId(currentWalletOrderId);
+
             expect(orderInfo.bidPrice).to.equal(bidPrice);
         });
     });

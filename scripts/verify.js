@@ -2,75 +2,75 @@ const hre = require("hardhat");
 const contracts = require("../contracts-verify.json");
 
 async function main() {
-  // try {
-  //   await hre.run("verify:verify", {
-  //     address: contracts.admin,
-  //     contract: "contracts/Admin.sol:Admin"
-  //   });
-  // } catch (err) {
-  //   console.log("err :>> ", err);
-  // }
-  // try {
-  //   await hre.run("verify:verify", {
-  //     address: contracts.treasury,
-  //     contract: "contracts/Treasury.sol:Treasury"
-  //   });
-  // } catch (err) {
-  //   console.log("err :>> ", err);
-  // }
-  // try {
-  //   await hre.run("verify:verify", {
-  //     address: contracts.usd,
-  //     contract: "contracts/Token/MTVS.sol:MTVS"
-  //   });
-  // } catch (err) {
-  //   console.log("err :>> ", err);
-  // }
-  // try {
-  //   await hre.run("verify:verify", {
-  //     address: contracts.mtvs,
-  //     contract: "contracts/Token/MTVS.sol:MTVS"
-  //   });
-  // } catch (err) {
-  //   console.log("err :>> ", err);
-  // }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.admin,
+      contract: "contracts/Admin.sol:Admin"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.treasury,
+      contract: "contracts/Treasury.sol:Treasury"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.usd,
+      contract: "contracts/Token/MTVS.sol:MTVS"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.mtvs,
+      contract: "contracts/Token/MTVS.sol:MTVS"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
 
-  // try {
-  //   await hre.run("verify:verify", {
-  //     address: contracts.tokenMintERC721,
-  //     contract: "contracts/Token/TokenMintERC721.sol:TokenMintERC721"
-  //   });
-  // } catch (err) {
-  //   console.log("err :>> ", err);
-  // }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.tokenMintERC721,
+      contract: "contracts/Token/TokenMintERC721.sol:TokenMintERC721"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
 
-  // try {
-  //   await hre.run("verify:verify", {
-  //     address: contracts.tokenMintERC1155,
-  //     contract: "contracts/Token/TokenMintERC1155.sol:TokenMintERC1155"
-  //   });
-  // } catch (err) {
-  //   console.log("err :>> ", err);
-  // }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.tokenMintERC1155,
+      contract: "contracts/Token/TokenMintERC1155.sol:TokenMintERC1155"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
 
-  // try {
-  //   await hre.run("verify:verify", {
-  //     address: contracts.mtvsManager,
-  //     contract: "contracts/Marketplace/MetaversusManager.sol:MetaversusManager"
-  //   });
-  // } catch (err) {
-  //   console.log("err :>> ", err);
-  // }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.mtvsManager,
+      contract: "contracts/Marketplace/MetaversusManager.sol:MetaversusManager"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
 
-  // try {
-  //   await hre.run("verify:verify", {
-  //     address: contracts.mkpManager,
-  //     contract:
-  //       "contracts/Marketplace/MarketplaceManager.sol:MarketPlaceManager"
-  //   });
-  // } catch (err) {
-  //   console.log("err :>> ", err);
-  // }
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.mkpManager,
+      contract:
+        "contracts/Marketplace/MarketplaceManager.sol:MarketPlaceManager"
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
 
   try {
     await hre.run("verify:verify", {

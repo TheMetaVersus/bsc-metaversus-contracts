@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "./lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Adminable Contract
@@ -19,17 +20,19 @@ contract Adminable is OwnableUpgradeable {
     event SetAdmin(address indexed user, bool allow);
 
     modifier onlyAdmin() {
-        require((owner() == _msgSender() || admins[_msgSender()]), "Caller is not an owner or admin");
+        if (!(owner() == _msgSender() || admins[_msgSender()])) {
+            revert ErrorHelper.CallerIsNotOwnerOrAdmin();
+        }
         _;
     }
 
     modifier notZeroAddress(address _addr) {
-        require(_addr != address(0), "Invalid address");
+        ErrorHelper._checkValidAddress(_addr);
         _;
     }
 
     modifier notZeroAmount(uint256 _amount) {
-        require(_amount > 0, "Invalid amount");
+        ErrorHelper._checkValidAmount(_amount);
         _;
     }
 

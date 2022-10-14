@@ -91,10 +91,10 @@ describe("MTVSManagerFlowCollection", () => {
 
         await expect(
             collectionFactory.connect(user1).create(0, "NFT_1155", "NFT_1155", treasury.address, 250)
-        ).to.revertedWith("Exceeding the maxCollection");
+        ).to.revertedWith("ExceedMaxCollection()");
         await expect(
             collectionFactory.connect(user2).create(0, "NFT_1155", "NFT_1155", treasury.address, 250)
-        ).to.revertedWith("Exceeding the maxCollection");
+        ).to.revertedWith("ExceedMaxCollection()");
     });
 
     it("setMaxCollectionOfUser is 5", async () => {
@@ -146,7 +146,7 @@ describe("MTVSManagerFlowCollection", () => {
                     token.address,
                     merkleTree.getHexRoot()
                 )
-        ).to.revertedWith("User is not create collection");
+        ).to.revertedWith("UserDidNotCreateCollection()");
     });
 
     it("User 1 create NFT 721 max total suply with collection by mtvs manager to Sale", async () => {
@@ -195,7 +195,7 @@ describe("MTVSManagerFlowCollection", () => {
                     token.address,
                     merkleTree.getHexRoot()
                 )
-        ).to.revertedWith("Exceeding the totalSupply");
+        ).to.revertedWith("ExceedTotalSupply()");
     });
 
     it("User 2 create NFT 1155 with collection by mtvs manager to Wallet", async () => {
@@ -239,7 +239,7 @@ describe("MTVSManagerFlowCollection", () => {
                     token.address,
                     merkleTree.getHexRoot()
                 )
-        ).to.revertedWith("User is not create collection");
+        ).to.revertedWith("UserDidNotCreateCollection()");
     });
 
     it("User 2 create NFT 1155 max total suply with collection by mtvs manager to Wallet", async () => {
@@ -289,6 +289,6 @@ describe("MTVSManagerFlowCollection", () => {
                     token.address,
                     merkleTree.getHexRoot()
                 )
-        ).to.revertedWith("Exceeding the totalSupply");
+        ).to.revertedWith("ExceedTotalSupply()");
     });
 });

@@ -159,7 +159,7 @@ describe("Staking Pool:", () => {
                     USD_TOKEN,
                     AddressZero,
                 ])
-            ).to.revertedWith("Invalid Admin contract");
+            ).to.revertedWith(`InValidAdminContract("${AddressZero}")`);
             await expect(
                 upgrades.deployProxy(Staking, [
                     token.address,
@@ -172,7 +172,7 @@ describe("Staking Pool:", () => {
                     USD_TOKEN,
                     user1.address,
                 ])
-            ).to.revertedWith("Invalid Admin contract");
+            ).to.reverted;
             await expect(
                 upgrades.deployProxy(Staking, [
                     token.address,
@@ -185,7 +185,7 @@ describe("Staking Pool:", () => {
                     USD_TOKEN,
                     treasury.address,
                 ])
-            ).to.revertedWith("Invalid Admin contract");
+            ).to.reverted;
         });
     });
     describe("getStakeToken:", async () => {
@@ -323,7 +323,7 @@ describe("Staking Pool:", () => {
     //  Others
     describe("stake:", async () => {
         it("should revert when amount equal to zero: ", async () => {
-            await expect(staking.connect(user1).stake(0)).to.be.revertedWith("Invalid amount");
+            await expect(staking.connect(user1).stake(0)).to.be.revertedWith("InvalidAmount()");
         });
         it("should stake success: ", async () => {
             await token.transfer(user2.address, ONE_MILLION_ETHER);
@@ -527,7 +527,7 @@ describe("Staking Pool:", () => {
 
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime);
-            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith("Not allow to unstake now");
+            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith("NotAllowToUnstake()");
         });
 
         it("should revert when Already requested: ", async () => {
@@ -560,7 +560,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime + poolDuration);
             await staking.connect(user1).requestUnstake();
-            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith("Already requested");
+            await expect(staking.connect(user1).requestUnstake()).to.be.revertedWith("AlreadyRequested()");
         });
 
         it("should request success: ", async () => {
@@ -627,7 +627,7 @@ describe("Staking Pool:", () => {
             await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             await staking.setStartTime(0);
-            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("Not allow to claim now");
+            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("NotAllowToClaim()");
         });
         it("should revert when more request: ", async () => {
             await token.transfer(user2.address, ONE_MILLION_ETHER);
@@ -659,7 +659,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime);
             await staking.connect(user1).requestClaim();
-            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("Already requested");
+            await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("AlreadyRequested()");
         });
         it("should request success: ", async () => {
             await token.transfer(user2.address, ONE_MILLION_ETHER);
@@ -728,7 +728,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).requestClaim();
             await skipTime(10 * 30 * 24 * 60 * 60 + 1); // 23h
 
-            await expect(staking.connect(user1).claim()).to.be.revertedWith("Staking pool has expired");
+            await expect(staking.connect(user1).claim()).to.be.revertedWith("NotAllowToClaim()");
         });
 
         it("should revert when not rquest claim before ", async () => {
@@ -760,7 +760,7 @@ describe("Staking Pool:", () => {
 
             await skipTime(30 * 24 * 60 * 60);
 
-            await expect(staking.connect(user1).claim()).to.be.revertedWith("Must request claim first");
+            await expect(staking.connect(user1).claim()).to.be.revertedWith("MustRequestFirst()");
         });
 
         it("should accept lost 50% first ", async () => {
@@ -935,9 +935,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(unstakeTime);
 
-            await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith(
-                "Staking pool has not expired yet"
-            );
+            await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith("NotAllowToUnstake()");
         });
         it("should revert when request not finish after 24 hours: ", async () => {
             await token.transfer(user2.address, ONE_MILLION_ETHER);
@@ -969,7 +967,7 @@ describe("Staking Pool:", () => {
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(unstakeTime);
 
-            await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith("Must request unstake first");
+            await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith("MustRequestFirst()");
         });
         it("should revert when connot unstake more than staked amount: ", async () => {
             await token.transfer(user2.address, ONE_MILLION_ETHER);
@@ -1001,7 +999,7 @@ describe("Staking Pool:", () => {
             await skipTime(unstakeTime);
             await staking.connect(user1).requestUnstake();
             await skipTime(25 * 60 * 60);
-            await expect(staking.connect(user1).unstake(OVER_AMOUNT)).to.be.revertedWith("Exceeds staked amount");
+            await expect(staking.connect(user1).unstake(OVER_AMOUNT)).to.be.revertedWith("ExceedAmount()");
         });
         it("should unstake success: ", async () => {
             await token.transfer(staking.address, ONE_MILLION_ETHER);

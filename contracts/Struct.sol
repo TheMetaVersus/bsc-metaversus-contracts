@@ -16,12 +16,6 @@ enum MarketItemStatus {
     CANCELED
 }
 
-enum OrderStatus {
-    PENDING,
-    ACCEPTED,
-    CANCELED
-}
-
 //  prettier-ignore
 struct MarketItem {
     address nftContractAddress;                     // NFT Contract Address
@@ -35,30 +29,4 @@ struct MarketItem {
     uint256 startTime;                              // Time when the NFT push to Marketplace
     uint256 endTime;                                // Time when the NFT expire at Marketplace
     IERC20Upgradeable paymentToken;                 // Token to transfer
-}
-
-//  prettier-ignore
-struct WalletOrder {
-    address to;                                     // Seller
-    address nftAddress;                             // NFT Contract Address of this asset
-    uint256 tokenId;                                // Token Id of NFT contract
-    uint256 orderId;                                // id order
-}
-
-//  prettier-ignore
-struct MarketItemOrder {
-    uint256 marketItemId;                           // Id of MarketItem
-    uint256 orderId;                                // id order
-}
-
-//  prettier-ignore
-struct OrderInfo {
-    uint256 id;                                     // id order
-    uint256 amount;                                 // Amount to transfer
-    uint256 bidPrice;                               // Bid price
-    uint256 expiredTime;                            // Expired time
-    address owner;                                  // owner address
-    IERC20Upgradeable paymentToken;                 // Token to transfer
-    OrderStatus status;                             // Status of order
-    bool isWallet;                                  // Check wallet
 }

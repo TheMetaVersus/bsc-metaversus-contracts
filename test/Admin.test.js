@@ -42,11 +42,13 @@ describe("Admin", () => {
 
     describe("Deployment", async () => {
         it("should revert when owner is zero address", async () => {
-            await expect(upgrades.deployProxy(Admin, [AddressZero])).to.be.revertedWith("Invalid wallet");
+            await expect(upgrades.deployProxy(Admin, [AddressZero])).to.be.revertedWith(
+                `InvalidWallet("${AddressZero}")`
+            );
         });
 
         it("should revert when owner is a contract", async () => {
-            await expect(upgrades.deployProxy(Admin, [metaCitizen.address])).to.be.revertedWith("Invalid wallet");
+            await expect(upgrades.deployProxy(Admin, [metaCitizen.address])).to.be.reverted;
         });
 
         it("should initialize successful", async () => {
@@ -63,7 +65,7 @@ describe("Admin", () => {
         });
 
         it("should revert when invalid wallet", async () => {
-            await expect(admin.setAdmin(AddressZero, true)).to.revertedWith("Invalid admin address");
+            await expect(admin.setAdmin(AddressZero, true)).to.revertedWith("InvalidAddress()");
         });
 
         it("should set admin successful", async () => {
@@ -86,7 +88,7 @@ describe("Admin", () => {
         });
 
         it("should revert when invalid Meta Citizen address", async () => {
-            await expect(admin.setMetaCitizen(AddressZero)).to.revertedWith("Invalid Meta Citizen address");
+            await expect(admin.setMetaCitizen(AddressZero)).to.revertedWith("InvalidAddress()");
         });
 
         it("should set Meta Citizen successful", async () => {
@@ -98,7 +100,7 @@ describe("Admin", () => {
     describe("setPermittedPaymentToken", async () => {
         it("should revert when caller is not an owner or admin", async () => {
             await expect(admin.connect(user1).setPermittedPaymentToken(token.address, true)).to.be.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
@@ -117,7 +119,7 @@ describe("Admin", () => {
     describe("setPermittedNFT", async () => {
         it("should revert when caller is not an owner or admin", async () => {
             await expect(admin.connect(user1).setPermittedNFT(tokenERC721.address, true)).to.be.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 

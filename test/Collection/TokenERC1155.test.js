@@ -77,13 +77,11 @@ describe("TokenERC1155:", () => {
 
     describe("setMaxBatch", async () => {
         it("Should revert when invalid admin contract address", async () => {
-            await expect(tokenERC1155.connect(user1).setMaxBatch(50)).to.revertedWith(
-                "Caller is not an owner or admin"
-            );
+            await expect(tokenERC1155.connect(user1).setMaxBatch(50)).to.revertedWith("CallerIsNotOwnerOrAdmin()");
         });
 
         it("Should revert Invalid maxBatch", async () => {
-            await expect(tokenERC1155.setMaxBatch(0)).to.revertedWith("Invalid maxBatch");
+            await expect(tokenERC1155.setMaxBatch(0)).to.revertedWith("InvalidMaxBatch()");
         });
 
         it("Should setMaxBatch successfully", async () => {
@@ -101,12 +99,12 @@ describe("TokenERC1155:", () => {
     describe("setAdminByFactory", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(tokenERC1155.connect(user1).setAdminByFactory(user1.address, true)).to.revertedWith(
-                "Caller is not the factory"
+                "CallerIsNotFactory()"
             );
         });
 
         it("Should revert Invalid address", async () => {
-            await expect(tokenERC1155.setAdminByFactory(AddressZero, true)).to.revertedWith("Invalid address");
+            await expect(tokenERC1155.setAdminByFactory(AddressZero, true)).to.revertedWith("InvalidAddress()");
         });
 
         it("Should setAdminByFactory successfully", async () => {
@@ -128,7 +126,7 @@ describe("TokenERC1155:", () => {
         });
 
         it("Should revert Invalid maxBatch", async () => {
-            await expect(tokenERC1155.setAdmin(AddressZero, true)).to.revertedWith("Invalid address");
+            await expect(tokenERC1155.setAdmin(AddressZero, true)).to.revertedWith("InvalidAddress()");
         });
 
         it("Should setAdmin successfully", async () => {
@@ -146,16 +144,16 @@ describe("TokenERC1155:", () => {
     describe("mint function:", async () => {
         it("should revert when caller is not owner: ", async () => {
             await expect(tokenERC1155.connect(user1).mint(mkpManager.address, 100, "this_uri")).to.be.revertedWith(
-                "Caller is not an owner or admin"
+                "CallerIsNotOwnerOrAdmin()"
             );
         });
 
         it("should revert when receiver address equal to zero address: ", async () => {
-            await expect(tokenERC1155.mint(AddressZero, 100, "this_uri")).to.be.revertedWith("Invalid address");
+            await expect(tokenERC1155.mint(AddressZero, 100, "this_uri")).to.be.revertedWith("InvalidAddress()");
         });
 
         it("should revert when amount equal to zero address: ", async () => {
-            await expect(tokenERC1155.mint(mkpManager.address, 0, "this_uri")).to.be.revertedWith("Invalid amount");
+            await expect(tokenERC1155.mint(mkpManager.address, 0, "this_uri")).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should revert when exceeding total supply: ", async () => {
@@ -164,7 +162,7 @@ describe("TokenERC1155:", () => {
             }
 
             await expect(tokenERC1155.mint(mkpManager.address, 100, "this_uri")).to.be.revertedWith(
-                "Exceeding the totalSupply"
+                "ExceedTotalSupply()"
             );
         });
 
@@ -180,25 +178,25 @@ describe("TokenERC1155:", () => {
                 tokenERC1155
                     .connect(user1)
                     .mintBatch(mkpManager.address, [101, 102, 103], ["this_uri", "this_uri_1", "this_uri_2"])
-            ).to.be.revertedWith("Caller is not an owner or admin");
+            ).to.be.revertedWith("CallerIsNotOwnerOrAdmin()");
         });
 
         it("should revert when amount length not equal to uris length: ", async () => {
             await expect(
                 tokenERC1155.mintBatch(mkpManager.address, [10, 11, 12, 13], ["this_uri", "this_uri_1", "this_uri_2"])
-            ).to.be.revertedWith("Invalid input");
+            ).to.be.revertedWith("InvalidArrayInput()");
         });
 
         it("should revert when receiver address equal to zero address: ", async () => {
             await expect(
                 tokenERC1155.mintBatch(AddressZero, [10, 11, 12], ["this_uri", "this_uri_1", "this_uri_2"])
-            ).to.be.revertedWith("Invalid address");
+            ).to.be.revertedWith("InvalidAddress()");
         });
 
         it("should revert when amount equal to zero address: ", async () => {
             await expect(
                 tokenERC1155.mintBatch(mkpManager.address, [0, 100, 100], ["this_uri", "this_uri_1", "this_uri_2"])
-            ).to.be.revertedWith("Invalid amount");
+            ).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should mint success: ", async () => {

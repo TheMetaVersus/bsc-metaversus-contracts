@@ -11,6 +11,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "../interfaces/Collection/ITokenERC721.sol";
 import "../interfaces/Collection/ICollection.sol";
 import "../Adminable.sol";
+import "../lib/ErrorHelper.sol";
 
 /**
  *  @title  Dev Non-fungible token
@@ -77,7 +78,9 @@ contract TokenERC721 is
     }
 
     modifier onlyFactory() {
-        require(_msgSender() == factory, "Caller is not the factory");
+        if (_msgSender() != factory) {
+            revert ErrorHelper.CallerIsNotFactory();
+        }
         _;
     }
 
@@ -87,8 +90,7 @@ contract TokenERC721 is
      *  @dev    Only owner or admin can call this function.
      */
     function mint(address _receiver, string memory _uri) external onlyAdmin notZeroAddress(_receiver) {
-        require(totalSupply() < maxTotalSupply, "Exceeding the totalSupply");
-
+        ErrorHelper._checkExceedMintTotalSupply(totalSupply(), maxTotalSupply);
         _tokenCounter.increment();
         uint256 _tokenId = _tokenCounter.current();
         uris[_tokenId] = _uri;
@@ -99,9 +101,8 @@ contract TokenERC721 is
     }
 
     function mintBatchWithUri(address _receiver, string[] memory _uris) external onlyAdmin notZeroAddress(_receiver) {
-        require(_uris.length > 0 && _uris.length <= maxBatch, "Must mint fewer in each batch");
-        require(totalSupply() + _uris.length <= maxTotalSupply, "Exceeding the totalSupply");
-
+        ErrorHelper._checkEachBatch(_uris.length, maxBatch);
+        ErrorHelper._checkExceedTotalSupply(totalSupply() + _uris.length, maxTotalSupply);
         uint256[] memory _tokenIds = new uint256[](_uris.length);
 
         for (uint256 i; i < _uris.length; i++) {
@@ -116,9 +117,8 @@ contract TokenERC721 is
     }
 
     function mintBatch(address _receiver, uint256 _times) external onlyAdmin notZeroAddress(_receiver) {
-        require(_times > 0 && _times <= maxBatch, "Must mint fewer in each batch");
-        require(totalSupply() + _times <= maxTotalSupply, "Exceeding the totalSupply");
-
+        ErrorHelper._checkEachBatch(_times, maxBatch);
+        ErrorHelper._checkExceedTotalSupply(totalSupply() + _times, maxTotalSupply);
         uint256[] memory _tokenIds = new uint256[](_times);
 
         for (uint256 i; i < _times; i++) {
@@ -143,7 +143,7 @@ contract TokenERC721 is
      *  @param  _maxBatch that set maxBatch value
      */
     function setMaxBatch(uint256 _maxBatch) external onlyAdmin {
-        require(_maxBatch > 0, "Invalid maxBatch");
+        ErrorHelper._checkMaxBatch(_maxBatch);
         uint256 oldMaxBatch = maxBatch;
         maxBatch = _maxBatch;
         emit SetMaxBatch(oldMaxBatch, _maxBatch);
@@ -185,7 +185,10 @@ contract TokenERC721 is
      *  @dev    All caller can call this function.
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "URI query for nonexistent token");
+        if (!_exists(tokenId)) {
+            revert ErrorHelper.URIQueryNonExistToken();
+        }
+
         return uris[tokenId];
     }
 

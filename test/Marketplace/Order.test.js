@@ -109,13 +109,13 @@ describe("OrderManager:", () => {
     describe("Deployment:", async () => {
         it("Should revert when invalid admin contract address", async () => {
             await expect(upgrades.deployProxy(OrderManager, [mkpManager.address, AddressZero])).to.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${AddressZero}")`
             );
             await expect(upgrades.deployProxy(OrderManager, [mkpManager.address, user1.address])).to.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${user1.address}")`
             );
             await expect(upgrades.deployProxy(OrderManager, [mkpManager.address, treasury.address])).to.revertedWith(
-                "Invalid Admin contract"
+                `InValidAdminContract("${treasury.address}")`
             );
         });
 
@@ -148,7 +148,7 @@ describe("OrderManager:", () => {
         it("should be fail when invalid payment token", async () => {
             await expect(
                 orderManager.makeWalletOrder(treasury.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("Payment token is not supported");
+            ).to.revertedWith(`PaymentTokenIsNotSupported()`);
         });
 
         it("should be fail when insufficient allowance", async () => {
@@ -168,29 +168,29 @@ describe("OrderManager:", () => {
         it("should be fail when invalid bid price", async () => {
             await expect(
                 orderManager.makeWalletOrder(token.address, 0, user1.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("Invalid amount");
+            ).to.revertedWith("InvalidAmount()");
         });
 
         it("should be fail when invalid amount", async () => {
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 0, endTime)
-            ).to.revertedWith("Invalid amount");
+            ).to.revertedWith("InvalidAmount()");
         });
 
         it("should be fail when invalid wallets", async () => {
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, AddressZero, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("Invalid wallets");
+            ).to.revertedWith(`InvalidWallet("${AddressZero}")`);
 
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, nftTest.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("Invalid wallets");
+            ).to.revertedWith(`InvalidWallet("${nftTest.address}")`);
         });
 
         it("should be fail when invalid time", async () => {
             await expect(
                 orderManager.makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, 0)
-            ).to.revertedWith("Invalid order time");
+            ).to.revertedWith("InvalidOrderTime()");
         });
 
         it("should be fail when offer my self", async () => {
@@ -198,7 +198,7 @@ describe("OrderManager:", () => {
                 orderManager
                     .connect(user1)
                     .makeWalletOrder(token.address, BID_PRICE, user1.address, nftTest.address, 1, 1, endTime)
-            ).to.revertedWith("User can not offer");
+            ).to.revertedWith("UserCanNotOffer()");
         });
 
         it("should be fail when update payment token", async () => {
@@ -218,7 +218,7 @@ describe("OrderManager:", () => {
                         1,
                         endTime
                     )
-            ).to.revertedWith("Can not update payment token");
+            ).to.revertedWith("CanNotUpdatePaymentToken()");
         });
 
         it("should be fail when invalid nft address", async () => {
@@ -226,13 +226,13 @@ describe("OrderManager:", () => {
                 orderManager
                     .connect(user1)
                     .makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, AddressZero, 1, 1, endTime)
-            ).to.revertedWith("Invalid nft address");
+            ).to.revertedWith(`InvalidNftAddress("${AddressZero}")`);
 
             await expect(
                 orderManager
                     .connect(user1)
                     .makeWalletOrder(AddressZero, BID_PRICE.add(ONE_ETHER), user2.address, token.address, 1, 1, endTime)
-            ).to.revertedWith("Invalid nft address");
+            ).to.revertedWith(`InvalidNftAddress("${token.address}")`);
         });
 
         it("should be fail when invalid token id", async () => {
@@ -248,7 +248,7 @@ describe("OrderManager:", () => {
                         1,
                         endTime
                     )
-            ).to.revertedWith("Invalid token id");
+            ).to.revertedWith(`InvalidOwner("${user3.address}")`);
 
             await expect(
                 orderManager
@@ -262,7 +262,7 @@ describe("OrderManager:", () => {
                         1,
                         endTime
                     )
-            ).to.revertedWith("Invalid token id");
+            ).to.revertedWith("InvalidAmount()");
         });
 
         it("Should be ok when create new offer", async () => {
@@ -270,9 +270,9 @@ describe("OrderManager:", () => {
                 .connect(user1)
                 .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            const orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            const currentOrderId = await orderManager.getCurrentOrderId();
+            const orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const walletOrderInfo = await orderManager.getWalletOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user1.address);
             expect(orderInfo.paymentToken).to.equal(token.address);
@@ -289,9 +289,8 @@ describe("OrderManager:", () => {
                 .connect(user1)
                 .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            const currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
 
@@ -307,7 +306,7 @@ describe("OrderManager:", () => {
                     endTime
                 );
 
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE.add(ETHER_100));
         });
 
@@ -316,9 +315,8 @@ describe("OrderManager:", () => {
                 .connect(user1)
                 .makeWalletOrder(token.address, BID_PRICE, user2.address, tokenMintERC721.address, 1, 1, endTime);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            const currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
 
@@ -336,7 +334,7 @@ describe("OrderManager:", () => {
                     )
             ).to.changeTokenBalance(token, user1, ETHER_10);
 
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE.sub(ETHER_10));
         });
 
@@ -354,14 +352,14 @@ describe("OrderManager:", () => {
 
             expect(eth_after.sub(eth_before)).to.equal(BID_PRICE);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            const orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            const currentOrderId = await orderManager.getCurrentOrderId();
+            const orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const walletOrderInfo = await orderManager.getWalletOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user1.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
-             
+
             expect(walletOrderInfo.orderId).to.equal(orderInfo.id);
             expect(walletOrderInfo.to).to.equal(user2.address);
             expect(walletOrderInfo.nftAddress).to.equal(tokenMintERC721.address);
@@ -378,9 +376,8 @@ describe("OrderManager:", () => {
                     })
             ).to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
 
@@ -398,8 +395,8 @@ describe("OrderManager:", () => {
                         { value: ONE_ETHER }
                     )
             ).to.changeEtherBalances([user1], [ONE_ETHER.mul(-1)]);
-
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE.add(ONE_ETHER));
         });
 
@@ -412,9 +409,8 @@ describe("OrderManager:", () => {
                     })
             ).to.changeEtherBalances([user1], [BID_PRICE.mul(-1)]);
 
-            const currentOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.bidPrice).to.equal(BID_PRICE);
             await expect(() =>
@@ -431,7 +427,8 @@ describe("OrderManager:", () => {
                     )
             ).to.changeEtherBalance(user1, ONE_ETHER);
 
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BID_PRICE.sub(ONE_ETHER));
         });
     });
@@ -459,13 +456,13 @@ describe("OrderManager:", () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId.add(1), BUY_BID_PRICE, endTime, [])
-            ).to.revertedWith("Market ID is not exist");
+            ).to.revertedWith("InvalidMarketItemId()");
         });
 
         it("should revert when invalid price", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(orderManager.connect(user2).makeMarketItemOrder(marketItemId, 0, endTime, [])).to.revertedWith(
-                "Invalid amount"
+                "InvalidAmount()"
             );
         });
 
@@ -473,7 +470,7 @@ describe("OrderManager:", () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, 0, [])
-            ).to.revertedWith("Invalid order time");
+            ).to.revertedWith("InvalidOrderTime()");
         });
 
         it("should revert when Market Item is not available", async () => {
@@ -483,7 +480,7 @@ describe("OrderManager:", () => {
 
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, [])
-            ).to.revertedWith("Market Item is not available");
+            ).to.revertedWith("MarketItemIsNotAvailable()");
         });
 
         it("should revert when Not the order time", async () => {
@@ -495,7 +492,7 @@ describe("OrderManager:", () => {
 
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, [])
-            ).to.revertedWith("Not the order time");
+            ).to.revertedWith("NotInTheOrderTime()");
         });
 
         it("should be revert when offer my self", async () => {
@@ -507,7 +504,7 @@ describe("OrderManager:", () => {
 
             await expect(
                 orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, time, [])
-            ).to.revertedWith("User can not offer");
+            ).to.be.revertedWith("UserCanNotOffer()");
         });
 
         it("should be revert when is not owned MetaCItizen", async () => {
@@ -531,7 +528,7 @@ describe("OrderManager:", () => {
                 orderManager
                     .connect(user2)
                     .makeMarketItemOrder(2, BUY_BID_PRICE, endTime, merkleTree.getHexProof(generateLeaf(user2.address)))
-            ).to.revertedWith("Require own MetaCitizen NFT");
+            ).to.revertedWith("EitherNotInWhitelistOrNotOwnMetaCitizenNFT(");
         });
 
         it("Should be ok when create buy offer", async () => {
@@ -561,9 +558,11 @@ describe("OrderManager:", () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
 
-            const currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            const orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+
+            let marketOrderId = await orderManager.getCurrentMarketItemOrderId();
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(token.address);
@@ -574,50 +573,40 @@ describe("OrderManager:", () => {
 
             await orderManager.connect(user2).cancelOrder(currentOrderId);
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
-            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(currentOrderId.add(1));
+
+            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(marketOrderId.add(1));
         });
 
         it("Should be ok when update buy offer more than amount", async () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
-
             await token.transfer(user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
-
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
             await metaCitizen.mint(user2.address);
-
             merkleTree = await generateMerkleTree([user1.address, user2.address]);
-
             rootHash = merkleTree.getHexRoot();
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
-
             await orderManager
                 .connect(user1)
                 .sell(nftTest.address, 1, 1, 1000, startTime + 10, endTime, token.address, rootHash);
-
             await skipTime(100);
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
-
-            const currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
-
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(token.address);
             expect(orderInfo.bidPrice).to.equal(BUY_BID_PRICE);
-
             expect(marketItemOrderInfo.orderId).to.equal(orderInfo.id);
             expect(marketItemOrderInfo.marketItemId).to.equal(marketItemId);
-
             await orderManager
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, BUY_BID_PRICE.add(ETHER_100), endTime, proof);
-
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BUY_BID_PRICE.add(ETHER_100));
         });
 
@@ -646,9 +635,9 @@ describe("OrderManager:", () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof);
 
-            const currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(token.address);
@@ -661,7 +650,7 @@ describe("OrderManager:", () => {
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, BUY_BID_PRICE.sub(ETHER_10), endTime, proof);
 
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
             expect(orderInfo.bidPrice).to.equal(BUY_BID_PRICE.sub(ETHER_10));
         });
 
@@ -702,9 +691,10 @@ describe("OrderManager:", () => {
             const balance_after = await ethers.provider.getBalance(orderManager.address);
             expect(balance_after.sub(balance_before)).to.equal(BUY_BID_PRICE);
 
-            let currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+            let marketOrderId = await orderManager.getCurrentMarketItemOrderId();
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -715,8 +705,8 @@ describe("OrderManager:", () => {
 
             await orderManager.connect(user2).cancelOrder(marketItemOrderInfo.orderId);
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -729,11 +719,11 @@ describe("OrderManager:", () => {
             await orderManager
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE });
-            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(currentOrderId.add(1));
+            expect(await orderManager.getCurrentMarketItemOrderId()).to.equal(marketOrderId.add(1));
 
-            currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -743,8 +733,9 @@ describe("OrderManager:", () => {
             expect(marketItemOrderInfo.orderId).to.equal(orderInfo.id);
             expect(marketItemOrderInfo.marketItemId).to.equal(marketItemId);
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId.sub(1));
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId.sub(1));
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId.sub(1));
             expect(orderInfo.status).to.equal(OrderStatus.CANCELED);
         });
 
@@ -776,10 +767,9 @@ describe("OrderManager:", () => {
                     .connect(user2)
                     .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE })
             ).to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
-
-            let currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -796,8 +786,8 @@ describe("OrderManager:", () => {
                     })
             ).to.changeEtherBalance(user2, ETHER_100.mul(-1));
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -836,9 +826,9 @@ describe("OrderManager:", () => {
                     .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE })
             ).to.changeEtherBalance(user2, BUY_BID_PRICE.mul(-1));
 
-            let currentOrderId = await orderManager.getCurrentMarketItemOrderId();
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.paymentToken).to.equal(AddressZero);
@@ -857,8 +847,8 @@ describe("OrderManager:", () => {
             const balance_after = await ethers.provider.getBalance(orderManager.address);
             expect(balance_before.sub(balance_after)).to.equal(ETHER_10);
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentOrderId);
-            orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderInfo.owner).to.equal(user2.address);
             expect(orderInfo.bidPrice).to.equal(BUY_BID_PRICE.sub(ETHER_10));
@@ -893,31 +883,31 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when Invalid seller of asset", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith("Not the seller");
+            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith(
+                `NotTheSeller("${user3.address}", "${user1.address}")`
+            );
         });
 
         it("should be fail when Invalid order id", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("InvalidOrderId()");
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Order is not available");
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsNotAvailable()");
         });
 
         it("should be fail when Overtime", async () => {
             await skipTime(ONE_WEEK);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Order is expired");
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsExpired()");
         });
 
         it("Should be ok", async () => {
             await nftTest.connect(user1).approve(orderManager.address, 1);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            const walletOrderInfo = await orderManager.getWalletOrderByOrderId(currentOrderId);
 
-            const currentWalletOrderId = await orderManager.getCurrentWalletOrderId();
-            const walletOrderInfo = await orderManager.walletOrders(currentWalletOrderId);
-            const orderInfo = await orderManager.orders(walletOrderInfo.orderId);
             const listingFee = await mkpManager.getListingFee(orderInfo.bidPrice);
 
             // pay listing fee
@@ -988,42 +978,38 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("InvalidOrderId()");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).acceptOrder(orderId.add(1))).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).acceptOrder(orderId.add(1))).to.revertedWith("InvalidOrderId()");
         });
 
         it("should be fail when not the seller", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith("Not the seller");
+            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith(
+                `NotTheSeller("${user3.address}", "${user1.address}")`
+            );
         });
 
         it("should be fail when Market Item is not available", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user1).cancelSell(marketItemId);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith(
-                "Market Item is not available"
-            );
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("MarketItemIsNotAvailable()");
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Order is not available");
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsNotAvailable()");
         });
 
         it("should be fail when Overtime", async () => {
             await skipTime(ONE_WEEK);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Order is expired");
+            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsExpired()");
         });
 
         it("Should be ok", async () => {
-            let currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentMarketItemOrderId);
-            let orderInfo = await orderManager.orders(marketItemOrderInfo.orderId);
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            let orderInfo = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             let listingFee = await mkpManager.getListingFee(orderInfo.bidPrice);
 
@@ -1081,34 +1067,34 @@ describe("OrderManager:", () => {
         it("should revert when nft contract is not permitted: ", async () => {
             await expect(
                 orderManager.sell(AddressZero, 0, 100, 100, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Token is not existed");
+            ).to.be.revertedWith(`InvalidAddress()`);
 
             await expect(
                 orderManager.sell(token.address, 0, 100, 100, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Token is not existed");
+            ).to.be.revertedWith(`TokenIsNotExisted("${token.address}", 0)`);
         });
 
         it("should revert when amount equal to zero: ", async () => {
             await expect(
                 orderManager.sell(tokenMintERC721.address, 0, 0, 100, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Invalid amount");
+            ).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should revert when gross sale value equal to zero: ", async () => {
             await expect(
                 orderManager.sell(tokenMintERC721.address, 0, 100, 0, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Invalid amount");
+            ).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should revert when Invalid amount: ", async () => {
             await tokenMintERC721.mint(owner.address, "");
             await expect(
                 orderManager.sell(tokenMintERC721.address, 1, 2, ONE_ETHER, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Invalid amount");
+            ).to.be.revertedWith("InvalidAmount()");
 
             await expect(
                 orderManager.sell(tokenMintERC721.address, 1, 0, ONE_ETHER, startTime, endTime, token.address, rootHash)
-            ).to.be.revertedWith("Invalid amount");
+            ).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should sell success and check private collection: ", async () => {
@@ -1182,23 +1168,21 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith("InvalidOrderId()");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith("InvalidOrderId()");
         });
 
         it("should be fail when Invalid bidder", async () => {
-            await expect(orderManager.connect(user1).cancelOrder(1)).to.revertedWith("Not the owner of offer");
+            await expect(orderManager.connect(user1).cancelOrder(1)).to.revertedWith(
+                `NotTheOwnerOfOrder("${user1.address}", "${user2.address}")`
+            );
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user2).cancelOrder(1)).to.revertedWith("Order is not available");
+            await expect(orderManager.connect(user2).cancelOrder(1)).to.revertedWith("OrderIsNotAvailable()");
         });
 
         it("Should be ok", async () => {
@@ -1208,19 +1192,16 @@ describe("OrderManager:", () => {
                 BID_PRICE
             );
 
-            let walletOrderInfo = await orderManager.walletOrders(1);
-            let orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            let orderInfo = await orderManager.getOrderByOrderId(1);
+            let walletOrderInfo = await orderManager.getWalletOrderByOrderId(1);
 
             expect(walletOrderInfo.orderId).to.equal(orderInfo.id);
             expect(orderInfo.status).to.equal(OrderStatus.CANCELED);
 
-            await expect(() => orderManager.connect(user3).cancelOrder(2)).to.changeEtherBalance(
-                user3,
-                BID_PRICE
-            );
+            await expect(() => orderManager.connect(user3).cancelOrder(2)).to.changeEtherBalance(user3, BID_PRICE);
 
-            walletOrderInfo = await orderManager.walletOrders(2);
-            orderInfo = await orderManager.orders(walletOrderInfo.orderId);
+            orderInfo = await orderManager.getOrderByOrderId(2);
+            walletOrderInfo = await orderManager.getWalletOrderByOrderId(2);
 
             expect(walletOrderInfo.orderId).to.equal(orderInfo.id);
             expect(orderInfo.status).to.equal(OrderStatus.CANCELED);
@@ -1262,34 +1243,33 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when Invalid bidder", async () => {
-            await expect(orderManager.connect(user1).cancelOrder(1)).to.revertedWith("Not the owner of offer");
+            await expect(orderManager.connect(user1).cancelOrder(1)).to.revertedWith(
+                `NotTheOwnerOfOrder("${user1.address}", "${user2.address}")`
+            );
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user2).cancelOrder(1)).to.revertedWith("Order is not available");
+            await expect(orderManager.connect(user2).cancelOrder(1)).to.revertedWith("OrderIsNotAvailable()");
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).cancelOrder(0)).to.revertedWith("InvalidOrderId()");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith(
-                "Invalid order"
-            );
+            await expect(orderManager.connect(user3).cancelOrder(orderId.add(1))).to.revertedWith("InvalidOrderId()");
         });
 
         it("Should be ok", async () => {
-            const currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
+            let currentOrderId = await orderManager.getCurrentOrderId();
+            await expect(() => orderManager.connect(user2).cancelOrder(currentOrderId)).to.changeTokenBalance(
+                token,
+                user2,
+                BUY_BID_PRICE
+            );
 
-            await expect(() =>
-                orderManager.connect(user2).cancelOrder(currentMarketItemOrderId)
-            ).to.changeTokenBalance(token, user2, BUY_BID_PRICE);
-
-            const marketItemOrderInfo = await orderManager.marketItemOrders(currentMarketItemOrderId);
-            const orderAfter = await orderManager.orders(marketItemOrderInfo.orderId);
+            let orderAfter = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderAfter.paymentToken).to.equal(token.address);
             expect(orderAfter.bidPrice).to.equal(BUY_BID_PRICE);
@@ -1315,18 +1295,20 @@ describe("OrderManager:", () => {
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, proof, { value: BUY_BID_PRICE });
 
-            let currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
+            let currentOrderId = await orderManager.getCurrentOrderId();
 
-            await expect(() =>
-                orderManager.connect(user2).cancelOrder(currentMarketItemOrderId)
-            ).to.changeEtherBalance(user2, BUY_BID_PRICE);
+            await expect(() => orderManager.connect(user2).cancelOrder(currentOrderId)).to.changeEtherBalance(
+                user2,
+                BUY_BID_PRICE
+            );
 
-            let marketItemOrderInfo = await orderManager.marketItemOrders(currentMarketItemOrderId);
-            let orderAfter = await orderManager.orders(marketItemOrderInfo.orderId);
+            currentOrderId = await orderManager.getCurrentOrderId();
+            let orderAfter = await orderManager.getOrderByOrderId(currentOrderId);
+            let marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
 
             expect(orderAfter.paymentToken).to.equal(AddressZero);
             expect(orderAfter.bidPrice).to.equal(BUY_BID_PRICE);
-            expect(marketItemOrderInfo.marketItemId).to.equal(currentMarketItemOrderId);
+            expect(marketItemOrderInfo.marketItemId).to.equal(currentOrderId);
 
             await tokenMintERC1155.mint(user1.address, 100, "");
             await tokenMintERC1155.connect(user1).setApprovalForAll(mkpManager.address, true);
@@ -1346,18 +1328,20 @@ describe("OrderManager:", () => {
                 .connect(user2)
                 .makeMarketItemOrder(marketItemId, ONE_ETHER.mul(10), endTime, proof, { value: ONE_ETHER.mul(10) });
 
-            currentMarketItemOrderId = await orderManager.getCurrentMarketItemOrderId();
+            currentOrderId = await orderManager.getCurrentOrderId();
 
-            await expect(() =>
-                orderManager.connect(user2).cancelOrder(currentMarketItemOrderId)
-            ).to.changeEtherBalance(user2, ONE_ETHER.mul(10));
+            await expect(() => orderManager.connect(user2).cancelOrder(currentOrderId)).to.changeEtherBalance(
+                user2,
+                ONE_ETHER.mul(10)
+            );
 
-            marketItemOrderInfo = await orderManager.marketItemOrders(currentMarketItemOrderId);
-            orderAfter = await orderManager.orders(marketItemOrderInfo.orderId);
+            marketItemOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+
+            orderAfter = await orderManager.getOrderByOrderId(currentOrderId);
 
             expect(orderAfter.paymentToken).to.equal(AddressZero);
             expect(orderAfter.bidPrice).to.equal(ONE_ETHER.mul(10));
-            expect(marketItemOrderInfo.marketItemId).to.equal(currentMarketItemOrderId);
+            expect(marketItemOrderInfo.marketItemId).to.equal(currentOrderId);
         });
     });
 
@@ -1398,7 +1382,7 @@ describe("OrderManager:", () => {
                 orderManager
                     .connect(user1)
                     .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("Not expired yet");
+            ).to.revertedWith("OrderIsExpired()");
         });
 
         it("should be fail when sender is not owner this NFT", async () => {
@@ -1407,7 +1391,7 @@ describe("OrderManager:", () => {
                 orderManager
                     .connect(user2)
                     .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("You are not the seller");
+            ).to.revertedWith(`NotTheSeller("${user2.address}", "${user1.address}")`);
         });
 
         it("should be fail when Market Item is not available", async () => {
@@ -1418,31 +1402,31 @@ describe("OrderManager:", () => {
                 orderManager
                     .connect(user2)
                     .sellAvailableInMarketplace(marketItemId, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("Market Item is not available");
+            ).to.revertedWith("MarketItemIsNotAvailable()");
         });
 
         it("should be fail when Market ID is not exist", async () => {
             await expect(
                 orderManager.connect(user2).sellAvailableInMarketplace(0, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("Market ID is not exist");
+            ).to.revertedWith("InvalidMarketItemId()");
 
             await expect(
                 orderManager.connect(user2).sellAvailableInMarketplace(100, PRICE.add(ETHER_100), startTime, endTime)
-            ).to.revertedWith("Market ID is not exist");
+            ).to.revertedWith("InvalidMarketItemId()");
         });
 
         it("should be fail when Invalid amount", async () => {
             await skipTime(ONE_WEEK);
             await expect(
                 orderManager.connect(user2).sellAvailableInMarketplace(marketItemId, 0, startTime, endTime)
-            ).to.revertedWith("Invalid amount");
+            ).to.revertedWith("InvalidAmount()");
         });
 
         it("should be fail when Invalid end time", async () => {
             await skipTime(ONE_WEEK);
             await expect(
                 orderManager.connect(user1).sellAvailableInMarketplace(marketItemId, ONE_ETHER, startTime, endTime)
-            ).to.revertedWith("Invalid end time");
+            ).to.revertedWith(`InvalidEndTime()`);
         });
 
         it("should be ok", async () => {
@@ -1537,24 +1521,27 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when not the seller !", async () => {
+            // console.log("user1", user1.address);
+            // console.log("user2", user2.address);
+            // console.log("user3", user3.address);
             await expect(orderManager.connect(user2).cancelSell(marketItemId)).to.revertedWith(
-                "You are not the seller"
+                `NotTheSeller("${user2.address}", "${user1.address}")`
             );
         });
 
         it("should be fail when Market Item is not available", async () => {
             await orderManager.connect(user1).cancelSell(marketItemId);
             await expect(orderManager.connect(user1).cancelSell(marketItemId)).to.revertedWith(
-                "Market Item is not available"
+                "MarketItemIsNotAvailable()"
             );
         });
 
         it("should be fail when Market ID is not exist", async () => {
             await expect(orderManager.connect(user1).cancelSell(marketItemId + 1)).to.revertedWith(
-                "Market ID is not exist"
+                "InvalidMarketItemId()"
             );
 
-            await expect(orderManager.connect(user1).cancelSell(0)).to.revertedWith("Market ID is not exist");
+            await expect(orderManager.connect(user1).cancelSell(0)).to.revertedWith("InvalidMarketItemId()");
         });
 
         it("should be ok", async () => {
@@ -1637,25 +1624,23 @@ describe("OrderManager:", () => {
 
         it("should be fail when Market ID is not exist", async () => {
             await expect(orderManager.connect(user1).buy(marketItemId + 1, [])).to.revertedWith(
-                "Market ID is not exist"
+                "InvalidMarketItemId()"
             );
 
-            await expect(orderManager.connect(user1).buy(0, [])).to.revertedWith("Market ID is not exist");
+            await expect(orderManager.connect(user1).buy(0, [])).to.revertedWith("InvalidMarketItemId()");
         });
 
         it("should be fail when Market Item is not available", async () => {
             await orderManager.connect(user1).cancelSell(marketItemId);
             await expect(orderManager.connect(user1).buy(marketItemId, [])).to.revertedWith(
-                "Market Item is not available"
+                "MarketItemIsNotAvailable()"
             );
         });
 
         it("should be fail when not allow to buy yourself !", async () => {
             const leaf = keccak256(user1.address);
             const proof = merkleTree.getHexProof(leaf);
-            await expect(orderManager.connect(user1).buy(marketItemId, proof)).to.revertedWith(
-                "Can not buy your own NFT"
-            );
+            await expect(orderManager.connect(user1).buy(marketItemId, proof)).to.revertedWith("CanNotBuyYourNFT()");
         });
 
         it("should be fail when NFT is not selling !", async () => {
@@ -1663,7 +1648,7 @@ describe("OrderManager:", () => {
             const leaf = keccak256(user2.address);
             const proof = merkleTree.getHexProof(leaf);
             await expect(orderManager.connect(user2).buy(marketItemId, proof)).to.revertedWith(
-                "Market Item is not selling"
+                "MarketItemIsNotSelling()"
             );
         });
 
@@ -1672,7 +1657,7 @@ describe("OrderManager:", () => {
             const leaf = keccak256(user3.address);
             const proof = merkleTree.getHexProof(leaf);
             await expect(orderManager.connect(user2).buy(marketItemId, proof)).to.revertedWith(
-                "Sender is not in whitelist or not own meta citizen NFT"
+                "EitherNotInWhitelistOrNotOwnMetaCitizenNFT()"
             );
         });
 

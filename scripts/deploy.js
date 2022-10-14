@@ -42,11 +42,18 @@ async function main() {
   console.log(
     "========================================================================================="
   );
+  const treasury = await upgrades.deployProxy(Treasury, [admin.address]);
+  await treasury.deployed();
+
+  console.log("treasury deployed in:", treasury.address);
+  console.log(
+    "========================================================================================="
+  );
   const mtvs = await upgrades.deployProxy(MTVS, [
     "Metaversus Token",
     "MTVS",
     process.env.TOTAL_SUPPLY,
-    admin.address
+    treasury.address
   ]);
   await mtvs.deployed();
 
@@ -129,13 +136,7 @@ async function main() {
   console.log(
     "========================================================================================="
   );
-  const treasury = await upgrades.deployProxy(Treasury, [admin.address]);
-  await treasury.deployed();
 
-  console.log("treasury deployed in:", treasury.address);
-  console.log(
-    "========================================================================================="
-  );
   const usd = await upgrades.deployProxy(USD, [
     admin.address,
     "USD Token Test",

@@ -20,22 +20,10 @@ describe("NftTest:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, [
-            "Metaversus Token",
-            "MTVS",
-            TOTAL_SUPPLY,
-            owner.address,
-        ]);
+        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
 
         NftTest = await ethers.getContractFactory("NftTest");
-        nftTest = await upgrades.deployProxy(NftTest, [
-            "NFT Test",
-            "TEST",
-            token.address,
-            250,
-            PRICE,
-            admin.address
-        ]);
+        nftTest = await upgrades.deployProxy(NftTest, ["NFT Test", "TEST", token.address, 250, PRICE, admin.address]);
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
@@ -85,6 +73,15 @@ describe("NftTest:", () => {
             expect(newURI).to.equal(URI);
             await nftTest.setTokenURI("new_uri.json", 1);
             expect(await nftTest.tokenURI(1)).to.equal("new_uri.json");
+        });
+    });
+    describe("setPrice function:", async () => {
+        it("should revert when zero amount: ", async () => {
+            await expect(nftTest.setPrice(0)).to.be.revertedWith("InvalidAmount()");
+        });
+        it("should setPrice: ", async () => {
+            await nftTest.setPrice(100);
+            expect(await nftTest.price()).to.equal(100);
         });
     });
 
