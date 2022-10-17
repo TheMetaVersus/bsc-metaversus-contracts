@@ -50,9 +50,9 @@ describe("MetaDrop", () => {
             DEFAULT_SERVICE_NUMERATOR, // 10%
         ]);
 
-        await token.transfer(user1.address, TOTAL_SUPPLY.div(4));
-        await token.transfer(user2.address, TOTAL_SUPPLY.div(4));
-        await token.transfer(user3.address, TOTAL_SUPPLY.div(4));
+        await treasury.distribute(token.address, user1.address, TOTAL_SUPPLY.div(4));
+        await treasury.distribute(token.address, user2.address, TOTAL_SUPPLY.div(4));
+        await treasury.distribute(token.address, user3.address, TOTAL_SUPPLY.div(4));
 
         await token.connect(user1).approve(metaDrop.address, MaxUint256);
         await token.connect(user2).approve(metaDrop.address, MaxUint256);
@@ -102,6 +102,12 @@ describe("MetaDrop", () => {
     });
 
     describe("setServiceFeeNumerator", async () => {
+        it("should revert when caller is not an owner or admin: ", async () => {
+            await expect(metaDrop.connect(user1).setServiceFeeNumerator("0")).to.be.revertedWith(
+                "CallerIsNotOwnerOrAdmin()"
+            );
+        });
+
         it("Should throw error Service fee will exceed mint fee", async () => {
             await expect(metaDrop.setServiceFeeNumerator(SERVICE_FEE_DENOMINATOR.add(1))).to.be.revertedWith(
                 "ServiceFeeExceedMintFee()"
