@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 
 const { AddressZero } = ethers.constants;
-describe("MTVS Token:", () => {
+describe.only("MTVS Token:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         const accounts = await ethers.getSigners();
@@ -10,33 +10,37 @@ describe("MTVS Token:", () => {
         user1 = accounts[1];
         user2 = accounts[2];
         user3 = accounts[3];
+        Admin = await ethers.getContractFactory("Admin");
+        Treasury = await ethers.getContractFactory("Treasury");
+
+        admin = await upgrades.deployProxy(Admin, [owner.address]);
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, user1.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
     });
 
     describe("Deployment:", async () => {
-        it("Should revert when invalid address", async () => {
-            await expect(
-                upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, AddressZero])
-            ).to.revertedWith("InvalidAddress()");
+        it.only("Should revert when invalid address", async () => {
+            await expect(Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, AddressZero)).to.be.revertedWith(
+                "InValidAddress()"
+            );
         });
 
         it("Should revert when invalid amount", async () => {
-            await expect(upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", 0, user1.address])).to.revertedWith(
-                "InvalidAmount()"
-            );
+            await expect(Token.deploy("Metaversus Token", "MTVS", 0, user1.address)).to.revertedWith("InvalidAmount()");
         });
 
         it("Check name, symbol and default state: ", async () => {
             const name = await token.name();
             const symbol = await token.symbol();
             const totalSupply = await token.totalSupply();
-            const total = await token.balanceOf(user1.address);
+            const balance = await token.balanceOf(treasury.address);
+            console.log("balance", balance);
             expect(name).to.equal("Metaversus Token");
             expect(symbol).to.equal("MTVS");
-            expect(totalSupply).to.equal(TOTAL_SUPPLY);
-            expect(total).to.equal(totalSupply);
+            expect(balance).to.equal(TOTAL_SUPPLY);
+            expect(balance).to.equal(totalSupply);
         });
     });
 
@@ -46,6 +50,8 @@ describe("MTVS Token:", () => {
         });
 
         it("should burn success: ", async () => {
+            await admin.setPermittedPaymentToken(token.address, true);
+            await treasury.connect(owner).distribute(token.address, user1.address, 50);
             await expect(() => token.connect(user1).burn(50)).to.changeTokenBalance(token, user1, -50);
         });
     });

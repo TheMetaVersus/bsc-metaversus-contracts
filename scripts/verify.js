@@ -26,10 +26,23 @@ async function main() {
   } catch (err) {
     console.log("err :>> ", err);
   }
+  // try {
+  //   await hre.run("verify:verify", {
+  //     address: contracts.mtvs,
+  //     contract: "contracts/Token/MTVS.sol:MTVS"
+  //   });
+  // } catch (err) {
+  //   console.log("err :>> ", err);
+  // }
   try {
     await hre.run("verify:verify", {
       address: contracts.mtvs,
-      contract: "contracts/Token/MTVS.sol:MTVS"
+      constructorArguments: [
+        "Metaversus Token",
+        "MTVS",
+        process.env.TOTAL_SUPPLY,
+        contracts.treasury
+      ]
     });
   } catch (err) {
     console.log("err :>> ", err);

@@ -26,7 +26,7 @@ describe("MTVSManagerFlowCollection", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, admin.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);

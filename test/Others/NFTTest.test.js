@@ -20,7 +20,7 @@ describe("NftTest:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
 
         NftTest = await ethers.getContractFactory("NftTest");
         nftTest = await upgrades.deployProxy(NftTest, ["NFT Test", "TEST", token.address, 250, PRICE, admin.address]);

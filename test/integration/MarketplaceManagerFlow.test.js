@@ -30,7 +30,7 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         admin = await upgrades.deployProxy(Admin, [owner.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(ADDRESS_ZERO, true);

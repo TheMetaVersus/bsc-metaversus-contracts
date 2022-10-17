@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../interfaces/IMTVS.sol";
-import "../lib/ErrorHelper.sol";
+
+error InvalidAddress();
+error InvalidAmount();
 
 /**
  *  @title  Dev Fungible token
@@ -17,20 +17,27 @@ import "../lib/ErrorHelper.sol";
  *          by the only controllers and using for purchase in marketplace operation.
  *          The contract here by is implemented to initial.
  */
-contract MTVS is ERC20Upgradeable, ERC165Upgradeable, IMTVS {
+
+contract MTVS is ERC20, ERC165, IMTVS {
+    modifier validAmount(uint256 _amount) {
+        if (_amount == 0) {
+            revert InvalidAmount();
+        }
+        _;
+    }
+
     /**
      *  @notice Initialize new logic contract.
      */
-    function initialize(
+    constructor(
         string memory _name,
         string memory _symbol,
         uint256 _totalSupply,
         address _treasury
-    ) public initializer {
-        __ERC20_init(_name, _symbol);
-
-        ErrorHelper._checkValidAddress(_treasury);
-        ErrorHelper._checkValidAmount(_totalSupply);
+    ) ERC20(_name, _symbol) validAmount(_totalSupply) {
+        if (_treasury == address(0)) {
+            revert InvalidAddress();
+        }
         _mint(_treasury, _totalSupply);
     }
 
@@ -39,8 +46,7 @@ contract MTVS is ERC20Upgradeable, ERC165Upgradeable, IMTVS {
      *
      *  @dev   All caller can call this function.
      */
-    function burn(uint256 amount) external {
-        ErrorHelper._checkValidAmount(amount);
+    function burn(uint256 amount) external validAmount(amount) {
         _burn(_msgSender(), amount);
     }
 
@@ -52,13 +58,7 @@ contract MTVS is ERC20Upgradeable, ERC165Upgradeable, IMTVS {
      *
      * This function call must use less than 30 000 gas.
      */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(ERC165Upgradeable, IERC165Upgradeable)
-        returns (bool)
-    {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
         return interfaceId == type(IMTVS).interfaceId || super.supportsInterface(interfaceId);
     }
 }
