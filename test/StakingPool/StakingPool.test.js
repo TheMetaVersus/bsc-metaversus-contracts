@@ -129,11 +129,11 @@ describe("Staking Pool:", () => {
         await admin.setPermittedPaymentToken(AddressZero, true);
 
         await token.connect(user1).approve(orderManager.address, MaxUint256);
-        await token.transfer(user1.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
 
+        await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
         await token.connect(user2).approve(orderManager.address, MaxUint256);
         await token.connect(user1).approve(metaCitizen.address, MaxUint256);
-        await token.transfer(user2.address, parseEther("1000"));
 
         await mkpManager.setOrderManager(orderManager.address);
 
@@ -211,8 +211,9 @@ describe("Staking Pool:", () => {
 
     describe("getUserAmount:", async () => {
         it("should return amount of user: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
+
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
 
@@ -326,8 +327,8 @@ describe("Staking Pool:", () => {
             await expect(staking.connect(user1).stake(0)).to.be.revertedWith("InvalidAmount()");
         });
         it("should stake success: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             const current = await getCurrentTime();
@@ -350,14 +351,15 @@ describe("Staking Pool:", () => {
             await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
             const amount = "125000000000000000000000";
-            await token.transfer(user1.address, amount);
+            await treasury.connect(owner).distribute(token.address, user1.address, amount);
+
             await token.connect(user1).approve(staking.address, amount);
             await staking.connect(user1).stake(amount);
             expect(await staking.getUserAmount(user1.address)).to.equal(amount);
         });
         it("should stake success with more times: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             const current = await getCurrentTime();
@@ -379,8 +381,9 @@ describe("Staking Pool:", () => {
             await metaCitizen.mint(user1.address);
             await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
-            const amount = "125000000000000000000000";
-            await token.transfer(user1.address, amount);
+            const amount = "125000000000000000000";
+            await treasury.connect(owner).distribute(token.address, user1.address, amount);
+
             await token.connect(user1).approve(staking.address, multiply(3, amount));
             await staking.connect(user1).stake(amount);
             expect(await staking.getUserAmount(user1.address)).to.equal(amount);
@@ -397,8 +400,8 @@ describe("Staking Pool:", () => {
         });
         //
         it("should return reward each day: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             const current = await getCurrentTime();
@@ -420,7 +423,8 @@ describe("Staking Pool:", () => {
             await metaCitizen.mint(user1.address);
             await orderManager.connect(user1).buy(1, merkleTree.getHexProof(generateLeaf(user1.address)));
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
+
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             await staking.connect(user1).stake(ONE_ETHER);
 
@@ -455,8 +459,8 @@ describe("Staking Pool:", () => {
         });
         //
         it("should return pending reward: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             const current = await getCurrentTime();
@@ -480,7 +484,8 @@ describe("Staking Pool:", () => {
 
             const claimTime = 4 * 30 * 24 * 60 * 60;
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
+
             await token.connect(user1).approve(staking.address, ONE_ETHER);
             await staking.connect(user1).stake(ONE_ETHER);
             await skipTime(claimTime);
@@ -500,8 +505,8 @@ describe("Staking Pool:", () => {
     describe("requestUnstake:", async () => {
         it("should revert when not allow at this time for no NFT or on staking time: ", async () => {
             await token.connect(user1).approve(staking.address, ONE_ETHER);
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             const current = await getCurrentTime();
@@ -531,8 +536,8 @@ describe("Staking Pool:", () => {
         });
 
         it("should revert when Already requested: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -564,8 +569,8 @@ describe("Staking Pool:", () => {
         });
 
         it("should request success: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -602,8 +607,8 @@ describe("Staking Pool:", () => {
     //
     describe("requestClaim:", async () => {
         it("should revert when pool is not start: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -630,8 +635,8 @@ describe("Staking Pool:", () => {
             await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("NotAllowToClaim()");
         });
         it("should revert when more request: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -662,8 +667,8 @@ describe("Staking Pool:", () => {
             await expect(staking.connect(user1).requestClaim()).to.be.revertedWith("AlreadyRequested()");
         });
         it("should request success: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -698,8 +703,8 @@ describe("Staking Pool:", () => {
     //
     describe("claim:", async () => {
         it("should revert when staking pool had been expired ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -732,8 +737,8 @@ describe("Staking Pool:", () => {
         });
 
         it("should revert when not rquest claim before ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -765,8 +770,8 @@ describe("Staking Pool:", () => {
 
         it("should accept lost 50% first ", async () => {
             // emulator balance
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -799,8 +804,8 @@ describe("Staking Pool:", () => {
         });
 
         it("should claim success", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -855,8 +860,8 @@ describe("Staking Pool:", () => {
             ).to.be.true;
         });
         it("should claim accept lost 50%", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -906,8 +911,8 @@ describe("Staking Pool:", () => {
     //
     describe("unstake:", async () => {
         it("should revert when staking pool for NFT not expired: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -938,8 +943,8 @@ describe("Staking Pool:", () => {
             await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith("NotAllowToUnstake()");
         });
         it("should revert when request not finish after 24 hours: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -970,8 +975,8 @@ describe("Staking Pool:", () => {
             await expect(staking.connect(user1).unstake(ONE_ETHER)).to.be.revertedWith("MustRequestFirst()");
         });
         it("should revert when connot unstake more than staked amount: ", async () => {
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -1002,9 +1007,10 @@ describe("Staking Pool:", () => {
             await expect(staking.connect(user1).unstake(OVER_AMOUNT)).to.be.revertedWith("ExceedAmount()");
         });
         it("should unstake success: ", async () => {
-            await token.transfer(staking.address, ONE_MILLION_ETHER);
-            await token.transfer(user2.address, ONE_MILLION_ETHER);
-            await token.transfer(user1.address, ONE_MILLION_ETHER);
+            await treasury.connect(owner).distribute(token.address, staking.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+
             await token.connect(user2).approve(mtvsManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(mkpManager.address, ONE_MILLION_ETHER);
             await token.connect(user1).approve(staking.address, ONE_ETHER);
@@ -1040,13 +1046,14 @@ describe("Staking Pool:", () => {
 
             await staking.connect(user1).unstake(ONE_ETHER);
 
-            expect(await token.balanceOf(staking.address)).to.equal(subtract(ONE_MILLION_ETHER, pendingRewards));
+            expect(await token.balanceOf(staking.address)).to.equal(subtract(parseEther("1000"), pendingRewards));
         });
     });
 
     describe("Check EmergencyWithdraw function: ", async () => {
         it("should deposit success: ", async () => {
-            await expect(() => token.transfer(staking.address, 10000)).to.changeTokenBalance(token, owner, -10000);
+            await treasury.connect(owner).distribute(token.address, staking.address, 10000);
+
             await expect(() => staking.emergencyWithdraw()).changeTokenBalance(token, owner, 10000);
 
             expect(await token.balanceOf(staking.address)).to.equal(0);

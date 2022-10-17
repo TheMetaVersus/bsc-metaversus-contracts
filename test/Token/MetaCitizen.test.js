@@ -26,7 +26,7 @@ describe("MetaCitizen", () => {
 
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, admin.address]);
 
-        await token.transfer(user1.address, TOTAL_SUPPLY);
+        await treasury.connect(owner).distribute(token.address, user1.address, TOTAL_SUPPLY);
         await token.connect(user1).approve(metaCitizen.address, MaxUint256);
     });
 

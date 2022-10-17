@@ -1,9 +1,9 @@
 const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
-
-const TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-const ETHER_100 = ethers.utils.parseEther("100");
-const PRICE = ethers.utils.parseEther("2");
+const { parseEther } = ethers.utils;
+const TOTAL_SUPPLY = parseEther("1000000000000");
+const ETHER_100 = parseEther("100");
+const PRICE = parseEther("2");
 
 describe("NftTest:", () => {
     beforeEach(async () => {
@@ -27,7 +27,7 @@ describe("NftTest:", () => {
 
         MkpManager = await ethers.getContractFactory("MarketPlaceManager");
         mkpManager = await upgrades.deployProxy(MkpManager, [admin.address]);
-
+        await admin.setPermittedPaymentToken(token.address, true);
         await nftTest.deployed();
     });
 
@@ -46,7 +46,9 @@ describe("NftTest:", () => {
 
         it("Check tokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
-            await token.approve(nftTest.address, ethers.constants.MaxUint256);
+            await treasury.connect(owner).distribute(token.address, owner.address, parseEther("1000"));
+
+            await token.approve(nftTest.address, parseEther("1000"));
             await nftTest.buy(URI);
 
             const newURI = await nftTest.tokenURI(1);
@@ -64,6 +66,8 @@ describe("NftTest:", () => {
     describe("setTokenURI function:", async () => {
         it("should setTokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
+            await treasury.connect(owner).distribute(token.address, owner.address, parseEther("1000"));
+
             await token.connect(owner).approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.buy(URI);
@@ -87,6 +91,7 @@ describe("NftTest:", () => {
 
     describe("buy function:", async () => {
         it("should buy success: ", async () => {
+            await treasury.connect(owner).distribute(token.address, owner.address, parseEther("1000"));
             await token.approve(nftTest.address, ethers.constants.MaxUint256);
 
             await nftTest.buy("this_uri");

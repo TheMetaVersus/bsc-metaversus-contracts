@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 
 const { AddressZero } = ethers.constants;
-describe.only("MTVS Token:", () => {
+describe("MTVS Token:", () => {
     beforeEach(async () => {
         TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
         const accounts = await ethers.getSigners();
@@ -21,9 +21,9 @@ describe.only("MTVS Token:", () => {
     });
 
     describe("Deployment:", async () => {
-        it.only("Should revert when invalid address", async () => {
+        it("Should revert when invalid address", async () => {
             await expect(Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, AddressZero)).to.be.revertedWith(
-                "InValidAddress()"
+                "InvalidAddress()"
             );
         });
 
@@ -36,7 +36,7 @@ describe.only("MTVS Token:", () => {
             const symbol = await token.symbol();
             const totalSupply = await token.totalSupply();
             const balance = await token.balanceOf(treasury.address);
-            console.log("balance", balance);
+
             expect(name).to.equal("Metaversus Token");
             expect(symbol).to.equal("MTVS");
             expect(balance).to.equal(TOTAL_SUPPLY);
