@@ -2,11 +2,10 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { AddressZero } = ethers.constants;
 
+const MAX_TOTAL_SUPPLY_NFT = 100;
+
 describe("TokenERC1155:", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-        ONE_ETHER = ethers.utils.parseEther("1");
-        MAX_TOTAL_SUPPLY_NFT = 100;
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -36,6 +35,32 @@ describe("TokenERC1155:", () => {
     });
 
     describe("Deployment:", async () => {
+        it("Should revert Invalid owner address", async () => {
+            await expect(
+                upgrades.deployProxy(TokenERC1155, [
+                    AddressZero,
+                    "My NFT",
+                    "M",
+                    MAX_TOTAL_SUPPLY_NFT,
+                    treasury.address,
+                    250,
+                ])
+            ).to.revertedWith("Ownable: new owner is the zero address");
+        });
+
+        it("Should revert Invalid fee denominator", async () => {
+            await expect(
+                upgrades.deployProxy(TokenERC1155, [
+                    owner.address,
+                    "My NFT",
+                    "M",
+                    MAX_TOTAL_SUPPLY_NFT,
+                    treasury.address,
+                    10001,
+                ])
+            ).to.revertedWith("ERC2981: royalty fee will exceed salePrice");
+        });
+
         it("Check uri: ", async () => {
             const URI = "this_is_uri_1.json";
             await tokenERC1155.mint(mkpManager.address, 100, URI);
@@ -63,6 +88,12 @@ describe("TokenERC1155:", () => {
     });
 
     describe("setURI function:", async () => {
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(tokenERC1155.connect(user1).setURI("new_uri.json", 1)).to.revertedWith(
+                "CallerIsNotOwnerOrAdmin()"
+            );
+        });
+
         it("should setURI: ", async () => {
             const URI = "this_is_uri_1.json";
             await tokenERC1155.mint(mkpManager.address, 100, URI);
@@ -97,7 +128,7 @@ describe("TokenERC1155:", () => {
     });
 
     describe("setAdminByFactory", async () => {
-        it("Should revert when invalid admin contract address", async () => {
+        it("Should revert when invalid factory contract address", async () => {
             await expect(tokenERC1155.connect(user1).setAdminByFactory(user1.address, true)).to.revertedWith(
                 "CallerIsNotFactory()"
             );
@@ -152,14 +183,20 @@ describe("TokenERC1155:", () => {
             await expect(tokenERC1155.mint(AddressZero, 100, "this_uri")).to.be.revertedWith("InvalidAddress()");
         });
 
+        it("Should revert when invalid receiver address", async () => {
+            await expect(tokenERC1155.mint(AddressZero, 100, "this_uri")).to.be.revertedWith("InvalidAddress()");
+        });
+
         it("should revert when amount equal to zero address: ", async () => {
             await expect(tokenERC1155.mint(mkpManager.address, 0, "this_uri")).to.be.revertedWith("InvalidAmount()");
         });
 
         it("should revert when exceeding total supply: ", async () => {
+            const jobs = [];
             for (let i = 0; i < MAX_TOTAL_SUPPLY_NFT; i++) {
-                await tokenERC1155.mint(owner.address, 100, "this_uri");
+                jobs.push(tokenERC1155.mint(owner.address, 100, "this_uri"));
             }
+            await Promise.all(jobs);
 
             await expect(tokenERC1155.mint(mkpManager.address, 100, "this_uri")).to.be.revertedWith(
                 "ExceedTotalSupply()"
@@ -191,6 +228,12 @@ describe("TokenERC1155:", () => {
             await expect(
                 tokenERC1155.mintBatch(AddressZero, [10, 11, 12], ["this_uri", "this_uri_1", "this_uri_2"])
             ).to.be.revertedWith("InvalidAddress()");
+        });
+
+        it("should revert when invalid receiver address: ", async () => {
+            await expect(
+                tokenERC1155.mintBatch(tokenERC1155.address, [10, 11, 12], ["this_uri", "this_uri_1", "this_uri_2"])
+            ).to.be.revertedWith("ERC1155: transfer to non ERC1155Receiver implementer");
         });
 
         it("should revert when amount equal to zero address: ", async () => {

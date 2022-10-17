@@ -23,7 +23,7 @@ describe.only("MTVS Token:", () => {
     describe("Deployment:", async () => {
         it.only("Should revert when invalid address", async () => {
             await expect(Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, AddressZero)).to.be.revertedWith(
-                "InValidAddress()"
+                "InvalidAddress()"
             );
         });
 
