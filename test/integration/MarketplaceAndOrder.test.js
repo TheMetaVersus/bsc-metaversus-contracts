@@ -78,15 +78,15 @@ describe("Marketplace interact with Order", () => {
         await admin.setPermittedNFT(tokenMintERC721.address, true);
         await admin.setPermittedNFT(tokenMintERC1155.address, true);
         await admin.setPermittedNFT(nftTest.address, true);
-
+        await admin.setPermittedPaymentToken(token.address, true);
         await token.connect(user1).approve(orderManager.address, MaxUint256);
-        await token.transfer(user1.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
 
         await token.connect(user2).approve(orderManager.address, MaxUint256);
-        await token.transfer(user2.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
 
         await token.connect(user3).approve(orderManager.address, MaxUint256);
-        await token.transfer(user3.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user3.address, parseEther("1000"));
 
         await mkpManager.setOrderManager(orderManager.address);
 
