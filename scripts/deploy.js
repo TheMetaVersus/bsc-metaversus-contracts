@@ -49,12 +49,12 @@ async function main() {
   console.log(
     "========================================================================================="
   );
-  const mtvs = await upgrades.deployProxy(MTVS, [
+  const mtvs = await MTVS.deploy(
     "Metaversus Token",
     "MTVS",
     process.env.TOTAL_SUPPLY,
     treasury.address
-  ]);
+  );
   await mtvs.deployed();
 
   console.log("mtvs deployed in:", mtvs.address);
@@ -274,13 +274,13 @@ async function main() {
   console.log(
     "========================================================================================="
   );
-  const mtvsVerify = await upgrades.erc1967.getImplementationAddress(
-    mtvs.address
-  );
-  console.log("mtvsVerify deployed in:", mtvsVerify);
-  console.log(
-    "========================================================================================="
-  );
+  // const mtvsVerify = await upgrades.erc1967.getImplementationAddress(
+  //   mtvs.address
+  // );
+  // console.log("mtvsVerify deployed in:", mtvsVerify);
+  // console.log(
+  //   "========================================================================================="
+  // );
   const metaCitizenVerify = await upgrades.erc1967.getImplementationAddress(
     metaCitizen.address
   );
@@ -384,7 +384,7 @@ async function main() {
   const contractAddresses_verify = {
     admin: adminVerify,
     treasury: treasuryVerify,
-    mtvs: mtvsVerify,
+    mtvs: mtvs.address,
     tokenMintERC721: tokenMintERC721Verify,
     tokenMintERC1155: tokenMintERC1155Verify,
     tokenERC721: tokenERC721.address,

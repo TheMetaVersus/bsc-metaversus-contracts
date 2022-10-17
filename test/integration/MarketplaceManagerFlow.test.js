@@ -28,15 +28,13 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
 
         Admin = await ethers.getContractFactory("Admin");
         admin = await upgrades.deployProxy(Admin, [owner.address]);
-
+        Treasury = await ethers.getContractFactory("Treasury");
+        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(ADDRESS_ZERO, true);
-
-        Treasury = await ethers.getContractFactory("Treasury");
-        treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         MetaCitizen = await ethers.getContractFactory("MetaCitizen");
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, admin.address]);
@@ -83,12 +81,12 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         await mkpManager.setMetaversusManager(mtvsManager.address);
         await mkpManager.setOrderManager(orderManager.address);
 
-        await token.transfer(user1.address, parseEther("1000"));
-        await token.transfer(user2.address, parseEther("1000"));
-        await token.transfer(user3.address, parseEther("1000"));
-        await token.transfer(user4.address, parseEther("1000"));
-        await token.transfer(user5.address, parseEther("1000"));
-        await token.transfer(user6.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user3.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user4.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user5.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user6.address, parseEther("1000"));
 
         INFO.owner = { address: owner.address };
         INFO.user1 = { address: user1.address };

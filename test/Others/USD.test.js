@@ -62,9 +62,7 @@ describe("USD Token:", () => {
 
     describe("mint function:", async () => {
         it("should revert when caller not be controller: ", async () => {
-            await expect(token.connect(user1).mint(user1.address, 100)).to.be.revertedWith(
-                "Only controller can call"
-            );
+            await expect(token.connect(user1).mint(user1.address, 100)).to.be.revertedWith("Only controller can call");
         });
 
         it("should revert when receiver is zero address: ", async () => {

@@ -6,17 +6,19 @@ const { multiply } = require("js-big-decimal");
 const { getCurrentTime, skipTime } = require("../utils");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
+const { parseEther } = ethers.utils;
 const aggregator_abi = require("../../artifacts/@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol/AggregatorV3Interface.json");
-const PRICE = ethers.utils.parseEther("1");
-const ONE_ETHER = ethers.utils.parseEther("1");
+const ether = require("@openzeppelin/test-helpers/src/ether");
+const PRICE = parseEther("1");
+const ONE_ETHER = parseEther("1");
 const ONE_WEEK = 604800;
 const USD_TOKEN = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
 const REWARD_RATE = 15854895992; // 50 % APY
 const poolDuration = 9 * 30 * 24 * 60 * 60; // 9 months
-// const OVER_AMOUNT = ethers.utils.parseEther("1000000");
-const ONE_MILLION_ETHER = ethers.utils.parseEther("1000000");
+// const OVER_AMOUNT = parseEther("1000000");
+const ONE_MILLION_ETHER = parseEther("1000000");
 // const ONE_YEAR = 31104000;
-const TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
+const TOTAL_SUPPLY = parseEther("1000000000000");
 const MINT_FEE = 1000;
 const abi = [
     {
@@ -52,7 +54,7 @@ describe("Marketplace interact with Staking Pool:", () => {
         await AGGREGATOR.mock.latestRoundData.returns(1, 1, 1, 1, 1);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
 
         USD = await ethers.getContractFactory("USD");
         usd = await upgrades.deployProxy(USD, [user1.address, "USD Token", "USD", TOTAL_SUPPLY, treasury.address]);
@@ -165,7 +167,7 @@ describe("Marketplace interact with Staking Pool:", () => {
 
             const leaf = keccak256(user1.address);
             const proof = merkleTree.getHexProof(leaf);
-            await token.transfer(user1.address, ONE_ETHER.mul(1000));
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
             await token.connect(user1).approve(orderManager.address, ONE_ETHER);
             await orderManager.connect(user1).buy(1, proof);
 

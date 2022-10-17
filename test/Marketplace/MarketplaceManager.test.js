@@ -31,7 +31,7 @@ describe("Marketplace Manager:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(ADDRESS_ZERO, true);
@@ -78,7 +78,7 @@ describe("Marketplace Manager:", () => {
             admin.address,
         ]);
         await admin.connect(owner).setAdmin(mtvsManager.address, true);
-
+        await admin.setPermittedPaymentToken(token.address, true);
         await mkpManager.setMetaversusManager(mtvsManager.address);
         await mkpManager.setOrderManager(orderManager.address);
         merkleTree = generateMerkleTree([user1.address, user2.address]);
@@ -295,8 +295,8 @@ describe("Marketplace Manager:", () => {
 
     describe("fetchMarketItemsByMarketID function:", async () => {
         it("should return market item corresponding market ID", async () => {
-            await token.transfer(user1.address, multiply(1000, ONE_ETHER));
-            await token.transfer(user2.address, multiply(1000, ONE_ETHER));
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
 
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
 
@@ -325,8 +325,8 @@ describe("Marketplace Manager:", () => {
 
     describe("getCurrentMarketItem function:", async () => {
         it("should return current market item id", async () => {
-            await token.transfer(user1.address, multiply(1000, ONE_ETHER));
-            await token.transfer(user2.address, multiply(1000, ONE_ETHER));
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
 
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
 
@@ -356,8 +356,8 @@ describe("Marketplace Manager:", () => {
 
     describe("wasBuyer function:", async () => {
         it("should return current market item id", async () => {
-            await token.transfer(user1.address, parseEther("1000"));
-            await token.transfer(user2.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
 
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
@@ -415,8 +415,8 @@ describe("Marketplace Manager:", () => {
 
     describe("getMarketItemIdToMarketItem function:", async () => {
         it("should be return market item", async () => {
-            await token.transfer(user1.address, parseEther("1000"));
-            await token.transfer(user2.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
 
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
@@ -440,9 +440,8 @@ describe("Marketplace Manager:", () => {
 
     describe("setMarketItemIdToMarketItem function:", async () => {
         beforeEach(async () => {
-            await token.transfer(user1.address, parseEther("1000"));
-            await token.transfer(user2.address, parseEther("1000"));
-
+            await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+            await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
             await token.connect(user1).approve(nftTest.address, MAX_UINT_256);
             await token.connect(user2).approve(orderManager.address, MAX_UINT_256);
 

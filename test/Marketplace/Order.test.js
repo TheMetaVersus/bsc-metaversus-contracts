@@ -39,7 +39,7 @@ describe("OrderManager:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
 
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
@@ -94,10 +94,10 @@ describe("OrderManager:", () => {
         await mkpManager.setMetaversusManager(mtvsManager.address);
         await mkpManager.setOrderManager(orderManager.address);
         await token.connect(user1).approve(orderManager.address, MaxUint256);
-        await token.transfer(user1.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user1.address, parseEther("1000"));
+        await treasury.connect(owner).distribute(token.address, user2.address, parseEther("1000"));
 
         await token.connect(user2).approve(orderManager.address, MaxUint256);
-        await token.transfer(user2.address, parseEther("1000"));
 
         await mkpManager.setOrderManager(orderManager.address);
 
@@ -511,7 +511,8 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
+
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -536,7 +537,8 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
+
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -580,7 +582,7 @@ describe("OrderManager:", () => {
         it("Should be ok when update buy offer more than amount", async () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
             await nftTest.connect(user1).buy("this_uri");
             await nftTest.connect(user1).approve(mkpManager.address, 1);
@@ -614,7 +616,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -659,7 +661,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -743,7 +745,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -801,7 +803,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -865,7 +867,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -948,7 +950,7 @@ describe("OrderManager:", () => {
             const startTime = await getCurrentTime();
             const endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -1098,7 +1100,7 @@ describe("OrderManager:", () => {
         });
 
         it("should sell success and check private collection: ", async () => {
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -1126,7 +1128,7 @@ describe("OrderManager:", () => {
         beforeEach(async () => {
             const current = await getCurrentTime();
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
 
             await mtvsManager
                 .connect(user1)
@@ -1214,7 +1216,7 @@ describe("OrderManager:", () => {
             startTime = await getCurrentTime();
             endTime = add(await getCurrentTime(), ONE_WEEK);
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -1355,7 +1357,7 @@ describe("OrderManager:", () => {
 
             rootHash = merkleTree.getHexRoot();
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -1500,7 +1502,7 @@ describe("OrderManager:", () => {
 
             rootHash = merkleTree.getHexRoot();
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");
@@ -1602,7 +1604,7 @@ describe("OrderManager:", () => {
 
             rootHash = merkleTree.getHexRoot();
 
-            await token.transfer(user1.address, ONE_ETHER);
+            await treasury.connect(owner).distribute(token.address, user1.address, ONE_ETHER);
             await token.connect(user1).approve(nftTest.address, MaxUint256);
 
             await nftTest.connect(user1).buy("this_uri");

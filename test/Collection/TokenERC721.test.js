@@ -2,11 +2,10 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require("hardhat");
 const { AddressZero } = ethers.constants;
 
+const MAX_TOTAL_SUPPLY_NFT = 100;
+
 describe("TokenERC721:", () => {
     beforeEach(async () => {
-        TOTAL_SUPPLY = ethers.utils.parseEther("1000000000000");
-        MAX_TOTAL_SUPPLY_NFT = 100;
-        ONE_ETHER = ethers.utils.parseEther("1");
         const accounts = await ethers.getSigners();
         owner = accounts[0];
         user1 = accounts[1];
@@ -36,6 +35,32 @@ describe("TokenERC721:", () => {
     });
 
     describe("Deployment:", async () => {
+        it("Should revert Invalid owner address", async () => {
+            await expect(
+                upgrades.deployProxy(TokenERC721, [
+                    AddressZero,
+                    "My NFT",
+                    "M",
+                    MAX_TOTAL_SUPPLY_NFT,
+                    treasury.address,
+                    250,
+                ])
+            ).to.revertedWith("Ownable: new owner is the zero address");
+        });
+
+        it("Should revert Invalid fee denominator", async () => {
+            await expect(
+                upgrades.deployProxy(TokenERC721, [
+                    owner.address,
+                    "My NFT",
+                    "M",
+                    MAX_TOTAL_SUPPLY_NFT,
+                    treasury.address,
+                    10001,
+                ])
+            ).to.revertedWith("ERC2981: royalty fee will exceed salePrice");
+        });
+
         it("Check name, symbol and default state: ", async () => {
             const name = await tokenERC721.name();
             const symbol = await tokenERC721.symbol();
@@ -74,6 +99,12 @@ describe("TokenERC721:", () => {
     });
 
     describe("setTokenURI function:", async () => {
+        it("Should revert when invalid admin contract address", async () => {
+            await expect(tokenERC721.connect(user1).setTokenURI("new_uri.json", 1)).to.revertedWith(
+                "CallerIsNotOwnerOrAdmin()"
+            );
+        });
+
         it("should setTokenURI: ", async () => {
             const URI = "this_is_uri_1.json";
             await tokenERC721.mint(mkpManager.address, URI);
@@ -108,7 +139,7 @@ describe("TokenERC721:", () => {
     });
 
     describe("setAdminByFactory", async () => {
-        it("Should revert when invalid admin contract address", async () => {
+        it("Should revert when invalid factory contract address", async () => {
             await expect(tokenERC721.connect(user1).setAdminByFactory(user1.address, true)).to.revertedWith(
                 "CallerIsNotFactory()"
             );
@@ -136,7 +167,7 @@ describe("TokenERC721:", () => {
             );
         });
 
-        it("Should revert Invalid maxBatch", async () => {
+        it("Should revert Invalid address", async () => {
             await expect(tokenERC721.setAdmin(AddressZero, true)).to.revertedWith("InvalidAddress()");
         });
 
@@ -159,10 +190,16 @@ describe("TokenERC721:", () => {
             );
         });
 
+        it("Should revert when invalid receiver address", async () => {
+            await expect(tokenERC721.mint(AddressZero, "this_uri")).to.revertedWith("InvalidAddress()");
+        });
+
         it("should revert when exceeding total supply: ", async () => {
+            const jobs = [];
             for (let i = 0; i < MAX_TOTAL_SUPPLY_NFT; i++) {
-                await tokenERC721.mint(owner.address, "this_uri");
+                jobs.push(tokenERC721.mint(owner.address, "this_uri"));
             }
+            await Promise.all(jobs);
 
             await expect(tokenERC721.mint(mkpManager.address, "this_uri")).to.be.revertedWith("ExceedTotalSupply()");
         });
@@ -188,6 +225,12 @@ describe("TokenERC721:", () => {
             await expect(tokenERC721.mintBatch(AddressZero, 3)).to.be.revertedWith("InvalidAddress()");
         });
 
+        it("should revert when invalid receiver address: ", async () => {
+            await expect(tokenERC721.mintBatch(tokenERC721.address, 3)).to.be.revertedWith(
+                "ERC721: transfer to non ERC721Receiver implementer"
+            );
+        });
+
         it("should revert when mint fewer in each batch: ", async () => {
             await expect(tokenERC721.mintBatch(mkpManager.address, 0)).to.be.revertedWith("ExceedMaxMintBatch()");
 
@@ -199,9 +242,11 @@ describe("TokenERC721:", () => {
         });
 
         it("should revert when exceeding total supply: ", async () => {
+            const jobs = [];
             for (let i = 0; i < MAX_TOTAL_SUPPLY_NFT; i++) {
-                await tokenERC721.mint(owner.address, "this_uri");
+                jobs.push(tokenERC721.mint(owner.address, "this_uri"));
             }
+            await Promise.all(jobs);
 
             await expect(tokenERC721.mintBatch(mkpManager.address, 1)).to.be.revertedWith("ExceedTotalSupply()");
         });
@@ -225,6 +270,12 @@ describe("TokenERC721:", () => {
             await expect(
                 tokenERC721.mintBatchWithUri(AddressZero, ["this_uri", "this_uri_1", "this_uri_2"])
             ).to.be.revertedWith("InvalidAddress()");
+        });
+
+        it("should revert when invalid receiver address: ", async () => {
+            await expect(
+                tokenERC721.mintBatchWithUri(tokenERC721.address, ["this_uri", "this_uri_1", "this_uri_2"])
+            ).to.be.revertedWith("ERC721: transfer to non ERC721Receiver implementer");
         });
 
         it("should revert when mint fewer in each batch: ", async () => {

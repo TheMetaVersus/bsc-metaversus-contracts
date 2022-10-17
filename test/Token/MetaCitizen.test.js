@@ -20,13 +20,13 @@ describe("MetaCitizen", () => {
 
         admin = await upgrades.deployProxy(Admin, [owner.address]);
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
         await admin.setPermittedPaymentToken(token.address, true);
         await admin.setPermittedPaymentToken(AddressZero, true);
 
         metaCitizen = await upgrades.deployProxy(MetaCitizen, [token.address, MINT_FEE, admin.address]);
 
-        await token.transfer(user1.address, TOTAL_SUPPLY);
+        await treasury.connect(owner).distribute(token.address, user1.address, TOTAL_SUPPLY);
         await token.connect(user1).approve(metaCitizen.address, MaxUint256);
     });
 

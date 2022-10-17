@@ -29,7 +29,7 @@ describe("Metaversus Manager:", () => {
         treasury = await upgrades.deployProxy(Treasury, [admin.address]);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, owner.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
 
         TokenMintERC721 = await ethers.getContractFactory("TokenMintERC721");
         tokenMintERC721 = await upgrades.deployProxy(TokenMintERC721, ["NFT Metaversus", "nMTVS", 250, admin.address]);
@@ -654,7 +654,7 @@ describe("Metaversus Manager:", () => {
         });
 
         it("should buy ticket success: ", async () => {
-            await token.transfer(user2.address, AMOUNT);
+            await treasury.connect(owner).distribute(token.address, user2.address, AMOUNT);
             await token.approve(user2.address, MaxUint256);
             await token.connect(user2).approve(mtvsManager.address, MaxUint256);
 

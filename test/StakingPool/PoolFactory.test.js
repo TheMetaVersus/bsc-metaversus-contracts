@@ -50,7 +50,7 @@ describe("Pool Factory:", () => {
         await AGGREGATOR.mock.latestRoundData.returns(1, 1, 1, 1, 1);
 
         Token = await ethers.getContractFactory("MTVS");
-        token = await upgrades.deployProxy(Token, ["Metaversus Token", "MTVS", TOTAL_SUPPLY, admin.address]);
+        token = await Token.deploy("Metaversus Token", "MTVS", TOTAL_SUPPLY, treasury.address);
 
         USD = await ethers.getContractFactory("USD");
         usd = await upgrades.deployProxy(USD, [user1.address, "USD Token", "USD", TOTAL_SUPPLY, treasury.address]);
