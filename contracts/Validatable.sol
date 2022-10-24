@@ -19,6 +19,14 @@ import "./interfaces/Collection/ITokenERC721.sol";
 import "./interfaces/Collection/ITokenERC1155.sol";
 import "./lib/ErrorHelper.sol";
 
+/**
+ *  @title  Dev Validatable
+ *
+ *  @author Metaversus Team
+ *
+ *  @dev This contract is using as abstract smartcontract
+ *  @notice This smart contract provide the validatable methods and modifier for the inheriting contract.
+ */
 contract Validatable is PausableUpgradeable {
     /**
      *  @notice paymentToken IAdmin is interface of Admin contract
@@ -206,6 +214,6 @@ contract Validatable is PausableUpgradeable {
     }
 
     function isWallet(address _account) public view returns (bool) {
-        return _account != address(0) && !AddressUpgradeable.isContract(_account);
+        return _account != address(0) && !AddressUpgradeable.isContract(_account) && tx.origin == _msgSender();
     }
 }

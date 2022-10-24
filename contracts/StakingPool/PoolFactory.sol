@@ -19,6 +19,12 @@ contract PoolFactory is Validatable, ERC165Upgradeable, IPoolFactory {
     CountersUpgradeable.Counter private _poolCounter;
     EnumerableSetUpgradeable.AddressSet private _pools;
 
+    /**
+     *  @notice This struct defining data of the Pool
+     *
+     *  @param salt                 Additional data to make the Pool unique.
+     *  @param poolAddress          Address of the pool.
+     */
     struct PoolInfo {
         bytes32 salt;
         address poolAddress;

@@ -11,31 +11,55 @@ library OrderHelper {
         CANCELED
     }
 
-    //  prettier-ignore
+    /**
+     *  @notice This struct defining data for Wallet Order
+     *
+     *  @param to                                       Seller
+     *  @param nftAddress                               NFT Contract Address of this asset
+     *  @param tokenId                                  Token Id of NFT contract
+     *  @param orderId                                  id order
+     */
     struct WalletOrder {
-        address to;                                     // Seller
-        address nftAddress;                             // NFT Contract Address of this asset
-        uint256 tokenId;                                // Token Id of NFT contract
-        uint256 orderId;                                // id order
+        address to;
+        address nftAddress;
+        uint256 tokenId;
+        uint256 orderId;
     }
 
-    //  prettier-ignore
+    /**
+     *  @notice This struct defining data for Market Item Order
+     *
+     *  @param marketItemId                             Id of MarketItem
+     *  @param orderId                                  Id of order
+     */
     struct MarketItemOrder {
-        uint256 marketItemId;                           // Id of MarketItem
-        uint256 orderId;                                // id order
+        uint256 marketItemId;
+        uint256 orderId;
     }
 
-    //  prettier-ignore
+    /**
+     *  @notice This struct defining data for general information of Order
+     *
+     *  @param id                                       Id of order
+     *  @param amount                                   Amount to transfer
+     *  @param bidPrice                                 Bid price
+     *  @param expiredTime                              Expired time
+     *  @param owner                                    owner address
+     *  @param paymentToken                             Token to transfer
+     *  @param status                                   Status of order
+     *  @param isWallet                                 Check wallet
+     */
     struct OrderInfo {
-        uint256 id;                                     // id order
-        uint256 amount;                                 // Amount to transfer
-        uint256 bidPrice;                               // Bid price
-        uint256 expiredTime;                            // Expired time
-        address owner;                                  // owner address
-        IERC20Upgradeable paymentToken;                 // Token to transfer
-        OrderStatus status;                             // Status of order
-        bool isWallet;                                  // Check wallet
+        uint256 id;
+        uint256 amount;
+        uint256 bidPrice;
+        uint256 expiredTime;
+        address owner;
+        IERC20Upgradeable paymentToken;
+        OrderStatus status;
+        bool isWallet;
     }
+
     struct DBOrderMap {
         /**
          *  @notice Mapping from MarketItemId to to Order

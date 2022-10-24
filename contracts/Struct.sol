@@ -16,17 +16,31 @@ enum MarketItemStatus {
     CANCELED
 }
 
-//  prettier-ignore
+/**
+ *  @notice This struct defining data for each item selling on the marketplace
+ *
+ *  @param nftContractAddress           NFT Contract Address
+ *  @param tokenId                      Token Id of NFT contract
+ *  @param amount                       Amount if token is ERC1155
+ *  @param price                        Price of this token
+ *  @param nftType                      Type of this NFT
+ *  @param seller                       The person who sell this NFT
+ *  @param buyer                        The person who offer to this NFT
+ *  @param status                       Status of this NFT at Marketplace
+ *  @param startTime                    Time when the NFT push to Marketplace
+ *  @param endTime                      Time when the NFT expire at Marketplace
+ *  @param paymentToken                 Token to transfer
+ */
 struct MarketItem {
-    address nftContractAddress;                     // NFT Contract Address
-    uint256 tokenId;                                // Token Id of NFT contract
-    uint256 amount;                                 // Amount if token is ERC1155
-    uint256 price;                                  // Price of this token
-    NFTHelper.Type nftType;                         // Type of this NFT
-    address seller;                                 // The person who sell this NFT
-    address buyer;                                  // The person who offer to this NFT
-    MarketItemStatus status;                        // Status of this NFT at Marketplace
-    uint256 startTime;                              // Time when the NFT push to Marketplace
-    uint256 endTime;                                // Time when the NFT expire at Marketplace
-    IERC20Upgradeable paymentToken;                 // Token to transfer
+    address nftContractAddress;
+    uint256 tokenId;
+    uint256 amount;
+    uint256 price;
+    NFTHelper.Type nftType;
+    address seller;
+    address buyer;
+    MarketItemStatus status;
+    uint256 startTime;
+    uint256 endTime;
+    IERC20Upgradeable paymentToken;
 }
