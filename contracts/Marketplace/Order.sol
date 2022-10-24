@@ -366,7 +366,6 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         ErrorHelper._checkValidEndTime(endTime);
 
         marketItem.price = price;
-        marketItem.status = MarketItemStatus.LISTING;
         marketItem.startTime = startTime;
         marketItem.endTime = endTime;
         marketplace.setMarketItemIdToMarketItem(marketItemId, marketItem);
