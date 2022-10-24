@@ -25,6 +25,14 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
 
     CountersUpgradeable.Counter private _collectionCounter;
 
+    /**
+     *  @notice This struct defining data for each item selling on the marketplace
+     *
+     *  @param typeNft                      Type of NFT
+     *  @param salt                         Additional data to make the Collection unique
+     *  @param collectionAddress            Address of the Collection
+     *  @param owner                        Owner's Address of the Collection
+     */
     struct CollectionInfo {
         NFTHelper.Type typeNft;
         bytes32 salt;

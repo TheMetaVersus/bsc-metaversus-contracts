@@ -24,11 +24,26 @@ import "../lib/ErrorHelper.sol";
 contract StakingPool is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradeable, IStakingPool {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /**
+     *  @notice This struct defining data when execute lazily
+     *
+     *  @param unlockedTime                 Time when the Pool unlocked.
+     *  @param isRequested                  Indicating if the Pool is request to be created.
+     */
     struct Lazy {
         uint256 unlockedTime;
         bool isRequested;
     }
 
+    /**
+     *  @notice This struct defining data when create staking pool lazily
+     *
+     *  @param totalAmount                  Total amount of the pool.
+     *  @param pendingRewards               Pening reward to claim.
+     *  @param lastClaim                    Time when the last claim transaction happened.
+     *  @param lazyUnstake                  Lazily unstaking information.
+     *  @param lazyClaim                    Lazily claiming information.
+     */
     struct UserInfo {
         uint256 totalAmount;
         uint256 pendingRewards;
