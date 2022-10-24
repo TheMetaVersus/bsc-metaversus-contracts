@@ -150,7 +150,7 @@ contract MarketPlaceManager is
      *  @dev    Only owner or admin can call this function.
      */
     function setMetaversusManager(IMetaversusManager _address) external onlyAdmin validMetaversusManager(_address) {
-        IMetaversusManager oldMetaversusManager = _address;
+        IMetaversusManager oldMetaversusManager = metaversusManager;
         metaversusManager = _address;
         emit SetMetaversusManager(oldMetaversusManager, _address);
     }
