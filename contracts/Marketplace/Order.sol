@@ -263,7 +263,12 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *
      * * Emit {acceptOrder}
      */
-    function acceptOrder(uint256 _orderId) external nonReentrant whenNotPaused validOrderId(_orderId) {
+    function acceptOrder(uint256 _orderId, uint256 _bidPrice)
+        external
+        nonReentrant
+        whenNotPaused
+        validOrderId(_orderId)
+    {
         address _nftContractAddress;
         uint256 _tokenId;
         uint256 _amount;
@@ -277,9 +282,10 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             ];
 
             ErrorHelper._checkIsSeller(walletOrder.to);
+
+            _amount = orderInfo.amount;
             _nftContractAddress = walletOrder.nftAddress;
             _tokenId = walletOrder.tokenId;
-            _amount = orderInfo.amount;
             _tokenTransfer = walletOrder.to;
             _seller = walletOrder.to;
         } else {
@@ -290,6 +296,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
             ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
             ErrorHelper._checkIsSeller(marketItem.seller);
+
             // Update Market Item
             marketItem.status = MarketItemStatus.SOLD;
             marketItem.buyer = orderInfo.owner;
@@ -298,15 +305,17 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                 marketItem
             );
 
+            _amount = marketItem.amount;
             _nftContractAddress = marketItem.nftContractAddress;
             _tokenId = marketItem.tokenId;
-            _amount = marketItem.amount;
             _tokenTransfer = address(marketplace);
             _seller = marketItem.seller;
         }
 
         ErrorHelper._checkInOrderTime(orderInfo.expiredTime);
         ErrorHelper._checkAvailableOrder(uint256(orderInfo.status), uint256(OrderHelper.OrderStatus.PENDING));
+        ErrorHelper._checkEqualPrice(_bidPrice, orderInfo.bidPrice);
+
         // Update Order
         orderInfo.status = OrderHelper.OrderStatus.ACCEPTED;
         marketplace.setIsBuyer(orderInfo.owner);

@@ -60,6 +60,7 @@ library ErrorHelper {
     error InvalidEndTime();
     error TokenIsNotExisted(address _contract, uint256 tokenId);
     error CanNotBuyYourNFT();
+    error NotEqualPrice();
     error MarketItemIsNotSelling();
     error EitherNotInWhitelistOrNotOwnMetaCitizenNFT();
     // Metaversus manager Error
@@ -249,6 +250,12 @@ library ErrorHelper {
     function _checkOwnerOfMarketItem(address _seller) internal view {
         if (_seller == msg.sender) {
             revert ErrorHelper.CanNotBuyYourNFT();
+        }
+    }
+
+    function _checkEqualPrice(uint256 _price, uint256 _expectedPrice) internal pure {
+        if (_price != _expectedPrice) {
+            revert ErrorHelper.NotEqualPrice();
         }
     }
 

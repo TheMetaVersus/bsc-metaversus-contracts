@@ -881,27 +881,42 @@ describe("OrderManager:", () => {
             await orderManager.setPause(true);
             expect(await orderManager.paused()).to.equal(true);
 
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Pausable: paused");
+            await expect(orderManager.connect(user1).acceptOrder(1, BID_PRICE)).to.revertedWith("Pausable: paused");
         });
 
         it("should be fail when Invalid seller of asset", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith(
+            await expect(orderManager.connect(user3).acceptOrder(1, BID_PRICE)).to.revertedWith(
                 `NotTheSeller("${user3.address}", "${user1.address}")`
             );
         });
 
         it("should be fail when Invalid order id", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("InvalidOrderId()");
+            await expect(orderManager.connect(user3).acceptOrder(0, BID_PRICE)).to.revertedWith("InvalidOrderId()");
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsNotAvailable()");
+            await expect(orderManager.connect(user1).acceptOrder(1, BID_PRICE)).to.revertedWith(
+                "OrderIsNotAvailable()"
+            );
         });
 
         it("should be fail when Overtime", async () => {
             await skipTime(ONE_WEEK);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsExpired()");
+            await expect(orderManager.connect(user1).acceptOrder(1, BID_PRICE)).to.revertedWith("OrderIsExpired()");
+        });
+
+        it("should be fail when token is not approved", async () => {
+            await expect(orderManager.connect(user1).acceptOrder(1, BID_PRICE)).to.revertedWith(
+                "ERC721: caller is not token owner nor approved"
+            );
+        });
+
+        it("should be fail when Invalid bid price of asset", async () => {
+            await nftTest.connect(user1).approve(orderManager.address, 1);
+            await expect(orderManager.connect(user1).acceptOrder(1, BID_PRICE.add(1))).to.revertedWith(
+                "NotEqualPrice()"
+            );
         });
 
         it("Should be ok", async () => {
@@ -931,7 +946,7 @@ describe("OrderManager:", () => {
             // listingFee to treasury
             const balance_treasury_before = await token.balanceOf(treasury.address);
 
-            await expect(() => orderManager.connect(user1).acceptOrder(1)).to.changeTokenBalance(
+            await expect(() => orderManager.connect(user1).acceptOrder(1, BID_PRICE)).to.changeTokenBalance(
                 token,
                 user1,
                 netSaleValue
@@ -976,18 +991,20 @@ describe("OrderManager:", () => {
             await orderManager.setPause(true);
             expect(await orderManager.paused()).to.equal(true);
 
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("Pausable: paused");
+            await expect(orderManager.connect(user1).acceptOrder(1, BUY_BID_PRICE)).to.revertedWith("Pausable: paused");
         });
 
         it("should be fail when Invalid order", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(0)).to.revertedWith("InvalidOrderId()");
+            await expect(orderManager.connect(user3).acceptOrder(0, BUY_BID_PRICE)).to.revertedWith("InvalidOrderId()");
 
             const orderId = await orderManager.getCurrentOrderId();
-            await expect(orderManager.connect(user3).acceptOrder(orderId.add(1))).to.revertedWith("InvalidOrderId()");
+            await expect(orderManager.connect(user3).acceptOrder(orderId.add(1), BUY_BID_PRICE)).to.revertedWith(
+                "InvalidOrderId()"
+            );
         });
 
         it("should be fail when not the seller", async () => {
-            await expect(orderManager.connect(user3).acceptOrder(1)).to.revertedWith(
+            await expect(orderManager.connect(user3).acceptOrder(1, BUY_BID_PRICE)).to.revertedWith(
                 `NotTheSeller("${user3.address}", "${user1.address}")`
             );
         });
@@ -995,17 +1012,27 @@ describe("OrderManager:", () => {
         it("should be fail when Market Item is not available", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             await orderManager.connect(user1).cancelSell(marketItemId);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("MarketItemIsNotAvailable()");
+            await expect(orderManager.connect(user1).acceptOrder(1, BUY_BID_PRICE)).to.revertedWith(
+                "MarketItemIsNotAvailable()"
+            );
         });
 
         it("should be fail when Order is not available", async () => {
             await orderManager.connect(user2).cancelOrder(1);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsNotAvailable()");
+            await expect(orderManager.connect(user1).acceptOrder(1, BUY_BID_PRICE)).to.revertedWith(
+                "OrderIsNotAvailable()"
+            );
         });
 
         it("should be fail when Overtime", async () => {
             await skipTime(ONE_WEEK);
-            await expect(orderManager.connect(user1).acceptOrder(1)).to.revertedWith("OrderIsExpired()");
+            await expect(orderManager.connect(user1).acceptOrder(1, BUY_BID_PRICE)).to.revertedWith("OrderIsExpired()");
+        });
+
+        it("should be fail when Invalid bid price of asset", async () => {
+            await expect(orderManager.connect(user1).acceptOrder(1, BUY_BID_PRICE.add(1))).to.revertedWith(
+                "NotEqualPrice()"
+            );
         });
 
         it("Should be ok", async () => {
@@ -1034,7 +1061,7 @@ describe("OrderManager:", () => {
             // listingFee to treasury
             const balance_treasury_before = await token.balanceOf(treasury.address);
 
-            await expect(() => orderManager.connect(user1).acceptOrder(1)).to.changeTokenBalance(
+            await expect(() => orderManager.connect(user1).acceptOrder(1, BUY_BID_PRICE)).to.changeTokenBalance(
                 token,
                 user1,
                 netSaleValue
@@ -1523,9 +1550,6 @@ describe("OrderManager:", () => {
         });
 
         it("should be fail when not the seller !", async () => {
-            // console.log("user1", user1.address);
-            // console.log("user2", user2.address);
-            // console.log("user3", user3.address);
             await expect(orderManager.connect(user2).cancelSell(marketItemId)).to.revertedWith(
                 `NotTheSeller("${user2.address}", "${user1.address}")`
             );
