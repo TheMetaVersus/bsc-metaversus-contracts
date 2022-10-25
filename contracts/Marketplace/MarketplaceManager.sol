@@ -89,16 +89,6 @@ contract MarketPlaceManager is
         uint256 startTime,
         uint256 endTime,
         IERC20Upgradeable paymentToken,
-        bytes rootHash,
-        bool isPrivate
-    );
-    event MarketItemUpdated(
-        uint256 indexed marketItemId,
-        uint256 price,
-        uint256 startTime,
-        uint256 endTime,
-        IERC20Upgradeable paymentToken,
-        bytes rootHash,
         bool isPrivate
     );
     event SetOrder(IOrder indexed oldOrder, IOrder indexed newOrder);
@@ -245,7 +235,6 @@ contract MarketPlaceManager is
             _startTime,
             _endTime,
             _paymentToken,
-            _rootHash,
             isPrivate(_marketItemIds.current())
         );
     }

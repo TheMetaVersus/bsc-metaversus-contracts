@@ -51,4 +51,3 @@ yarn.lock
 
 # Others
 *.csv
-.openzeppelin/*.json

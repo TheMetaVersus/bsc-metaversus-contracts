@@ -1,48 +1,31 @@
 const hre = require("hardhat");
-const contracts = require("../contracts-verify.json");
+const contracts = require("../contracts.json");
 
 async function main() {
   try {
     await hre.run("verify:verify", {
-      address: contracts.admin,
-      contract: "contracts/Admin.sol:Admin"
+      address: contracts.admin
     });
   } catch (err) {
     console.log("err :>> ", err);
   }
   try {
     await hre.run("verify:verify", {
-      address: contracts.treasury,
-      contract: "contracts/Treasury.sol:Treasury"
+      address: contracts.treasury
     });
   } catch (err) {
     console.log("err :>> ", err);
   }
   try {
     await hre.run("verify:verify", {
-      address: contracts.usd,
-      contract: "contracts/Token/MTVS.sol:MTVS"
+      address: contracts.usd
     });
   } catch (err) {
     console.log("err :>> ", err);
   }
-  // try {
-  //   await hre.run("verify:verify", {
-  //     address: contracts.mtvs,
-  //     contract: "contracts/Token/MTVS.sol:MTVS"
-  //   });
-  // } catch (err) {
-  //   console.log("err :>> ", err);
-  // }
   try {
     await hre.run("verify:verify", {
-      address: contracts.mtvs,
-      constructorArguments: [
-        "Metaversus Token",
-        "MTVS",
-        process.env.TOTAL_SUPPLY,
-        contracts.treasury
-      ]
+      address: contracts.mtvs
     });
   } catch (err) {
     console.log("err :>> ", err);
@@ -50,8 +33,7 @@ async function main() {
 
   try {
     await hre.run("verify:verify", {
-      address: contracts.tokenMintERC721,
-      contract: "contracts/Token/TokenMintERC721.sol:TokenMintERC721"
+      address: contracts.tokenMintERC721
     });
   } catch (err) {
     console.log("err :>> ", err);
@@ -59,8 +41,7 @@ async function main() {
 
   try {
     await hre.run("verify:verify", {
-      address: contracts.tokenMintERC1155,
-      contract: "contracts/Token/TokenMintERC1155.sol:TokenMintERC1155"
+      address: contracts.tokenMintERC1155
     });
   } catch (err) {
     console.log("err :>> ", err);
@@ -68,8 +49,7 @@ async function main() {
 
   try {
     await hre.run("verify:verify", {
-      address: contracts.mtvsManager,
-      contract: "contracts/Marketplace/MetaversusManager.sol:MetaversusManager"
+      address: contracts.mtvsManager
     });
   } catch (err) {
     console.log("err :>> ", err);
@@ -77,9 +57,7 @@ async function main() {
 
   try {
     await hre.run("verify:verify", {
-      address: contracts.mkpManager,
-      contract:
-        "contracts/Marketplace/MarketplaceManager.sol:MarketPlaceManager"
+      address: contracts.mkpManager
     });
   } catch (err) {
     console.log("err :>> ", err);
@@ -87,8 +65,7 @@ async function main() {
 
   try {
     await hre.run("verify:verify", {
-      address: contracts.staking,
-      contract: "contracts/StakingPool/StakingPool.sol:StakingPool"
+      address: contracts.staking
     });
   } catch (err) {
     console.log("err :>> ", err);
@@ -96,32 +73,28 @@ async function main() {
 
   try {
     await hre.run("verify:verify", {
-      address: contracts.poolFactory,
-      contract: "contracts/StakingPool/PoolFactory.sol:PoolFactory"
+      address: contracts.poolFactory
     });
   } catch (err) {
     console.log("err :>> ", err);
   }
   try {
     await hre.run("verify:verify", {
-      address: contracts.metaDrop,
-      contract: "contracts/Drops/MetaDrop.sol:MetaDrop"
+      address: contracts.metaDrop
     });
   } catch (err) {
     console.log("err :>> ", err);
   }
   try {
     await hre.run("verify:verify", {
-      address: contracts.orderManager,
-      contract: "contracts/Marketplace/Marketplace.sol:OrderManager"
+      address: contracts.orderManager
     });
   } catch (err) {
     console.log("err :>> ", err);
   }
   try {
     await hre.run("verify:verify", {
-      address: contracts.metaCitizen,
-      contract: "contracts/Token/MetaCitizen.sol:MetaCitizen"
+      address: contracts.metaCitizen
     });
   } catch (err) {
     console.log("err :>> ", err);

@@ -49,7 +49,9 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
         address collection,
         string name,
         string symbol,
-        address deployer
+        address deployer,
+        address receiverRoyalty,
+        uint96 feeNumerator
     );
     event SetMaxCollection(uint256 indexed oldValue, uint256 indexed newValue);
     event SetMaxTotalSuply(uint256 indexed oldValue, uint256 indexed newValue);
@@ -111,7 +113,15 @@ contract CollectionFactory is ICollectionFactory, Validatable, ERC165Upgradeable
 
         _ownerToCollectionAddress[_msgSender()].add(address(_collection));
 
-        emit CollectionDeployed(_typeNft, address(_collection), _name, _symbol, _msgSender());
+        emit CollectionDeployed(
+            _typeNft,
+            address(_collection),
+            _name,
+            _symbol,
+            _msgSender(),
+            _receiverRoyalty,
+            _feeNumerator
+        );
     }
 
     /**
