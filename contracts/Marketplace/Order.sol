@@ -342,18 +342,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *  Emit {cancelOrder}
      */
     function cancelOrder(uint256 _orderId) external nonReentrant whenNotPaused validOrderId(_orderId) {
-        // OrderHelper._cancelOffer(DBOrderMap, _orderId, _msgSender());
-        OrderHelper.OrderInfo storage orderInfo = DBOrderMap.orders[_orderId];
-
-        ErrorHelper._checkOwnerOfOrder(orderInfo.owner);
-        ErrorHelper._checkAvailableOrder(uint256(orderInfo.status), uint256(OrderHelper.OrderStatus.PENDING));
-        // Update order information
-        orderInfo.status = OrderHelper.OrderStatus.CANCELED;
-
-        // Payback token to owner
-        TransferHelper._transferToken(orderInfo.paymentToken, orderInfo.bidPrice, address(this), orderInfo.owner);
-
-        emit CanceledOrder(_orderId);
+        OrderHelper._cancelOrder(DBOrderMap, _orderId);
     }
 
     /**
@@ -434,14 +423,22 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *
      *  Emit {CanceledSell}
      */
-    function cancelSell(uint256 marketItemId) external nonReentrant whenNotPaused validMarketItemId(marketItemId) {
+    function cancelSell(uint256 marketItemId)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        validMarketItemId(marketItemId)
+    {
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemId);
         ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
         ErrorHelper._checkIsSeller(marketItem.seller);
         // Update Market Item
         marketItem.status = MarketItemStatus.CANCELED;
         marketplace.setMarketItemIdToMarketItem(marketItemId, marketItem);
-
+        // pay listing fee
+        uint256 _listingFee = marketplace.getListingFee(marketItem.price);
+        TransferHelper._transferToken(marketItem.paymentToken, _listingFee, _msgSender(), address(this));
         // transfer nft back to seller
         marketplace.extTransferNFTCall(
             marketItem.nftContractAddress,

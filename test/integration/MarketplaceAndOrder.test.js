@@ -243,7 +243,15 @@ describe("Marketplace interact with Order", () => {
 
     describe("Cancel sell NFT", async () => {
         it("Cancel sell", async () => {
-            await expect(() => orderManager.connect(user1).cancelSell(1)).to.changeTokenBalance(nftTest, user1, 1);
+            const currentOrderId = await orderManager.getCurrentOrderId();
+            const marketOrderInfo = await orderManager.getMarketOrderByOrderId(currentOrderId);
+            const marketItem = await mkpManager.getMarketItemIdToMarketItem(marketOrderInfo.marketItemId);
+            const fee = await mkpManager.getListingFee(marketItem.price);
+            await expect(() => orderManager.connect(user1).cancelSell(1, { value: fee })).to.changeTokenBalance(
+                nftTest,
+                user1,
+                1
+            );
         });
     });
 

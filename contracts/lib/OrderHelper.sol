@@ -121,14 +121,10 @@ library OrderHelper {
         data.marketItemOrders[marketItemOrderId] = marketItemOrder;
     }
 
-    function _cancelOffer(
-        OrderHelper.DBOrderMap storage data,
-        uint256 orderId,
-        address caller
-    ) internal {
+    function _cancelOrder(OrderHelper.DBOrderMap storage data, uint256 orderId) internal {
         OrderInfo storage orderInfo = data.orders[orderId];
 
-        ErrorHelper._checkOwner(orderInfo.owner, caller);
+        ErrorHelper._checkOwnerOfOrder(orderInfo.owner);
         ErrorHelper._checkAvailableOrder(uint256(orderInfo.status), uint256(OrderStatus.PENDING));
         // Update order information
         orderInfo.status = OrderStatus.CANCELED;
