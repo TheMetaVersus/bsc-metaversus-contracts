@@ -274,13 +274,6 @@ async function main() {
   console.log(
     "========================================================================================="
   );
-  // const mtvsVerify = await upgrades.erc1967.getImplementationAddress(
-  //   mtvs.address
-  // );
-  // console.log("mtvsVerify deployed in:", mtvsVerify);
-  // console.log(
-  //   "========================================================================================="
-  // );
   const metaCitizenVerify = await upgrades.erc1967.getImplementationAddress(
     metaCitizen.address
   );
