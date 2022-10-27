@@ -89,7 +89,8 @@ contract MarketPlaceManager is
         uint256 startTime,
         uint256 endTime,
         IERC20Upgradeable paymentToken,
-        bool isPrivate
+        bool isPrivate,
+        string rootHash
     );
     event SetOrder(IOrder indexed oldOrder, IOrder indexed newOrder);
     event SetMetaversusManager(
@@ -235,7 +236,8 @@ contract MarketPlaceManager is
             _startTime,
             _endTime,
             _paymentToken,
-            isPrivate(_marketItemIds.current())
+            isPrivate(_marketItemIds.current()),
+            string(_rootHash)
         );
     }
 
