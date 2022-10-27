@@ -10,12 +10,8 @@ const contractVerifies = require("../contracts-verify.json");
 async function main() {
   const data = [
     {
-      key: "mkpManager",
-      name: "MarketPlaceManager"
-    },
-    {
-      key: "collectionFactory",
-      name: "CollectionFactory"
+      key: "orderManager",
+      name: "OrderManager"
     }
   ];
 

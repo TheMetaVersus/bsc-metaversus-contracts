@@ -423,22 +423,13 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
      *
      *  Emit {CanceledSell}
      */
-    function cancelSell(uint256 marketItemId)
-        external
-        payable
-        nonReentrant
-        whenNotPaused
-        validMarketItemId(marketItemId)
-    {
+    function cancelSell(uint256 marketItemId) external nonReentrant whenNotPaused validMarketItemId(marketItemId) {
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(marketItemId);
         ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
         ErrorHelper._checkIsSeller(marketItem.seller);
         // Update Market Item
         marketItem.status = MarketItemStatus.CANCELED;
         marketplace.setMarketItemIdToMarketItem(marketItemId, marketItem);
-        // pay listing fee
-        uint256 _listingFee = marketplace.getListingFee(marketItem.price);
-        TransferHelper._transferToken(marketItem.paymentToken, _listingFee, _msgSender(), address(this));
         // transfer nft back to seller
         marketplace.extTransferNFTCall(
             marketItem.nftContractAddress,

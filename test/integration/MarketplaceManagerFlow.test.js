@@ -501,9 +501,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
 
         it("waiting until MarketItem is expired => user1 cancel MarketItem", async () => {
             await skipTime(INFO.user1.sell_end_time - (await getCurrentTime()));
-            const marketItem = await mkpManager.getMarketItemIdToMarketItem(INFO.user1.sell_market_item_id);
-            const fee = await mkpManager.getListingFee(marketItem.price);
-            await BT.updateFee(token.connect(user1).approve(orderManager.address, fee));
             await BT.updateFee(orderManager.connect(user1).cancelSell(INFO.user1.sell_market_item_id));
         });
 
@@ -546,16 +543,13 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
             expect(user4Diff[ADDRESS_ZERO].delta.mul(-1)).to.equal(user4BT.totalFee);
             expect(treasuryDiff[ADDRESS_ZERO].delta.mul(-1)).to.equal(treasuryBT.totalFee);
 
-            expect(orderManagerDiff[token.address].delta).to.equal(
-                INFO.user3.bid_price.add(INFO.user4.bid_price).add(INFO.user1.sell_price.mul(25).div(1000))
-            );
+            expect(orderManagerDiff[token.address].delta).to.equal(INFO.user3.bid_price.add(INFO.user4.bid_price));
             expect(user1Diff[token.address].delta).to.equal(
                 INFO.user2.bid_price
                     .mul(975)
                     .div(1000)
                     .mul(975)
                     .div(1000)
-                    .sub(INFO.user1.sell_price.mul(25).div(1000))
             );
             expect(user2Diff[token.address].delta).to.equal(INFO.user2.bid_price.mul(-1));
             expect(user3Diff[token.address].delta).to.equal(INFO.user3.bid_price.mul(-1));
@@ -1271,9 +1265,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         });
 
         it("user1 cancel sell", async () => {
-            const marketItem = await mkpManager.getMarketItemIdToMarketItem(INFO.user1.sell_market_item_id);
-            const fee = await mkpManager.getListingFee(marketItem.price);
-            await BT.updateFee(token.connect(user1).approve(orderManager.address, fee));
             await BT.updateFee(orderManager.connect(user1).cancelSell(INFO.user1.sell_market_item_id));
         });
 
@@ -1327,7 +1318,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
                     .add(INFO.user4.bid_price)
                     .add(INFO.user5.bid_price)
                     .add(INFO.user6.bid_price)
-                    .add(INFO.user1.sell_price.mul(25).div(1000))
             );
             expect(user1Diff[token.address].delta).to.equal(
                 INFO.user2.bid_price
@@ -1335,7 +1325,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
                     .div(1000)
                     .mul(975)
                     .div(1000)
-                    .sub(INFO.user1.sell_price.mul(25).div(1000))
             );
             expect(user2Diff[token.address].delta).to.equal(INFO.user2.bid_price.mul(-1));
             expect(user3Diff[token.address].delta).to.equal(INFO.user3.bid_price.mul(-1));
@@ -1964,9 +1953,6 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
 
         it("waiting until MarketItem is expired => user1 cancel MarketItem", async () => {
             await skipTime(INFO.user1.sell_end_time - (await getCurrentTime()));
-            const marketItem = await mkpManager.getMarketItemIdToMarketItem(INFO.user1.sell_market_item_id);
-            const fee = await mkpManager.getListingFee(marketItem.price);
-            await BT.updateFee(token.connect(user1).approve(orderManager.address, fee));
             await BT.updateFee(orderManager.connect(user1).cancelSell(INFO.user1.sell_market_item_id));
         });
 
@@ -2009,16 +1995,13 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
             expect(user4Diff[ADDRESS_ZERO].delta.mul(-1)).to.equal(user4BT.totalFee);
             expect(treasuryDiff[ADDRESS_ZERO].delta.mul(-1)).to.equal(treasuryBT.totalFee);
 
-            expect(orderManagerDiff[token.address].delta).to.equal(
-                INFO.user3.bid_price.add(INFO.user4.bid_price.add(INFO.user1.sell_price.mul(25).div(1000)))
-            );
+            expect(orderManagerDiff[token.address].delta).to.equal(INFO.user3.bid_price.add(INFO.user4.bid_price));
             expect(user1Diff[token.address].delta).to.equal(
                 INFO.user2.bid_price
                     .mul(975)
                     .div(1000)
                     .mul(975)
                     .div(1000)
-                    .sub(INFO.user1.sell_price.mul(25).div(1000))
             );
             expect(user2Diff[token.address].delta).to.equal(INFO.user2.bid_price.mul(-1));
             expect(user3Diff[token.address].delta).to.equal(INFO.user3.bid_price.mul(-1));
@@ -2714,9 +2697,6 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
         });
 
         it("user1 cancel sell", async () => {
-            const marketItem = await mkpManager.getMarketItemIdToMarketItem(INFO.user1.sell_market_item_id);
-            const fee = await mkpManager.getListingFee(marketItem.price);
-            await BT.updateFee(token.connect(user1).approve(orderManager.address, fee));
             await BT.updateFee(orderManager.connect(user1).cancelSell(INFO.user1.sell_market_item_id));
         });
 
@@ -2770,7 +2750,6 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
                     .add(INFO.user4.bid_price)
                     .add(INFO.user5.bid_price)
                     .add(INFO.user6.bid_price)
-                    .add(INFO.user1.sell_price.mul(25).div(1000))
             );
             expect(user1Diff[token.address].delta).to.equal(
                 INFO.user2.bid_price
@@ -2778,7 +2757,6 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
                     .div(1000)
                     .mul(975)
                     .div(1000)
-                    .sub(INFO.user1.sell_price.mul(25).div(1000))
             );
             expect(user2Diff[token.address].delta).to.equal(INFO.user2.bid_price.mul(-1));
             expect(user3Diff[token.address].delta).to.equal(INFO.user3.bid_price.mul(-1));

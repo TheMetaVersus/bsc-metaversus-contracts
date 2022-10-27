@@ -130,7 +130,7 @@ async function main() {
   try {
     await hre.run("verify:verify", {
       address: contracts.orderManager,
-      contract: "contracts/Marketplace/Marketplace.sol:OrderManager"
+      contract: "contracts/Marketplace/Order.sol:OrderManager"
     });
   } catch (err) {
     console.log("err :>> ", err);
