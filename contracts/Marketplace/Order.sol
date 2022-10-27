@@ -198,7 +198,6 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         // Check Market Item
         MarketItem memory marketItem = marketplace.getMarketItemIdToMarketItem(_marketItemId);
         ErrorHelper._checkValidMarketItem(uint256(marketItem.status), uint256(MarketItemStatus.LISTING));
-        ErrorHelper._checkInOrderTime(marketItem.startTime, marketItem.endTime);
         ErrorHelper._checkUserCanOffer(marketItem.seller);
 
         if (marketplace.isPrivate(_marketItemId)) {
