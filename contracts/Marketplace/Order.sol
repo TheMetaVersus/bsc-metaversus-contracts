@@ -45,7 +45,14 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
     OrderHelper.DBOrderMap DBOrderMap;
 
     event SoldAvailableItem(uint256 indexed marketItemId, uint256 price, uint256 startTime, uint256 endTime);
-    event CanceledSell(uint256 indexed marketItemId);
+    event CanceledSell(
+        uint256 indexed marketItemId,
+        address seller,
+        uint256 amount,
+        address paymentToken,
+        address tokenAddress,
+        uint256 tokenId
+    );
     event Bought(
         uint256 indexed marketItemId,
         address nftContractAddress,
@@ -55,7 +62,16 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         address buyer,
         MarketItemStatus status
     );
-    event AcceptedOrder(uint256 indexed orderId);
+    event AcceptedOrder(
+        uint256 indexed orderId,
+        address owner,
+        address seller,
+        uint256 amount,
+        address paymentToken,
+        address nftContractAddress,
+        uint256 tokenId,
+        uint256 bidPrice
+    );
     event MakeOrder(
         uint256 indexed orderId,
         address owner,
@@ -332,7 +348,16 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         );
 
         // Emit event
-        emit AcceptedOrder(_orderId);
+        emit AcceptedOrder(
+            _orderId,
+            orderInfo.owner,
+            _seller,
+            _amount,
+            address(orderInfo.paymentToken),
+            _nftContractAddress,
+            _tokenId,
+            orderInfo.bidPrice
+        );
     }
 
     /**
@@ -438,7 +463,14 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             _msgSender()
         );
 
-        emit CanceledSell(marketItemId);
+        emit CanceledSell(
+            marketItemId,
+            marketItem.seller,
+            marketItem.amount,
+            address(marketItem.paymentToken),
+            marketItem.nftContractAddress,
+            marketItem.tokenId
+        );
     }
 
     /**

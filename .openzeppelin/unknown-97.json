@@ -3377,6 +3377,367 @@
           }
         }
       }
+    },
+    "a900dad4fdf8de3f346aa482c0cf46711e510809fb188575193e678aeb87ff11": {
+      "address": "0x4Ef814dFEFb70A1aEE18Fe03200B3cbB6B4e351a",
+      "txHash": "0x844344042851cb2e4fd8942bbb54b9261e6482ac341b3db01362f86cc8fd35b0",
+      "layout": {
+        "solcVersion": "0.8.9",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "admin",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_contract(IAdmin)16936",
+            "contract": "Validatable",
+            "src": "contracts\\Validatable.sol:34"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "103",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:74"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC165Upgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\introspection\\ERC165Upgradeable.sol:41"
+          },
+          {
+            "label": "marketplace",
+            "offset": 0,
+            "slot": "202",
+            "type": "t_contract(IMarketplaceManager)17058",
+            "contract": "OrderManager",
+            "src": "contracts\\Marketplace\\Order.sol:36"
+          },
+          {
+            "label": "walletOrderIds",
+            "offset": 0,
+            "slot": "203",
+            "type": "t_struct(Counter)5190_storage",
+            "contract": "OrderManager",
+            "src": "contracts\\Marketplace\\Order.sol:38"
+          },
+          {
+            "label": "marketItemOrderIds",
+            "offset": 0,
+            "slot": "204",
+            "type": "t_struct(Counter)5190_storage",
+            "contract": "OrderManager",
+            "src": "contracts\\Marketplace\\Order.sol:39"
+          },
+          {
+            "label": "orderIds",
+            "offset": 0,
+            "slot": "205",
+            "type": "t_struct(Counter)5190_storage",
+            "contract": "OrderManager",
+            "src": "contracts\\Marketplace\\Order.sol:40"
+          },
+          {
+            "label": "DBOrderMap",
+            "offset": 0,
+            "slot": "206",
+            "type": "t_struct(DBOrderMap)18877_storage",
+            "contract": "OrderManager",
+            "src": "contracts\\Marketplace\\Order.sol:45"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IAdmin)16936": {
+            "label": "contract IAdmin",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IERC20Upgradeable)2850": {
+            "label": "contract IERC20Upgradeable",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IMarketplaceManager)17058": {
+            "label": "contract IMarketplaceManager",
+            "numberOfBytes": "20"
+          },
+          "t_enum(OrderStatus)18802": {
+            "label": "enum OrderHelper.OrderStatus",
+            "members": [
+              "PENDING",
+              "ACCEPTED",
+              "CANCELED"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_mapping(t_uint256,t_mapping(t_address,t_mapping(t_address,t_uint256))))": {
+            "label": "mapping(address => mapping(uint256 => mapping(address => mapping(address => uint256))))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_mapping(t_address,t_uint256)))": {
+            "label": "mapping(uint256 => mapping(address => mapping(address => uint256)))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(uint256 => mapping(address => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(MarketItemOrder)18816_storage)": {
+            "label": "mapping(uint256 => struct OrderHelper.MarketItemOrder)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(OrderInfo)18835_storage)": {
+            "label": "mapping(uint256 => struct OrderHelper.OrderInfo)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(WalletOrder)18811_storage)": {
+            "label": "mapping(uint256 => struct OrderHelper.WalletOrder)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Counter)5190_storage": {
+            "label": "struct CountersUpgradeable.Counter",
+            "members": [
+              {
+                "label": "_value",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(DBOrderMap)18877_storage": {
+            "label": "struct OrderHelper.DBOrderMap",
+            "members": [
+              {
+                "label": "walletOrders",
+                "type": "t_mapping(t_uint256,t_struct(WalletOrder)18811_storage)",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "marketItemOrders",
+                "type": "t_mapping(t_uint256,t_struct(MarketItemOrder)18816_storage)",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "orders",
+                "type": "t_mapping(t_uint256,t_struct(OrderInfo)18835_storage)",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "orderIdToItemId",
+                "type": "t_mapping(t_uint256,t_uint256)",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "walletOrderOfOwners",
+                "type": "t_mapping(t_address,t_mapping(t_uint256,t_mapping(t_address,t_mapping(t_address,t_uint256))))",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "marketItemOrderOfOwners",
+                "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(MarketItemOrder)18816_storage": {
+            "label": "struct OrderHelper.MarketItemOrder",
+            "members": [
+              {
+                "label": "marketItemId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "orderId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(OrderInfo)18835_storage": {
+            "label": "struct OrderHelper.OrderInfo",
+            "members": [
+              {
+                "label": "id",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "amount",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "bidPrice",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "expiredTime",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "paymentToken",
+                "type": "t_contract(IERC20Upgradeable)2850",
+                "offset": 0,
+                "slot": "5"
+              },
+              {
+                "label": "status",
+                "type": "t_enum(OrderStatus)18802",
+                "offset": 20,
+                "slot": "5"
+              },
+              {
+                "label": "isWallet",
+                "type": "t_bool",
+                "offset": 21,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(WalletOrder)18811_storage": {
+            "label": "struct OrderHelper.WalletOrder",
+            "members": [
+              {
+                "label": "to",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "nftAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "tokenId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "orderId",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
     }
   }
 }
