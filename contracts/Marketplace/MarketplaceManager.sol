@@ -385,6 +385,19 @@ contract MarketPlaceManager is
     }
 
     /**
+     *  @notice Check standard
+     */
+    function checkStandard(address _contract) public view returns (uint256) {
+        if (IERC721Upgradeable(_contract).supportsInterface(type(IERC721Upgradeable).interfaceId)) {
+            return uint256(NftStandard.ERC721);
+        }
+        if (IERC1155Upgradeable(_contract).supportsInterface(type(IERC1155Upgradeable).interfaceId)) {
+            return uint256(NftStandard.ERC1155);
+        }
+        return uint256(NftStandard.NONE);
+    }
+
+    /**
      * @dev Returns true if an address (leaf)
      * @param _marketItemId market item Id
      * @param _proof Proof to verify address
