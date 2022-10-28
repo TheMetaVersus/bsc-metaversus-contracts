@@ -136,8 +136,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        IERC20Upgradeable payment,
-        bytes calldata rootHash
+        IERC20Upgradeable payment
     ) external whenNotPaused nonReentrant notZero(amount) notZero(price) {
         if (typeNft == NFTHelper.Type.ERC721) {
             _create721(
@@ -149,8 +148,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
                 price,
                 startTime,
                 endTime,
-                payment,
-                rootHash
+                payment
             );
         } else if (typeNft == NFTHelper.Type.ERC1155) {
             _create1155(
@@ -162,8 +160,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
                 price,
                 startTime,
                 endTime,
-                payment,
-                rootHash
+                payment
             );
         }
     }
@@ -192,16 +189,15 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        IERC20Upgradeable payment,
-        bytes calldata rootHash
+        IERC20Upgradeable payment
     ) external nonReentrant notZero(amount) notZero(price) whenNotPaused {
         ErrorHelper._checkUserCreateCollection(collectionFactory, nftAddress);
         ErrorHelper._checkValidNFTAddress(nftAddress);
         NFTHelper.Type typeNft = NFTHelper.getType(nftAddress);
         if (typeNft == NFTHelper.Type.ERC721) {
-            _create721(isSellOnMarket, typeNft, nftAddress, amount, uri, price, startTime, endTime, payment, rootHash);
+            _create721(isSellOnMarket, typeNft, nftAddress, amount, uri, price, startTime, endTime, payment);
         } else if (typeNft == NFTHelper.Type.ERC1155) {
-            _create1155(isSellOnMarket, typeNft, nftAddress, amount, uri, price, startTime, endTime, payment, rootHash);
+            _create1155(isSellOnMarket, typeNft, nftAddress, amount, uri, price, startTime, endTime, payment);
         }
     }
 
@@ -217,8 +213,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        IERC20Upgradeable payment,
-        bytes calldata rootHash
+        IERC20Upgradeable payment
     ) private notZeroAddress(nftAddress) {
         uint256 currentId;
         if (!isSellOnMarket) {
@@ -235,8 +230,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
                 _msgSender(),
                 startTime,
                 endTime,
-                payment,
-                rootHash
+                payment
             );
         }
 
@@ -262,8 +256,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
         uint256 price,
         uint256 startTime,
         uint256 endTime,
-        IERC20Upgradeable payment,
-        bytes calldata rootHash
+        IERC20Upgradeable payment
     ) private notZeroAddress(nftAddress) {
         uint256 currentId;
         if (!isSellOnMarket) {
@@ -280,8 +273,7 @@ contract MetaversusManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upg
                 _msgSender(),
                 startTime,
                 endTime,
-                payment,
-                rootHash
+                payment
             );
         }
 

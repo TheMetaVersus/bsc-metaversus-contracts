@@ -483,18 +483,6 @@ describe("OrderManager:", () => {
             ).to.revertedWith("MarketItemIsNotAvailable()");
         });
 
-        it("should revert when Not the order time", async () => {
-            await mtvsManager
-                .connect(user2)
-                .createNFT(true, 1, 100, "this_uri", ONE_ETHER, current + 100, current + 86400, token.address, []);
-
-            let marketItemId = await mkpManager.getCurrentMarketItem();
-
-            await expect(
-                orderManager.connect(user2).makeMarketItemOrder(marketItemId, BUY_BID_PRICE, endTime, [])
-            ).to.revertedWith("NotInTheOrderTime()");
-        });
-
         it("should be revert when offer my self", async () => {
             let marketItemId = await mkpManager.getCurrentMarketItem();
             const marketItem = await mkpManager.getMarketItemIdToMarketItem(marketItemId);

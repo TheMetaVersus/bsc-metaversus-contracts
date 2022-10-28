@@ -670,11 +670,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         it("user4 make offer on sell", async () => {
             INFO.user4.bid_price = parseEther("1.5");
             INFO.user4.endTime = (await getCurrentTime()) + ONE_WEEK;
-            await BT.expect(
-                orderManager
-                    .connect(user4)
-                    .makeMarketItemOrder(INFO.user1.sell_market_item_id, INFO.user4.bid_price, INFO.user4.endTime, [])
-            ).to.revertedWith("NotInTheOrderTime()");
 
             await skipTime(10);
 
@@ -802,21 +797,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
                     )
             );
             INFO.user1.sell_market_item_id = await mkpManager.getCurrentMarketItem();
-        });
-
-        it("No one offer => sell is expired", async () => {
-            await skipTime(INFO.user1.sell_end_time - INFO.user1.sell_start_time + 10);
-
-            await BT.expect(
-                orderManager
-                    .connect(user4)
-                    .makeMarketItemOrder(
-                        INFO.user1.sell_market_item_id,
-                        parseEther("1"),
-                        (await getCurrentTime()) + ONE_WEEK,
-                        []
-                    )
-            ).to.revertedWith("NotInTheOrderTime()");
         });
 
         it("Check balance after flowNFT721_", async () => {
@@ -992,17 +972,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
             };
             await BT.updateFee(token.connect(user5).approve(orderManager.address, MAX_UINT256));
             await BT.updateFee(metaCitizen.mint(user5.address));
-            await BT.expect(
-                orderManager
-                    .connect(user5)
-                    .makeMarketItemOrder(
-                        INFO.user1.sell_market_item_id,
-                        INFO.user5.bid_price,
-                        INFO.user5.end_time,
-                        INFO.user1.sell_merkle_tree.getHexProof(generateLeaf(user5.address)),
-                        { value: INFO.user5.bid_price }
-                    )
-            ).to.revertedWith("NotInTheOrderTime()");
 
             await skipTime(10);
             await BT.expect(() =>
@@ -1237,11 +1206,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
         it("user 5, user 6 make offers on sell", async () => {
             INFO.user5.bid_price = parseEther("1.5");
             INFO.user5.end_time = (await getCurrentTime()) + ONE_WEEK;
-            await BT.expect(
-                orderManager
-                    .connect(user5)
-                    .makeMarketItemOrder(INFO.user1.sell_market_item_id, INFO.user5.bid_price, INFO.user5.end_time, [])
-            ).to.revertedWith("NotInTheOrderTime()");
 
             await skipTime(10);
             await BT.expect(metaCitizen.mint(user5.address)).to.revertedWith("AlreadyHaveOne()");
@@ -1396,11 +1360,6 @@ describe("Marketplace Manager flow test for ERC721 token:", () => {
             // User 2 make order
             INFO.user2.bid_price = parseEther("1.5");
             INFO.user2.end_time = (await getCurrentTime()) + ONE_WEEK;
-            await BT.expect(
-                orderManager
-                    .connect(user2)
-                    .makeMarketItemOrder(INFO.user1.sell_market_item_id, INFO.user2.bid_price, INFO.user2.end_time, [])
-            ).to.revertedWith("NotInTheOrderTime()");
 
             await skipTime(10);
             await BT.updateFee(metaCitizen.mint(user2.address));
@@ -2121,11 +2080,6 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
         it("user4 make offer on sell", async () => {
             INFO.user4.bid_price = parseEther("1.5");
             INFO.user4.endTime = (await getCurrentTime()) + ONE_WEEK;
-            await BT.expect(
-                orderManager
-                    .connect(user4)
-                    .makeMarketItemOrder(INFO.user1.sell_market_item_id, INFO.user4.bid_price, INFO.user4.endTime, [])
-            ).to.revertedWith("NotInTheOrderTime()");
 
             await skipTime(10);
             await BT.expect(() =>
@@ -2252,21 +2206,6 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
                     )
             );
             INFO.user1.sell_market_item_id = await mkpManager.getCurrentMarketItem();
-        });
-
-        it("No one offer => sell is expired", async () => {
-            await skipTime(INFO.user1.sell_end_time - INFO.user1.sell_start_time + 10);
-
-            await BT.expect(
-                orderManager
-                    .connect(user4)
-                    .makeMarketItemOrder(
-                        INFO.user1.sell_market_item_id,
-                        parseEther("1"),
-                        (await getCurrentTime()) + ONE_WEEK,
-                        []
-                    )
-            ).to.revertedWith("NotInTheOrderTime()");
         });
 
         it("Check balance after flowNFT1155_", async () => {
@@ -2438,16 +2377,6 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
                 bid_price: parseEther("1"),
                 end_time: (await getCurrentTime()) + ONE_WEEK * 2,
             };
-            await BT.expect(
-                orderManager
-                    .connect(user5)
-                    .makeMarketItemOrder(
-                        INFO.user1.sell_market_item_id,
-                        INFO.user5.bid_price,
-                        INFO.user5.end_time,
-                        INFO.user1.sell_merkle_tree.getHexProof(generateLeaf(user5.address))
-                    )
-            ).to.revertedWith("NotInTheOrderTime()");
 
             await skipTime(10);
             await BT.expect(() =>
@@ -2671,11 +2600,6 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
         it("user 5, user 6 make offers on sell", async () => {
             INFO.user5.bid_price = parseEther("1.5");
             INFO.user5.end_time = (await getCurrentTime()) + ONE_WEEK;
-            await BT.expect(
-                orderManager
-                    .connect(user5)
-                    .makeMarketItemOrder(INFO.user1.sell_market_item_id, INFO.user5.bid_price, INFO.user5.end_time, [])
-            ).to.revertedWith("NotInTheOrderTime()");
 
             await skipTime(10);
             await BT.expect(() =>
@@ -2829,11 +2753,6 @@ describe("Marketplace Manager flow test for ERC1155 token:", () => {
             // User 2 make order
             INFO.user2.bid_price = parseEther("1.5");
             INFO.user2.end_time = (await getCurrentTime()) + ONE_WEEK;
-            await BT.expect(
-                orderManager
-                    .connect(user2)
-                    .makeMarketItemOrder(INFO.user1.sell_market_item_id, INFO.user2.bid_price, INFO.user2.end_time, [])
-            ).to.revertedWith("NotInTheOrderTime()");
 
             await skipTime(10);
             await BT.expect(() =>

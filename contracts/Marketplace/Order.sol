@@ -382,8 +382,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         uint256 _price,
         uint256 _startTime,
         uint256 _endTime,
-        IERC20Upgradeable _paymentToken,
-        bytes calldata _rootHash
+        IERC20Upgradeable _paymentToken
     )
         external
         nonReentrant
@@ -410,8 +409,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             _msgSender(),
             _startTime,
             _endTime,
-            _paymentToken,
-            _rootHash
+            _paymentToken
         );
     }
 

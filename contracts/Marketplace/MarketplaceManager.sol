@@ -89,8 +89,7 @@ contract MarketPlaceManager is
         uint256 startTime,
         uint256 endTime,
         IERC20Upgradeable paymentToken,
-        bool isPrivate,
-        string rootHash
+        bool isPrivate
     );
     event SetOrder(IOrder indexed oldOrder, IOrder indexed newOrder);
     event SetMetaversusManager(
@@ -198,8 +197,7 @@ contract MarketPlaceManager is
         address _seller,
         uint256 _startTime,
         uint256 _endTime,
-        IERC20Upgradeable _paymentToken,
-        bytes calldata _rootHash
+        IERC20Upgradeable _paymentToken
     ) external onlyMetaversusOrOrder validPaymentToken(_paymentToken) {
         NFTHelper.Type nftType = NFTHelper.getType(_nftAddress);
         if (nftType == NFTHelper.Type.ERC721) {
@@ -223,8 +221,6 @@ contract MarketPlaceManager is
             _paymentToken
         );
 
-        nftAddressToRootHash[_nftAddress] = bytes32(_rootHash);
-
         emit MarketItemCreated(
             _marketItemIds.current(),
             _nftAddress,
@@ -236,8 +232,7 @@ contract MarketPlaceManager is
             _startTime,
             _endTime,
             _paymentToken,
-            isPrivate(_marketItemIds.current()),
-            string(_rootHash)
+            isPrivate(_marketItemIds.current())
         );
     }
 

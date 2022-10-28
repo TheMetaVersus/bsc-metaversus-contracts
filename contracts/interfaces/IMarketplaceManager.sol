@@ -24,8 +24,7 @@ interface IMarketplaceManager is IERC165Upgradeable {
         address _seller,
         uint256 _startTime,
         uint256 _endTime,
-        IERC20Upgradeable _paymentToken,
-        bytes calldata rootHash
+        IERC20Upgradeable _paymentToken
     ) external;
 
     function getListingFee(uint256 amount) external view returns (uint256);

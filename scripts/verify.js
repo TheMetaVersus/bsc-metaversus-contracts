@@ -11,6 +11,20 @@ async function main() {
     "========================================================================================="
   );
 
+  try {
+    await hre.run("verify:verify", {
+      address: contracts.mtvs,
+      constructorArguments: [
+        "Metaversus Token",
+        "MTVS",
+        process.env.TOTAL_SUPPLY,
+        contracts.treasury
+      ]
+    });
+  } catch (err) {
+    console.log("err :>> ", err);
+  }
+
   for (key in contracts)
     await hre
       .run("verify:verify", {
