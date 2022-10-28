@@ -169,7 +169,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
             // Emit Event
             emit MakeOrder(
-                walletOrderIds.current(),
+                orderIds.current(),
                 _msgSender(),
                 walletOrder.to,
                 walletOrder.nftAddress,
@@ -243,7 +243,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
 
             // Emit Event
             emit MakeOrder(
-                marketItemOrderIds.current(),
+                orderIds.current(),
                 _msgSender(),
                 marketItem.seller,
                 marketItem.nftContractAddress,
