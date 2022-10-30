@@ -45,14 +45,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
     OrderHelper.DBOrderMap DBOrderMap;
 
     event SoldAvailableItem(uint256 indexed marketItemId, uint256 price, uint256 startTime, uint256 endTime);
-    event CanceledSell(
-        uint256 indexed marketItemId,
-        address seller,
-        uint256 amount,
-        address paymentToken,
-        address tokenAddress,
-        uint256 tokenId
-    );
+    event CanceledSell(uint256 indexed marketItemId);
     event Bought(
         uint256 indexed marketItemId,
         address nftContractAddress,
@@ -70,7 +63,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         address paymentToken,
         address nftContractAddress,
         uint256 tokenId,
-        uint256 bidPrice
+        uint256 bidPrice,
+        bool isWallet
     );
     event MakeOrder(
         uint256 indexed orderId,
@@ -82,9 +76,10 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
         address paymentToken,
         uint256 bidPrice,
         uint256 expiredTime,
-        OrderHelper.OrderStatus status
+        OrderHelper.OrderStatus status,
+        bool isWallet
     );
-    event CanceledOrder(uint256 indexed orderId);
+
     modifier validMarketItemId(uint256 _id) {
         if (!(_id <= marketplace.getCurrentMarketItem() && _id > 0)) {
             revert ErrorHelper.InvalidMarketItemId();
@@ -194,7 +189,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                 address(orderInfo.paymentToken),
                 orderInfo.bidPrice,
                 orderInfo.expiredTime,
-                orderInfo.status
+                orderInfo.status,
+                true
             );
         }
     }
@@ -268,7 +264,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
                 address(orderInfo.paymentToken),
                 orderInfo.bidPrice,
                 orderInfo.expiredTime,
-                orderInfo.status
+                orderInfo.status,
+                false
             );
         }
     }
@@ -356,7 +353,8 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             address(orderInfo.paymentToken),
             _nftContractAddress,
             _tokenId,
-            orderInfo.bidPrice
+            orderInfo.bidPrice,
+            orderInfo.isWallet
         );
     }
 
@@ -463,14 +461,7 @@ contract OrderManager is Validatable, ReentrancyGuardUpgradeable, ERC165Upgradea
             _msgSender()
         );
 
-        emit CanceledSell(
-            marketItemId,
-            marketItem.seller,
-            marketItem.amount,
-            address(marketItem.paymentToken),
-            marketItem.nftContractAddress,
-            marketItem.tokenId
-        );
+        emit CanceledSell(marketItemId);
     }
 
     /**
